@@ -69,20 +69,12 @@ class PlainTile extends Tile {
     getClassName() {
         return 'Plain';
     }
-
-    toString() {
-        return `p-${this.h}` 
-    }
 }
 
 class EmptyTile extends Tile {
 
     getClassName() {
         return 'Empty';
-    }
-
-    toString() {
-        return `e-${this.h}`
     }
 
     changeNeighbors(steps, highlight) {

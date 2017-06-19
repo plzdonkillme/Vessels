@@ -78,6 +78,8 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.Knight = exports.MapScreen = exports.MapRenderer = exports.MapSerializer = exports.MapObject = exports.Map = undefined;
 
+var _get = function get(object, property, receiver) { if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { return get(parent, property, receiver); } } else if ("value" in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } };
+
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
 var _Tile = __webpack_require__(4);
@@ -94,7 +96,31 @@ var Map = function () {
 
         this.tiles = tiles;
         this.mapObjects = mapObjects;
+        this.actors = mapObjects.filter(function (m) {
+            return m.isActor();
+        });
         this.selectedObject = null;
+
+        this.TICK_THRESHOLD = 100;
+        this.turnQueue = [];
+        for (var i = 0; i < this.actors.length; i++) {
+            var ticks = this.actors[i].getTicks();
+            if (ticks > this.TICK_THRESHOLD) {
+                var idx = this.turnQueue.length;
+                for (var j = 0; j < this.turnQueue.length; j++) {
+                    if (this.turnQueue[j][1] > ticks) {
+                        idx = j;
+                        break;
+                    }
+                }
+                this.turnQueue.splice(idx, 0, [this.actors[i], ticks]);
+            }
+        }
+        if (this.turnQueue.length > 0) {
+            this.turnActor = this.turnQueue[this.turnQueue.length - 1][0];
+        } else {
+            this.turnActor = null;
+        };
     }
 
     _createClass(Map, [{
@@ -156,6 +182,32 @@ var Map = function () {
             var serializer = new MapSerializer();
             return serializer.serialize(this);
         }
+    }, {
+        key: 'nextTurn',
+        value: function nextTurn() {
+            if (this.turnActor !== null) {
+                this.turnQueue.pop();
+                this.turnActor.subtractTicks(this.TICK_THRESHOLD);
+            }
+            while (this.turnQueue.length === 0) {
+                for (var i = 0; i < this.actors.length; i++) {
+                    this.actors[i].tickForward();
+                    var ticks = this.actors[i].getTicks();
+                    if (ticks > this.TICK_THRESHOLD) {
+                        var idx = this.turnQueue.length;
+                        for (var j = 0; j < this.turnQueue.length; j++) {
+                            if (this.turnQueue[j][1] > ticks) {
+                                idx = j;
+                                break;
+                            }
+                        }
+                        this.turnQueue.splice(idx, 0, [this.actors[i], ticks]);
+                    }
+                }
+            }
+            this.turnActor = this.turnQueue[this.turnQueue.length - 1][0];
+            return this.turnActor;
+        }
     }]);
 
     return Map;
@@ -198,7 +250,7 @@ var MapSerializer = function () {
             var mapObjects = map.getMapObjects();
             for (var _i = 0; _i < mapObjects.length; _i++) {
                 var mapObject = mapObjects[_i];
-                var mapObjectString = this.classNameToString[mapObject.getClassName()] + '-' + mapObject.getX() + '-' + mapObject.getY();
+                var mapObjectString = this.classNameToString[mapObject.getClassName()] + '-' + mapObject.serialize();
                 mapString += mapObjectString;
                 if (_i !== mapObjects.length - 1) {
                     mapString += '\n';
@@ -238,10 +290,14 @@ var MapSerializer = function () {
             var mapObjectStrings = mapObjectArrayString.split('\n');
             for (var i = 0; i < mapObjectStrings.length; i++) {
                 var _props = mapObjectStrings[i].split('-');
+                var classString = _props[0];
+                var attrString = _props.slice(1, _props.length).join('-');
                 var mapObjectClass = this.stringToClass[_props[0]];
-                var mapObjectTile = tiles[parseInt(_props[2])][parseInt(_props[1])];
-                var mapObject = new mapObjectClass(mapObjectTile);
+                var mapObject = mapObjectClass.deserialize(attrString);
                 mapObjects.push(mapObject);
+            }
+            for (var _i2 = 0; _i2 < mapObjects.length; _i2++) {
+                mapObjects[_i2].setReferences(tiles, mapObjects);
             }
             return new Map(tiles, mapObjects);
         }
@@ -252,16 +308,18 @@ var MapSerializer = function () {
 
 var MapObject = function () {
     _createClass(MapObject, [{
-        key: 'getclassName',
-        value: function getclassName() {
-            throw Error('Unimplemented');
+        key: 'getClassName',
+        value: function getClassName() {
+            return 'MapObject';
         }
     }]);
 
-    function MapObject(tile) {
+    function MapObject(attributes) {
         _classCallCheck(this, MapObject);
 
-        this.tile = tile;
+        this.tile = null;
+        this.x = attributes.x;
+        this.y = attributes.y;
     }
 
     _createClass(MapObject, [{
@@ -272,25 +330,113 @@ var MapObject = function () {
     }, {
         key: 'getX',
         value: function getX() {
-            return this.tile.getX();
+            return this.x;
         }
     }, {
         key: 'getY',
         value: function getY() {
-            return this.tile.getY();
+            return this.y;
         }
     }, {
         key: 'setTile',
         value: function setTile(tile) {
             this.tile = tile;
         }
+    }, {
+        key: 'isActor',
+        value: function isActor() {
+            return false;
+        }
+    }, {
+        key: 'serialize',
+        value: function serialize() {
+            return this.x + '-' + this.getY();
+        }
+    }, {
+        key: 'setReferences',
+        value: function setReferences(tiles, mapObjects) {
+            this.tile = tiles[this.x][this.y];
+        }
+    }], [{
+        key: 'parseAttributes',
+        value: function parseAttributes(attrString) {
+            var attrSplit = attrString.split('-');
+            var attr = {
+                x: parseInt(attrSplit[0]),
+                y: parseInt(attrSplit[1])
+            };
+            return attr;
+        }
+    }, {
+        key: 'deserialize',
+        value: function deserialize(attrString) {
+            return new this(this.parseAttributes(attrString));
+        }
     }]);
 
     return MapObject;
 }();
 
-var Knight = function (_MapObject) {
-    _inherits(Knight, _MapObject);
+var Actor = function (_MapObject) {
+    _inherits(Actor, _MapObject);
+
+    function Actor(attributes) {
+        _classCallCheck(this, Actor);
+
+        var _this = _possibleConstructorReturn(this, (Actor.__proto__ || Object.getPrototypeOf(Actor)).call(this, attributes));
+
+        _this.ticks = attributes.ticks;
+        _this.tickAmount = attributes.tickAmount;
+        return _this;
+    }
+
+    _createClass(Actor, [{
+        key: 'getTicks',
+        value: function getTicks() {
+            return this.ticks;
+        }
+    }, {
+        key: 'getTickAmount',
+        value: function getTickAmount() {
+            return this.tickAmount;
+        }
+    }, {
+        key: 'tickForward',
+        value: function tickForward() {
+            this.ticks += this.tickAmount;
+        }
+    }, {
+        key: 'subtractTicks',
+        value: function subtractTicks(amt) {
+            this.ticks -= amt;
+        }
+    }, {
+        key: 'isActor',
+        value: function isActor() {
+            return true;
+        }
+    }, {
+        key: 'serialize',
+        value: function serialize() {
+            return _get(Actor.prototype.__proto__ || Object.getPrototypeOf(Actor.prototype), 'serialize', this).call(this) + '-' + this.ticks + '-' + this.tickAmount;
+        }
+    }], [{
+        key: 'parseAttributes',
+        value: function parseAttributes(attrString) {
+            var attrSplit = attrString.split('-');
+            var parAttrString = attrSplit.slice(0, attrSplit.length - 2).join('-');
+            var attr = _get(Actor.__proto__ || Object.getPrototypeOf(Actor), 'parseAttributes', this).call(this, parAttrString);
+            attr.ticks = parseInt(attrSplit[attrSplit.length - 2]);
+            attr.tickAmount = parseInt(attrSplit[attrSplit.length - 1]);
+            return attr;
+        }
+    }]);
+
+    return Actor;
+}(MapObject);
+
+var Knight = function (_Actor) {
+    _inherits(Knight, _Actor);
 
     _createClass(Knight, [{
         key: 'getClassName',
@@ -299,21 +445,22 @@ var Knight = function (_MapObject) {
         }
     }]);
 
-    function Knight(tile) {
+    function Knight(attributes) {
         _classCallCheck(this, Knight);
 
-        var _this = _possibleConstructorReturn(this, (Knight.__proto__ || Object.getPrototypeOf(Knight)).call(this, tile));
+        return _possibleConstructorReturn(this, (Knight.__proto__ || Object.getPrototypeOf(Knight)).call(this, attributes));
 
-        _this.selected = false;
-        return _this;
+        //attributes
+        // HP
+        // MP
+        // Speed
+        // Skill Points
+        // Attack
+        // Defense
+        // 
     }
 
     _createClass(Knight, [{
-        key: 'toString',
-        value: function toString() {
-            return 'Knight on ' + this.tile.toString();
-        }
-    }, {
         key: 'selectObject',
         value: function selectObject() {
             this.tile.changeNeighbors(2, true);
@@ -327,7 +474,7 @@ var Knight = function (_MapObject) {
     }]);
 
     return Knight;
-}(MapObject);
+}(Actor);
 
 var MapScreen = function () {
     function MapScreen(canvas, map) {
@@ -335,6 +482,16 @@ var MapScreen = function () {
 
         this.canvas = canvas;
         this.map = map;
+        this.viewport = {
+            x1: 0,
+            x2: this.canvas.width,
+            y1: 0,
+            y2: this.canvas.height,
+            mx: null,
+            my: null
+        };
+        this.startDragX = null;
+        this.startDragY = null;
         this.mapRenderer = new MapRenderer(this.canvas);
     }
 
@@ -344,28 +501,66 @@ var MapScreen = function () {
             this.map = map;
         }
     }, {
+        key: 'start',
+        value: function start() {
+            this.map.nextTurn();
+            this.mapRenderer.renderMap(this.map, this.viewport);
+        }
+    }, {
         key: 'draw',
         value: function draw() {
-            this.mapRenderer.renderMap(this.map, null, null);
+            this.mapRenderer.renderMap(this.map, this.viewport);
+        }
+    }, {
+        key: 'handleMouseDown',
+        value: function handleMouseDown(x, y) {
+            this.startDragX = x;
+            this.startDragY = y;
         }
     }, {
         key: 'handleMouseMove',
         value: function handleMouseMove(x, y) {
-            this.mapRenderer.renderMap(this.map, x, y);
+            if (this.startDragX !== null && this.startDragY !== null) {
+                var dx = x - this.startDragX;
+                var dy = y - this.startDragY;
+                this.viewport.x1 -= dx;
+                this.viewport.x2 -= dx;
+                this.viewport.y1 -= dy;
+                this.viewport.y2 -= dy;
+                this.startDragX = x;
+                this.startDragY = y;
+            }
+            this.viewport.mx = this.viewport.x1 + x;
+            this.viewport.my = this.viewport.y1 + y;
+            //console.log(`mousemove - x: ${x} y: ${y}`);
+            this.mapRenderer.renderMap(this.map, this.viewport);
+        }
+    }, {
+        key: 'handleMouseUp',
+        value: function handleMouseUp(x, y) {
+            this.startDragX = null;
+            this.startDragY = null;
+            //console.log(`mouseup - x: ${x} y: ${y}`);
         }
     }, {
         key: 'handleClick',
         value: function handleClick(x, y) {
-            var clickedObjs = this.mapRenderer.getClickedObjects(x, y);
+            this.viewport.mx = this.viewport.x1 + x;
+            this.viewport.my = this.viewport.y1 + y;
+            var clickedObjs = this.mapRenderer.getClickedObjects(this.viewport);
             var rerender = this.map.clicked(clickedObjs);
             if (rerender) {
-                this.mapRenderer.renderMap(this.map, x, y);
+                this.mapRenderer.renderMap(this.map, this.viewport);
             }
         }
     }, {
         key: 'handleMouseLeave',
         value: function handleMouseLeave() {
-            this.mapRenderer.renderMap(this.map, null, null);
+            this.viewport.mx = null;
+            this.viewport.my = null;
+            this.startDragX = null;
+            this.startDragY = null;
+            this.mapRenderer.renderMap(this.map, this.viewport);
         }
     }]);
 
@@ -378,85 +573,113 @@ var MapRenderer = function () {
 
         this.canvas = canvas;
         this.boundingBoxes = [];
+        this.viewport = {
+            x1: 0,
+            x2: canvas.width,
+            y1: 0,
+            y2: canvas.height
+        };
     }
 
     _createClass(MapRenderer, [{
         key: 'renderMap',
-        value: function renderMap(map, mouseX, mouseY) {
+        value: function renderMap(map, viewport) {
+            var ctx = this.canvas.getContext('2d');
+            ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
             this.boundingBoxes = [];
             var tiles = map.getTilesFlattened();
-            this.renderTiles(tiles, mouseX, mouseY);
+            this.renderTiles(tiles, viewport);
             var mapObjects = map.getMapObjects();
-            this.renderMapObjects(mapObjects, mouseX, mouseY);
+            this.renderMapObjects(mapObjects, viewport);
         }
     }, {
         key: 'renderTiles',
-        value: function renderTiles(tiles, mouseX, mouseY) {
-            var _this2 = this;
+        value: function renderTiles(tiles, viewport) {
+            var _this3 = this;
 
             var ctx = this.canvas.getContext("2d");
-            ctx.strokeStyle = "#000000";
             tiles.forEach(function (tile) {
                 var tx = tile.getX();
                 var ty = tile.getY();
-                var hover = false;
-                if (mouseX && mouseY) {
-                    if (mouseX > 100 * tx && mouseX < 100 * tx + 100 && mouseY > 100 * ty && mouseY < 100 * ty + 100) {
-                        hover = true;
+
+                //map tx and ty into screen x and y (sx & sy) 
+                var sx1 = tx * 100;
+                var sx2 = tx * 100 + 100;
+                var sy1 = ty * 100;
+                var sy2 = ty * 100 + 100;
+
+                if (sx2 >= viewport.x1 && sx1 <= viewport.x2 && sy2 >= viewport.y1 && sy1 <= viewport.y2) {
+
+                    var hover = false;
+                    if (viewport.mx !== null && viewport.my !== null) {
+                        if (viewport.mx > sx1 && viewport.mx < sx2 && viewport.my > sy1 && viewport.my < sy2) {
+                            hover = true;
+                        }
+                    }
+                    if (tile instanceof _Tile.PlainTile) {
+                        ctx.strokeStyle = "#000000";
+                        if (hover) {
+                            ctx.fillStyle = "#D9D9D9";
+                        } else {
+                            ctx.fillStyle = "#CCCCCC";
+                        }
+                        if (tile.isHighlighted()) {
+                            ctx.fillStyle = "#0000FF";
+                        }
+                        ctx.fillRect(sx1 - viewport.x1, sy1 - viewport.y1, 100, 100);
+                        ctx.strokeRect(sx1 - viewport.x1, sy1 - viewport.y1, 100, 100);
+                        _this3.boundingBoxes.push({
+                            obj: tile,
+                            x1: sx1,
+                            x2: sx2,
+                            y1: sy1,
+                            y2: sy2
+                        });
                     }
                 }
-                if (tile instanceof _Tile.PlainTile) {
-                    if (hover) {
-                        ctx.fillStyle = "#FF8080";
-                    } else {
-                        ctx.fillStyle = "#FF0000";
-                    }
-                    if (tile.isHighlighted()) {
-                        ctx.fillStyle = "#0000FF";
-                    }
-                } else if (tile instanceof _Tile.EmptyTile) {
-                    ctx.fillStyle = "#808080";
-                }
-                ctx.fillRect(100 * tx, 100 * ty, 100, 100);
-                ctx.strokeRect(100 * tx, 100 * ty, 100, 100);
-                _this2.boundingBoxes.push({
-                    obj: tile,
-                    x1: 100 * tx,
-                    x2: 100 * tx + 100,
-                    y1: 100 * ty,
-                    y2: 100 * ty + 100
-                });
             });
         }
     }, {
         key: 'renderMapObjects',
-        value: function renderMapObjects(mapObjects, mouseX, mouseY) {
-            var _this3 = this;
+        value: function renderMapObjects(mapObjects, viewport) {
+            var _this4 = this;
 
             var ctx = this.canvas.getContext("2d");
+            ctx.fillStyle = "#0000FF";
+            ctx.strokeStyle = "#000000";
             mapObjects.forEach(function (mapObject) {
-                ctx.fillStyle = "#0000FF";
-                ctx.strokeStyle = "#000000";
                 var mx = mapObject.getX();
                 var my = mapObject.getY();
-                ctx.fillRect(100 * mx + 15, 100 * my + 15, 70, 70);
-                ctx.strokeRect(100 * mx + 15, 100 * my + 15, 70, 70);
-                _this3.boundingBoxes.push({
-                    obj: mapObject,
-                    x1: 100 * mx,
-                    x2: 100 * mx + 100,
-                    y1: 100 * my,
-                    y2: 100 * my + 100
-                });
+
+                //map tx and ty into screen x and y (sx & sy) 
+                var sx1 = mx * 100;
+                var sx2 = mx * 100 + 100;
+                var sy1 = my * 100;
+                var sy2 = my * 100 + 100;
+
+                if (sx2 >= viewport.x1 && sx1 <= viewport.x2 && sy2 >= viewport.y1 && sy1 <= viewport.y2) {
+
+                    ctx.fillRect(sx1 + 15 - viewport.x1, sy1 + 15 - viewport.y1, 70, 70);
+                    ctx.strokeRect(sx1 + 15 - viewport.x1, sy1 + 15 - viewport.y1, 70, 70);
+                    _this4.boundingBoxes.push({
+                        obj: mapObject,
+                        x1: sx1,
+                        x2: sx2,
+                        y1: sy1,
+                        y2: sy2
+                    });
+                }
             });
         }
     }, {
         key: 'getClickedObjects',
-        value: function getClickedObjects(x, y) {
+        value: function getClickedObjects(viewport) {
             var clickedObjects = [];
+            var mx = viewport.mx;
+            var my = viewport.my;
             for (var i = 0; i < this.boundingBoxes.length; i++) {
                 var boundingBox = this.boundingBoxes[i];
-                if (x > boundingBox.x1 && x < boundingBox.x2 && y > boundingBox.y1 && y < boundingBox.y2) {
+                if (mx > boundingBox.x1 && mx < boundingBox.x2 && my > boundingBox.y1 && my < boundingBox.y2) {
                     clickedObjects.push(boundingBox.obj);
                 }
             }
@@ -516,16 +739,26 @@ var Game = function () {
             window.map = _DefaultMap2.default;
             this.screen = new _Map.MapScreen(this.canvas);
             this.screen.setMap(_DefaultMap2.default);
-            this.screen.draw();
+            this.screen.start();
 
             this.canvas.addEventListener("click", function (e) {
                 var rect = canvas.getBoundingClientRect();
                 _this.screen.handleClick(e.clientX - rect.left, e.clientY - rect.top);
             });
 
+            this.canvas.addEventListener("mousedown", function (e) {
+                var rect = canvas.getBoundingClientRect();
+                _this.screen.handleMouseDown(e.clientX - rect.left, e.clientY - rect.top);
+            });
+
             this.canvas.addEventListener("mousemove", function (e) {
                 var rect = canvas.getBoundingClientRect();
                 _this.screen.handleMouseMove(e.clientX - rect.left, e.clientY - rect.top);
+            });
+
+            this.canvas.addEventListener("mouseup", function (e) {
+                var rect = canvas.getBoundingClientRect();
+                _this.screen.handleMouseUp(e.clientX - rect.left, e.clientY - rect.top);
             });
 
             this.canvas.addEventListener("mouseleave", function (e) {
@@ -598,7 +831,7 @@ Object.defineProperty(exports, "__esModule", {
 
 var _Map = __webpack_require__(0);
 
-var exampleMapString = "p-1 p-1 p-1 p-1\np-1 e-1 p-1 p-1\np-1 p-1 p-1 e-1\np-1 p-1 e-1 p-1\n===\nk-0-0\nk-2-1";
+var exampleMapString = "p-1 p-1 p-1 p-1\np-1 e-1 p-1 p-1\np-1 p-1 p-1 e-1\np-1 p-1 p-1 p-1\ne-1 e-1 e-1 p-1\np-1 p-1 e-1 p-1\np-1 p-1 p-1 p-1\n===\nk-0-0-0-10\nk-2-1-0-20";
 
 var serializer = new _Map.MapSerializer();
 var defaultMap = serializer.deserialize(exampleMapString);
@@ -719,11 +952,6 @@ var PlainTile = function (_Tile) {
         value: function getClassName() {
             return 'Plain';
         }
-    }, {
-        key: 'toString',
-        value: function toString() {
-            return 'p-' + this.h;
-        }
     }]);
 
     return PlainTile;
@@ -742,11 +970,6 @@ var EmptyTile = function (_Tile2) {
         key: 'getClassName',
         value: function getClassName() {
             return 'Empty';
-        }
-    }, {
-        key: 'toString',
-        value: function toString() {
-            return 'e-' + this.h;
         }
     }, {
         key: 'changeNeighbors',
@@ -787,7 +1010,7 @@ __webpack_require__(2);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-var g = new _Game2.default(512, 480);
+var g = new _Game2.default(window.innerWidth - 16, window.innerHeight - 16);
 g.start();
 
 /***/ }),
