@@ -99,10 +99,12 @@ var Map = function () {
         this.actors = mapObjects.filter(function (m) {
             return m.isActor();
         });
-        this.selectedObject = null;
 
         this.TICK_THRESHOLD = 100;
+
+        // Priority Queue of actors. Format is [[actor, ticks]]
         this.turnQueue = [];
+
         for (var i = 0; i < this.actors.length; i++) {
             var ticks = this.actors[i].getTicks();
             if (ticks > this.TICK_THRESHOLD) {
@@ -142,18 +144,13 @@ var Map = function () {
         value: function getMapObjects() {
             return this.mapObjects;
         }
+
+        //TODO: Implement Map Objective Functions
+
     }, {
-        key: 'setSelection',
-        value: function setSelection(mapObject) {
-            if (this.selectedObject) {
-                this.selectedObject.unselectObject();
-            }
-            if (this.selectedObject === mapObject) {
-                this.selectedObject = null;
-            } else {
-                this.selectedObject = mapObject;
-                this.selectedObject.selectObject();
-            }
+        key: 'isResolved',
+        value: function isResolved() {
+            return false;
         }
     }, {
         key: 'clicked',
@@ -162,14 +159,11 @@ var Map = function () {
             for (var i = 0; i < objs.length; i++) {
                 var obj = objs[i];
                 if (obj instanceof MapObject) {
-                    this.setSelection(obj);
-                    rerender = true;
-                }
-                if (obj instanceof _Tile.Tile) {
+                    //this.setSelection(obj);
+                    //rerender = true;
+                } else if (obj instanceof _Tile.Tile) {
                     if (obj.isHighlighted()) {
-                        this.selectedObject.unselectObject();
-                        this.selectedObject.setTile(obj);
-                        this.selectedObject = null;
+                        this.turnActor.moveTo(obj);
                         rerender = true;
                     }
                 }
@@ -320,6 +314,7 @@ var MapObject = function () {
         this.tile = null;
         this.x = attributes.x;
         this.y = attributes.y;
+        this.highlighted = false;
     }
 
     _createClass(MapObject, [{
@@ -338,9 +333,21 @@ var MapObject = function () {
             return this.y;
         }
     }, {
-        key: 'setTile',
-        value: function setTile(tile) {
+        key: 'isHighlighted',
+        value: function isHighlighted() {
+            return this.highlighted;
+        }
+    }, {
+        key: 'setHighlight',
+        value: function setHighlight(h) {
+            this.highlighted = h;
+        }
+    }, {
+        key: 'moveTo',
+        value: function moveTo(tile) {
             this.tile = tile;
+            this.x = tile.getX();
+            this.y = tile.getY();
         }
     }, {
         key: 'isActor',
@@ -355,7 +362,7 @@ var MapObject = function () {
     }, {
         key: 'setReferences',
         value: function setReferences(tiles, mapObjects) {
-            this.tile = tiles[this.x][this.y];
+            this.tile = tiles[this.y][this.x];
         }
     }], [{
         key: 'parseAttributes',
@@ -416,6 +423,13 @@ var Actor = function (_MapObject) {
             return true;
         }
     }, {
+        key: 'takeTurn',
+        value: function takeTurn() {
+            return new Promise(function (resolve, reject) {
+                resolve();
+            });
+        }
+    }, {
         key: 'serialize',
         value: function serialize() {
             return _get(Actor.prototype.__proto__ || Object.getPrototypeOf(Actor.prototype), 'serialize', this).call(this) + '-' + this.ticks + '-' + this.tickAmount;
@@ -448,8 +462,6 @@ var Knight = function (_Actor) {
     function Knight(attributes) {
         _classCallCheck(this, Knight);
 
-        return _possibleConstructorReturn(this, (Knight.__proto__ || Object.getPrototypeOf(Knight)).call(this, attributes));
-
         //attributes
         // HP
         // MP
@@ -458,18 +470,38 @@ var Knight = function (_Actor) {
         // Attack
         // Defense
         // 
+        var _this2 = _possibleConstructorReturn(this, (Knight.__proto__ || Object.getPrototypeOf(Knight)).call(this, attributes));
+
+        _this2.turnResolve = function () {
+            throw Error('Called turnResolve() before it was set');
+        };
+        return _this2;
     }
 
     _createClass(Knight, [{
-        key: 'selectObject',
-        value: function selectObject() {
-            this.tile.changeNeighbors(2, true);
-            this.tile.unhighlight();
-        }
-    }, {
         key: 'unselectObject',
         value: function unselectObject() {
             this.tile.changeNeighbors(2, false);
+        }
+    }, {
+        key: 'takeTurn',
+        value: function takeTurn() {
+            var _this3 = this;
+
+            this.setHighlight(true);
+            this.tile.changeNeighbors(2, true);
+            this.tile.unhighlight();
+            return new Promise(function (resolve, reject) {
+                _this3.turnResolve = resolve;
+            });
+        }
+    }, {
+        key: 'moveTo',
+        value: function moveTo(tile) {
+            this.setHighlight(false);
+            this.tile.changeNeighbors(2, false);
+            _get(Knight.prototype.__proto__ || Object.getPrototypeOf(Knight.prototype), 'moveTo', this).call(this, tile);
+            this.turnResolve();
         }
     }]);
 
@@ -503,8 +535,21 @@ var MapScreen = function () {
     }, {
         key: 'start',
         value: function start() {
-            this.map.nextTurn();
             this.mapRenderer.renderMap(this.map, this.viewport);
+            this.turnLoop();
+        }
+    }, {
+        key: 'turnLoop',
+        value: function turnLoop() {
+            var _this4 = this;
+
+            if (this.map.isResolved()) {} else {
+                var turnActor = this.map.nextTurn();
+                turnActor.takeTurn().then(function () {
+                    _this4.turnLoop();
+                });
+                this.mapRenderer.renderMap(this.map, this.viewport);
+            }
         }
     }, {
         key: 'draw',
@@ -532,7 +577,6 @@ var MapScreen = function () {
             }
             this.viewport.mx = this.viewport.x1 + x;
             this.viewport.my = this.viewport.y1 + y;
-            //console.log(`mousemove - x: ${x} y: ${y}`);
             this.mapRenderer.renderMap(this.map, this.viewport);
         }
     }, {
@@ -540,7 +584,6 @@ var MapScreen = function () {
         value: function handleMouseUp(x, y) {
             this.startDragX = null;
             this.startDragY = null;
-            //console.log(`mouseup - x: ${x} y: ${y}`);
         }
     }, {
         key: 'handleClick',
@@ -595,7 +638,7 @@ var MapRenderer = function () {
     }, {
         key: 'renderTiles',
         value: function renderTiles(tiles, viewport) {
-            var _this3 = this;
+            var _this5 = this;
 
             var ctx = this.canvas.getContext("2d");
             tiles.forEach(function (tile) {
@@ -618,17 +661,22 @@ var MapRenderer = function () {
                     }
                     if (tile instanceof _Tile.PlainTile) {
                         ctx.strokeStyle = "#000000";
-                        if (hover) {
-                            ctx.fillStyle = "#D9D9D9";
-                        } else {
-                            ctx.fillStyle = "#CCCCCC";
-                        }
                         if (tile.isHighlighted()) {
-                            ctx.fillStyle = "#0000FF";
+                            if (hover) {
+                                ctx.fillStyle = "#0066FF";
+                            } else {
+                                ctx.fillStyle = "#0000FF";
+                            }
+                        } else {
+                            if (hover) {
+                                ctx.fillStyle = "#D9D9D9";
+                            } else {
+                                ctx.fillStyle = "#CCCCCC";
+                            }
                         }
                         ctx.fillRect(sx1 - viewport.x1, sy1 - viewport.y1, 100, 100);
                         ctx.strokeRect(sx1 - viewport.x1, sy1 - viewport.y1, 100, 100);
-                        _this3.boundingBoxes.push({
+                        _this5.boundingBoxes.push({
                             obj: tile,
                             x1: sx1,
                             x2: sx2,
@@ -642,11 +690,12 @@ var MapRenderer = function () {
     }, {
         key: 'renderMapObjects',
         value: function renderMapObjects(mapObjects, viewport) {
-            var _this4 = this;
+            var _this6 = this;
 
             var ctx = this.canvas.getContext("2d");
             ctx.fillStyle = "#0000FF";
             ctx.strokeStyle = "#000000";
+            var counter = 0;
             mapObjects.forEach(function (mapObject) {
                 var mx = mapObject.getX();
                 var my = mapObject.getY();
@@ -659,9 +708,18 @@ var MapRenderer = function () {
 
                 if (sx2 >= viewport.x1 && sx1 <= viewport.x2 && sy2 >= viewport.y1 && sy1 <= viewport.y2) {
 
+                    if (mapObject.isHighlighted()) {
+                        ctx.fillStyle = "#00FF00";
+                    } else {
+                        ctx.fillStyle = "#0000FF";
+                    }
                     ctx.fillRect(sx1 + 15 - viewport.x1, sy1 + 15 - viewport.y1, 70, 70);
                     ctx.strokeRect(sx1 + 15 - viewport.x1, sy1 + 15 - viewport.y1, 70, 70);
-                    _this4.boundingBoxes.push({
+                    ctx.fillStyle = "#000000";
+                    ctx.font = "48px serif";
+                    ctx.fillText('' + counter, sx1 + 40 - viewport.x1, sy1 + 60 - viewport.y1);
+                    counter += 1;
+                    _this6.boundingBoxes.push({
                         obj: mapObject,
                         x1: sx1,
                         x2: sx2,
@@ -831,7 +889,7 @@ Object.defineProperty(exports, "__esModule", {
 
 var _Map = __webpack_require__(0);
 
-var exampleMapString = "p-1 p-1 p-1 p-1\np-1 e-1 p-1 p-1\np-1 p-1 p-1 e-1\np-1 p-1 p-1 p-1\ne-1 e-1 e-1 p-1\np-1 p-1 e-1 p-1\np-1 p-1 p-1 p-1\n===\nk-0-0-0-10\nk-2-1-0-20";
+var exampleMapString = "p-1 p-1 p-1 p-1\np-1 e-1 p-1 p-1\np-1 p-1 p-1 e-1\np-1 p-1 p-1 p-1\ne-1 e-1 e-1 p-1\np-1 p-1 e-1 p-1\np-1 p-1 p-1 p-1\n===\nk-0-0-0-20\nk-2-1-0-30";
 
 var serializer = new _Map.MapSerializer();
 var defaultMap = serializer.deserialize(exampleMapString);

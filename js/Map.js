@@ -6,10 +6,12 @@ class Map {
         this.tiles = tiles
         this.mapObjects = mapObjects;
         this.actors = mapObjects.filter(m => m.isActor());
-        this.selectedObject= null;
 
         this.TICK_THRESHOLD = 100;
+
+        // Priority Queue of actors. Format is [[actor, ticks]]
         this.turnQueue = [];
+
         for (let i = 0; i < this.actors.length; i++) {
             const ticks = this.actors[i].getTicks();
             if (ticks > this.TICK_THRESHOLD) {
@@ -46,16 +48,9 @@ class Map {
         return this.mapObjects;
     }
 
-    setSelection(mapObject) {
-        if (this.selectedObject) {
-            this.selectedObject.unselectObject();
-        }
-        if (this.selectedObject === mapObject) {
-            this.selectedObject = null;
-        } else {
-            this.selectedObject = mapObject;
-            this.selectedObject.selectObject();
-        }
+    //TODO: Implement Map Objective Functions
+    isResolved() {
+        return false;
     }
 
     clicked(objs) {
@@ -63,14 +58,11 @@ class Map {
         for (let i = 0; i < objs.length; i++) {
             const obj = objs[i];
             if (obj instanceof MapObject) {
-                this.setSelection(obj);
-                rerender = true;
-            }
-            if (obj instanceof Tile) {
+                //this.setSelection(obj);
+                //rerender = true;
+            } else if (obj instanceof Tile) {
                 if (obj.isHighlighted()) {
-                    this.selectedObject.unselectObject();
-                    this.selectedObject.setTile(obj);
-                    this.selectedObject = null;
+                    this.turnActor.moveTo(obj);
                     rerender = true;
                 }
             }
@@ -204,6 +196,7 @@ class MapObject {
         this.tile = null;
         this.x = attributes.x;
         this.y = attributes.y;
+        this.highlighted = false;
     }
 
     getTile() {
@@ -218,8 +211,18 @@ class MapObject {
         return this.y;
     }
 
-    setTile(tile) {
+    isHighlighted() {
+        return this.highlighted;
+    }
+
+    setHighlight(h) {
+        this.highlighted = h;
+    }
+
+    moveTo(tile) {
         this.tile = tile;
+        this.x = tile.getX();
+        this.y = tile.getY();
     }
 
     isActor() {
@@ -244,7 +247,7 @@ class MapObject {
     }
 
     setReferences(tiles, mapObjects) {
-        this.tile = tiles[this.x][this.y];
+        this.tile = tiles[this.y][this.x];
     }
 }
 
@@ -274,6 +277,12 @@ class Actor extends MapObject {
 
     isActor() {
         return true;
+    }
+
+    takeTurn() {
+        return new Promise((resolve, reject) => {
+            resolve();
+        });
     }
 
     serialize() {
@@ -307,15 +316,29 @@ class Knight extends Actor {
         // Attack
         // Defense
         // 
-    }
-
-    selectObject() {
-        this.tile.changeNeighbors(2, true);
-        this.tile.unhighlight();
+        this.turnResolve = function() {
+            throw Error('Called turnResolve() before it was set');
+        };
     }
 
     unselectObject() {
         this.tile.changeNeighbors(2, false);
+    }
+
+    takeTurn() {
+        this.setHighlight(true);
+        this.tile.changeNeighbors(2, true);
+        this.tile.unhighlight();
+        return new Promise((resolve, reject) => {
+            this.turnResolve = resolve;
+        });
+    }
+
+    moveTo(tile) {
+        this.setHighlight(false);
+        this.tile.changeNeighbors(2, false);
+        super.moveTo(tile);
+        this.turnResolve();
     }
 }
 
@@ -342,8 +365,20 @@ class MapScreen {
     }
 
     start() {
-        this.map.nextTurn();
         this.mapRenderer.renderMap(this.map, this.viewport);
+        this.turnLoop();
+    }
+
+    turnLoop() {
+        if (this.map.isResolved()) {
+
+        } else {
+            const turnActor = this.map.nextTurn();
+            turnActor.takeTurn().then(() => {
+                this.turnLoop();
+            });
+            this.mapRenderer.renderMap(this.map, this.viewport);
+        }
     }
 
     draw() {
@@ -368,14 +403,12 @@ class MapScreen {
         }
         this.viewport.mx = this.viewport.x1 + x;
         this.viewport.my = this.viewport.y1 + y;
-        //console.log(`mousemove - x: ${x} y: ${y}`);
         this.mapRenderer.renderMap(this.map, this.viewport);
     }
 
     handleMouseUp(x, y) {
         this.startDragX = null;
         this.startDragY = null;
-        //console.log(`mouseup - x: ${x} y: ${y}`);
     }
 
     handleClick(x, y) {
@@ -442,13 +475,18 @@ class MapRenderer {
                 }
                 if (tile instanceof PlainTile) {
                     ctx.strokeStyle = "#000000";
-                    if (hover) {
-                        ctx.fillStyle = "#D9D9D9";
-                    } else {
-                        ctx.fillStyle = "#CCCCCC";
-                    }
                     if (tile.isHighlighted()) {
-                        ctx.fillStyle = "#0000FF"
+                        if (hover) {
+                            ctx.fillStyle = "#0066FF";
+                        }  else {
+                            ctx.fillStyle = "#0000FF";
+                        }
+                    } else {
+                        if (hover) {
+                        ctx.fillStyle = "#D9D9D9";
+                        } else {
+                            ctx.fillStyle = "#CCCCCC";
+                        }
                     }
                     ctx.fillRect(sx1 - viewport.x1, sy1 - viewport.y1, 100, 100);
                     ctx.strokeRect(sx1 - viewport.x1, sy1 - viewport.y1, 100, 100);
@@ -468,6 +506,7 @@ class MapRenderer {
         const ctx = this.canvas.getContext("2d");
         ctx.fillStyle = "#0000FF";
         ctx.strokeStyle = "#000000";
+        let counter = 0;
         mapObjects.forEach((mapObject) => {
             const mx = mapObject.getX();
             const my = mapObject.getY();
@@ -479,16 +518,25 @@ class MapRenderer {
             const sy2 = my * 100 + 100;
 
             if (sx2 >= viewport.x1 && sx1 <= viewport.x2 && sy2 >= viewport.y1 && sy1 <= viewport.y2) {
-
+                
+                if (mapObject.isHighlighted()) {
+                    ctx.fillStyle = "#00FF00";
+                } else {
+                    ctx.fillStyle = "#0000FF";
+                }
                 ctx.fillRect(sx1 + 15 - viewport.x1, sy1 + 15 - viewport.y1, 70, 70);
                 ctx.strokeRect(sx1 + 15 - viewport.x1, sy1 + 15 - viewport.y1, 70, 70);
+                ctx.fillStyle = "#000000";
+                ctx.font = "48px serif";
+                ctx.fillText(`${counter}`,sx1 + 40 - viewport.x1, sy1 + 60 - viewport.y1);
+                counter += 1;
                 this.boundingBoxes.push({
                     obj: mapObject,
                     x1: sx1,
                     x2: sx2,
                     y1: sy1,
                     y2: sy2,
-                })
+                });
             }
         });
     }
