@@ -13,6 +13,7 @@ class Tile {
         this.top = null;
         this.down = null;
         this.highlighted = false;
+        this.mapObject = null;
     }
 
     link(dir, tile) {
@@ -31,20 +32,20 @@ class Tile {
         return this.h;
     }
 
-    changeNeighbors(steps, highlight) {
+    changeNeighbors(steps, highlight, filter=()=>true) {
         if (steps === 0) {
             return;
         }
         const neighbors = [this.left, this.right, this.top, this.down];
         neighbors.forEach((tile) => {
-            if (tile !== null) {
+            if (tile !== null && filter(tile)) {
                 if (highlight && !tile.isHighlighted()) {
                     tile.highlight();
-                    tile.changeNeighbors(steps - 1, highlight);
+                    tile.changeNeighbors(steps - 1, highlight, filter);
                 }
                 if (!highlight && tile.isHighlighted()) {
                     tile.unhighlight();
-                    tile.changeNeighbors(steps - 1, highlight);
+                    tile.changeNeighbors(steps - 1, highlight, filter);
                 }
             }
         });
@@ -60,6 +61,18 @@ class Tile {
 
     unhighlight() {
         this.highlighted = false;
+    }
+
+    setMapObject(mapObject) {
+        this.mapObject = mapObject;
+    }
+
+    unsetMapObject(mapObject) {
+        this.mapObject = null;
+    }
+
+    getMapObject() {
+        return this.mapObject;
     }
 
 }

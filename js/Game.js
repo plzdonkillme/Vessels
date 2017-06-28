@@ -10,34 +10,42 @@ export default class Game {
 
     start() {
         document.body.appendChild(this.canvas);
-        window.canvas = this.canvas;
-        window.map = DefaultMap;
-        this.screen = new MapScreen(this.canvas);
-        this.screen.setMap(DefaultMap);
+        this.screen = new MapScreen(this.canvas, DefaultMap);
+        window.screen = this.screen;
         this.screen.start();
     
         this.canvas.addEventListener("click", (e) => {
-            const rect = canvas.getBoundingClientRect();
+            const rect = this.canvas.getBoundingClientRect();
             this.screen.handleClick(e.clientX - rect.left, e.clientY - rect.top);
         });
 
         this.canvas.addEventListener("mousedown", (e) => {
-            const rect = canvas.getBoundingClientRect();
+            const rect = this.canvas.getBoundingClientRect();
             this.screen.handleMouseDown(e.clientX - rect.left, e.clientY - rect.top);
         });
 
         this.canvas.addEventListener("mousemove", (e) => {
-            const rect = canvas.getBoundingClientRect();
+            const rect = this.canvas.getBoundingClientRect();
             this.screen.handleMouseMove(e.clientX - rect.left, e.clientY - rect.top);
         });
 
         this.canvas.addEventListener("mouseup", (e) => {
-            const rect = canvas.getBoundingClientRect();
+            const rect = this.canvas.getBoundingClientRect();
             this.screen.handleMouseUp(e.clientX - rect.left, e.clientY - rect.top);
         });
 
         this.canvas.addEventListener("mouseleave", (e) => {
             this.screen.handleMouseLeave();
+        });
+
+        document.addEventListener("keydown", (e) => {
+            e.preventDefault();
+            this.screen.handleKeyDown(e.key);
+        });
+
+        document.addEventListener("keyup", (e) => {
+            e.preventDefault();
+            this.screen.handleKeyUp(e.key);
         });
 
         /*this.loadAssets().then(() => {

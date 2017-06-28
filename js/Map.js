@@ -220,6 +220,8 @@ class MapObject {
     }
 
     moveTo(tile) {
+        this.tile.unsetMapObject(this);
+        tile.setMapObject(this);
         this.tile = tile;
         this.x = tile.getX();
         this.y = tile.getY();
@@ -248,6 +250,7 @@ class MapObject {
 
     setReferences(tiles, mapObjects) {
         this.tile = tiles[this.y][this.x];
+        this.tile.setMapObject(this);
     }
 }
 
@@ -321,14 +324,11 @@ class Knight extends Actor {
         };
     }
 
-    unselectObject() {
-        this.tile.changeNeighbors(2, false);
-    }
-
     takeTurn() {
         this.setHighlight(true);
-        this.tile.changeNeighbors(2, true);
-        this.tile.unhighlight();
+        this.tile.changeNeighbors(2, true, (tile) => {
+            return tile.getMapObject() == null;
+        });
         return new Promise((resolve, reject) => {
             this.turnResolve = resolve;
         });
@@ -347,42 +347,58 @@ class MapScreen {
     constructor(canvas, map) {
         this.canvas = canvas;
         this.map = map;
-        this.viewport = {
-            x1: 0,
-            x2: this.canvas.width,
-            y1: 0,
-            y2: this.canvas.height,
-            mx: null,
-            my: null,
-        };
+        this.viewport = new Viewport({
+            x: 0,
+            y: 0,
+            z: 500,
+        }, {
+            x: this.canvas.width,
+            y: 0,
+            z: 500,
+        }, {
+            x: 0,
+            y: this.canvas.height,
+            z: 500,
+        }, {
+            x: this.canvas.width,
+            y: this.canvas.height,
+            z: 500,
+        });
         this.startDragX = null;
         this.startDragY = null;
-        this.mapRenderer = new MapRenderer(this.canvas);
-    }
-
-    setMap(map) {
-        this.map = map;
+        this.pressed = {
+            a: false,
+            w: false,
+            s: false,
+            d: false,
+        };
+        this.mapRenderer = new MapRenderer(this.canvas, this.map, this.viewport);
     }
 
     start() {
-        this.mapRenderer.renderMap(this.map, this.viewport);
-        this.turnLoop();
+        this.mapRenderer.renderMap();
+        //this.turnLoop();
     }
 
     turnLoop() {
         if (this.map.isResolved()) {
-
+            // End
         } else {
             const turnActor = this.map.nextTurn();
-            turnActor.takeTurn().then(() => {
-                this.turnLoop();
+            this.animateNextTurn(turnActor).then(() => {
+                turnActor.takeTurn().then(() => {
+                    this.turnLoop();
+                });
+                //this.mapRenderer.renderMap(this.map, this.viewport);
             });
-            this.mapRenderer.renderMap(this.map, this.viewport);
         }
     }
 
-    draw() {
-        this.mapRenderer.renderMap(this.map, this.viewport);
+    animateNextTurn(turnActor) {
+        return new Promise((resolve, reject) => {
+            resolve();
+            //return this.mapRenderer.centerOn(turnActor);
+        });
     }
 
     handleMouseDown(x, y) {
@@ -392,18 +408,13 @@ class MapScreen {
 
     handleMouseMove(x, y) {
         if (this.startDragX !== null && this.startDragY !== null) {
-            const dx = x - this.startDragX;
-            const dy = y - this.startDragY;
-            this.viewport.x1 -= dx;
-            this.viewport.x2 -= dx;
-            this.viewport.y1 -= dy;
-            this.viewport.y2 -= dy;
+            const dx = this.startDragX - x;
+            const dy = this.startDragY - y;
+            this.viewport.translateAlongBasis(dx, dy);
             this.startDragX = x;
             this.startDragY = y;
         }
-        this.viewport.mx = this.viewport.x1 + x;
-        this.viewport.my = this.viewport.y1 + y;
-        this.mapRenderer.renderMap(this.map, this.viewport);
+        //this.mapRenderer.renderMap();
     }
 
     handleMouseUp(x, y) {
@@ -412,13 +423,13 @@ class MapScreen {
     }
 
     handleClick(x, y) {
-        this.viewport.mx = this.viewport.x1 + x;
-        this.viewport.my = this.viewport.y1 + y;
-        const clickedObjs = this.mapRenderer.getClickedObjects(this.viewport);
-        const rerender = this.map.clicked(clickedObjs);
-        if (rerender) {
-            this.mapRenderer.renderMap(this.map, this.viewport);
-        }
+        //this.viewport.mx = this.viewport.x1 + x;
+        //this.viewport.my = this.viewport.y1 + y;
+        //const clickedObjs = this.mapRenderer.getClickedObjects(this.viewport);
+        //const rerender = this.map.clicked(clickedObjs);
+        //if (rerender) {
+            //this.mapRenderer.renderMap(this.map, this.viewport);
+        //}
     }
 
     handleMouseLeave() {
@@ -426,32 +437,361 @@ class MapScreen {
         this.viewport.my = null;
         this.startDragX = null;
         this.startDragY = null;
-        this.mapRenderer.renderMap(this.map, this.viewport);
+        //this.mapRenderer.renderMap(this.map, this.viewport);
+    }
+
+    handleKeyDown(key) {
+        if (key === 'a') {
+            if (!this.pressed[key]) {
+                this.viewport.updateRotateRate2(2);
+                this.pressed[key] = true;
+            }
+        } else if (key === 'w') {
+            if (!this.pressed[key]) {
+                this.viewport.updateRotateRate1(2);
+                this.pressed[key] = true;
+            }
+        } else if (key === 'd') {
+            if (!this.pressed[key]) {
+                this.viewport.updateRotateRate2(-2);
+                this.pressed[key] = true;
+            }
+        } else if (key === 's') {
+            if (!this.pressed[key]) {
+                this.viewport.updateRotateRate1(-2);
+                this.pressed[key] = true;
+            }
+        }
+    }
+
+    handleKeyUp(key) {
+        if (key === 'a') {
+            if (this.pressed[key]) {
+                this.viewport.updateRotateRate2(-2);
+                this.pressed[key] = false;
+            }
+        } else if (key === 'w') {
+            if (this.pressed[key]) {
+                this.viewport.updateRotateRate1(-2);
+                this.pressed[key] = false;
+            }
+        } else if (key === 'd') {
+            if (this.pressed[key]) {
+                this.viewport.updateRotateRate2(2);
+                this.pressed[key] = false;
+            }
+        } else if (key === 's') {
+            if (this.pressed[key]) {
+                this.viewport.updateRotateRate1(2);
+                this.pressed[key] = false;
+            }
+        }
+    }
+}
+
+class Viewport {
+
+    /*
+        p1 (origin)       p2
+        --------------------
+        |                  |
+        |                  |
+        |                  |
+        --------------------
+        p3                p4
+     */
+    constructor(p1, p2, p3 ,p4) {
+        this.p1 = p1;
+        this.p2 = p2;
+        this.p3 = p3;
+        this.p4 = p4;
+        this.calcBasis1();
+        this.calcBasis2();
+        this.calcUnitNormal();
+        const wx = p2.x - p1.x;
+        const wy = p2.y - p1.y;
+        const wz = p2.z - p2.z;
+        this.width = Math.sqrt(wx * wx + wy * wy + wz * wz);
+        const hx = p3.x - p1.x;
+        const hy = p3.y - p1.y;
+        const hz = p3.z - p1.z;
+        this.height = Math.sqrt(hx * hx + hy * hy + hz * hz);
+        this.rotateRate1 = 0;
+        this.rotateRate2 = 0;
+    }
+
+    projectOntoPlane({x, y, z}) {
+        return {
+            x: x * this.basis1.x + y * this.basis1.y + z * this.basis1.z - this.p1.x * this.basis1.x - this.p1.y * this.basis1.y - this.p1.z * this.basis1.z,
+            y: x * this.basis2.x + y * this.basis2.y + z * this.basis2.z - this.p1.x * this.basis2.x - this.p1.y * this.basis2.y - this.p1.z * this.basis2.z,
+            z: x * this.unitNormal.x + y * this.unitNormal.y + z * this.unitNormal.z - this.p1.x * this.unitNormal.x - this.p1.y * this.unitNormal.y - this.p1.z * this.unitNormal.z,
+        };
+    }
+
+    calcBasis1() {
+        const bx = this.p2.x - this.p1.x;
+        const by = this.p2.y - this.p1.y;
+        const bz = this.p2.z - this.p1.z;
+        const mag = Math.sqrt(bx * bx + by * by + bz * bz);
+        this.basis1 = {
+            x: bx / mag,
+            y: by / mag,
+            z: bz / mag,
+        };
+    }
+
+    calcBasis2() {
+        const bx = this.p3.x - this.p1.x;
+        const by = this.p3.y - this.p1.y;
+        const bz = this.p3.z - this.p1.z;
+        const mag = Math.sqrt(bx * bx + by * by + bz * bz);
+        this.basis2 = {
+            x: bx / mag,
+            y: by / mag,
+            z: bz / mag,
+        };
+    }
+
+    // Basis 
+    calcUnitNormal() {
+        this.unitNormal = {
+            x: this.basis1.y * this.basis2.z - this.basis1.z * this.basis2.y,
+            y: this.basis1.z * this.basis2.x - this.basis1.x * this.basis2.z,
+            z: this.basis1.x * this.basis2.y - this.basis1.y * this.basis2.x,
+        };
+    };
+
+    translateAlongBasis(scalar1, scalar2) {
+        this.translate({
+            x: this.basis1.x * scalar1 + this.basis2.x * scalar2,
+            y: this.basis1.y * scalar1 + this.basis2.y * scalar2,
+            z: this.basis1.z * scalar1 + this.basis2.z * scalar2,
+        });
+    }
+
+    translate(a) {
+        this.p1 = this.translatePoint(this.p1, a);
+        this.p2 = this.translatePoint(this.p2, a);
+        this.p3 = this.translatePoint(this.p3, a);
+        this.p4 = this.translatePoint(this.p4, a);
+        this.calcBasis1();
+        this.calcBasis2();
+        this.calcUnitNormal();
+    }
+
+    translatePoint(p, a) {
+        return {
+            x: p.x + a.x,
+            y: p.y + a.y,
+            z: p.z + a.z,
+        };
+    }
+
+    rotateByBasis1(theta) {
+        const mx = (this.p1.x + this.p4.x) / 2;
+        const my = (this.p1.y + this.p4.y) / 2;
+        const mz = (this.p1.z + this.p4.z) / 2;
+        this.translate({
+            x: -mx,
+            y: -my,
+            z: -mz,
+        });
+        this.rotate(this.basis1, theta);
+        this.translate({
+            x: mx,
+            y: my,
+            z: mz,
+        });
+    }
+
+    rotateByBasis2(theta) {
+        const mx = (this.p1.x + this.p4.x) / 2;
+        const my = (this.p1.y + this.p4.y) / 2;
+        const mz = (this.p1.z + this.p4.z) / 2;
+        this.translate({
+            x: -mx,
+            y: -my,
+            z: -mz,
+        });
+        this.rotate(this.basis2, theta);
+        this.translate({
+            x: mx,
+            y: my,
+            z: mz,
+        });
+    }
+
+    rotate(axis, theta) {
+        const mag = Math.sqrt(axis.x * axis.x + axis.y * axis.y + axis.z * axis.z);
+        const normAxis = {
+            x: axis.x / mag,
+            y: axis.y / mag,
+            z: axis.z / mag,
+        };
+        const rad = theta / 360 * Math.PI;
+        this.p1 = this.rotatePoint(this.p1, normAxis, rad);
+        this.p2 = this.rotatePoint(this.p2, normAxis, rad);
+        this.p3 = this.rotatePoint(this.p3, normAxis, rad);
+        this.p4 = this.rotatePoint(this.p4, normAxis, rad);
+        this.calcBasis1();
+        this.calcBasis2();
+        this.calcUnitNormal();
+    }
+
+    // Axis must be unit, Theta must be radians.
+    rotatePoint(p, ax, rad) {
+        const cost = Math.cos(rad);
+        const sint = Math.sin(rad);
+        const mcost = 1 - cost;
+        const dot = ax.x * p.x + ax.y * p.y + ax.z * p.z;
+        return {
+            x: p.x * cost + (ax.y * p.z - ax.z * p.y) * sint + ax.x * dot * mcost,
+            y: p.y * cost + (ax.z * p.x - ax.x * p.z) * sint + ax.y * dot * mcost,
+            z: p.z * cost + (ax.x * p.y - ax.y * p.x) * sint + ax.z * dot * mcost,
+        };
+    }
+
+    updateRotation() {
+        if (this.rotateRate1 !== 0) {
+            this.rotateByBasis1(this.rotateRate1);
+        }
+        if (this.rotateRate2 !== 0) {
+            this.rotateByBasis2(this.rotateRate2);
+        }
+    }
+
+    updateRotateRate1(rate) {
+        this.rotateRate1 += rate;
+    }
+
+    updateRotateRate2(rate) {
+        this.rotateRate2 += rate;
     }
 }
 
 class MapRenderer {
 
-    constructor(canvas) {
+    constructor(canvas, map, viewport) {
         this.canvas = canvas;
         this.boundingBoxes = [];
-        this.viewport = {
+        /*this.viewport = {
             x1: 0,
             x2: canvas.width,
             y1: 0,
             y2: canvas.height,
-        };
+        };*/
+        this.map = map;
+        this.viewport = viewport;
     }
 
-    renderMap(map, viewport) {
+    
+    renderMap() {
         const ctx = this.canvas.getContext('2d');
         ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        this.boundingBoxes = []
-        const tiles = map.getTilesFlattened();
-        this.renderTiles(tiles, viewport);
-        const mapObjects = map.getMapObjects();
-        this.renderMapObjects(mapObjects, viewport);
+        this.boundingBoxes = [];
+
+        /*const drawables = this.map.getDrawables();
+        drawables.forEach((drawable) => {
+
+            //Check to see if visible given current viewport
+            th
+
+
+
+            //If yes, draw and add bounding box
+
+            drawable.getBoundingShape();
+            drawable.getBoundingBox();
+            const dx = drawable.getPixelX();
+            const dy = 
+            if (drawable instanceof PlainTile) {
+
+            } else if (drawable instanceof Knight) {
+
+            }
+        });*/
+
+        this.viewport.updateRotation();
+
+        //
+        const tiles = this.map.getTilesFlattened();
+        const tlen = 100;
+        for (let i = 0; i < tiles.length; i++) {
+            const tx = tiles[i].getX() * tlen;
+            const ty = tiles[i].getY() * tlen;
+            const tz = tiles[i].getH() * tlen;
+            const points = [{
+                x: tx,
+                y: ty,
+                z: tz,
+            }, {
+                x: tx + 100,
+                y: ty,
+                z: tz,
+            }, {
+                x: tx + 100,
+                y: ty + 100,
+                z: tz,
+            }, {
+                x: tx,
+                y: ty + 100,
+                z: tz,
+            }, {
+                x: tx,
+                y: ty,
+                z: 0,
+            }, {
+                x: tx + 100,
+                y: ty,
+                z: 0,
+            }, {
+                x: tx + 100,
+                y: ty + 100,
+                z: 0,
+            }, {
+                x: tx,
+                y: ty + 100,
+                z: 0,
+            }];
+            const projectedPoints = [];
+            for (let j = 0; j < points.length; j++) {
+                projectedPoints.push(this.viewport.projectOntoPlane(points[j]));
+            }
+            ctx.strokeStyle = "#000000";
+            ctx.beginPath();
+            ctx.moveTo(projectedPoints[0].x, projectedPoints[0].y);
+            ctx.lineTo(projectedPoints[1].x, projectedPoints[1].y);
+            ctx.lineTo(projectedPoints[2].x, projectedPoints[2].y);
+            ctx.lineTo(projectedPoints[3].x, projectedPoints[3].y);
+            ctx.lineTo(projectedPoints[0].x, projectedPoints[0].y);
+            ctx.lineTo(projectedPoints[4].x, projectedPoints[4].y);
+            ctx.lineTo(projectedPoints[5].x, projectedPoints[5].y);
+            ctx.lineTo(projectedPoints[1].x, projectedPoints[1].y);
+            ctx.moveTo(projectedPoints[5].x, projectedPoints[5].y);
+            ctx.lineTo(projectedPoints[6].x, projectedPoints[6].y);
+            ctx.lineTo(projectedPoints[2].x, projectedPoints[2].y);
+            ctx.moveTo(projectedPoints[6].x, projectedPoints[6].y);
+            ctx.lineTo(projectedPoints[7].x, projectedPoints[7].y);
+            ctx.lineTo(projectedPoints[3].x, projectedPoints[3].y);
+            ctx.moveTo(projectedPoints[7].x, projectedPoints[7].y);
+            ctx.lineTo(projectedPoints[4].x, projectedPoints[4].y);
+            ctx.stroke();
+            //ctx.moveTo(projectedPoints[4].x, projectedPoints[4].y);
+            //ctx.lineTo(projectedPoints[5].x, projectedPoints[5].y);
+        }
+
+
+        //this.renderTiles(tiles, this.viewport);
+        //const mapObjects = map.getMapObjects();
+        //this.renderMapObjects(mapObjects, this.viewport);
+
+
+        window.requestAnimationFrame((step) => {
+            this.renderMap();
+        });
     }
+
+
 
     renderTiles(tiles, viewport) {
         const ctx = this.canvas.getContext("2d");
@@ -552,6 +892,10 @@ class MapRenderer {
             }
         }
         return clickedObjects;
+    }
+
+    getCenteredViewport(mapObject) {
+
     }
 }
 

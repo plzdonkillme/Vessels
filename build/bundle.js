@@ -345,6 +345,8 @@ var MapObject = function () {
     }, {
         key: 'moveTo',
         value: function moveTo(tile) {
+            this.tile.unsetMapObject(this);
+            tile.setMapObject(this);
             this.tile = tile;
             this.x = tile.getX();
             this.y = tile.getY();
@@ -363,6 +365,7 @@ var MapObject = function () {
         key: 'setReferences',
         value: function setReferences(tiles, mapObjects) {
             this.tile = tiles[this.y][this.x];
+            this.tile.setMapObject(this);
         }
     }], [{
         key: 'parseAttributes',
@@ -479,18 +482,14 @@ var Knight = function (_Actor) {
     }
 
     _createClass(Knight, [{
-        key: 'unselectObject',
-        value: function unselectObject() {
-            this.tile.changeNeighbors(2, false);
-        }
-    }, {
         key: 'takeTurn',
         value: function takeTurn() {
             var _this3 = this;
 
             this.setHighlight(true);
-            this.tile.changeNeighbors(2, true);
-            this.tile.unhighlight();
+            this.tile.changeNeighbors(2, true, function (tile) {
+                return tile.getMapObject() == null;
+            });
             return new Promise(function (resolve, reject) {
                 _this3.turnResolve = resolve;
             });
@@ -514,47 +513,64 @@ var MapScreen = function () {
 
         this.canvas = canvas;
         this.map = map;
-        this.viewport = {
-            x1: 0,
-            x2: this.canvas.width,
-            y1: 0,
-            y2: this.canvas.height,
-            mx: null,
-            my: null
-        };
+        this.viewport = new Viewport({
+            x: 0,
+            y: 0,
+            z: 500
+        }, {
+            x: this.canvas.width,
+            y: 0,
+            z: 500
+        }, {
+            x: 0,
+            y: this.canvas.height,
+            z: 500
+        }, {
+            x: this.canvas.width,
+            y: this.canvas.height,
+            z: 500
+        });
         this.startDragX = null;
         this.startDragY = null;
-        this.mapRenderer = new MapRenderer(this.canvas);
+        this.pressed = {
+            a: false,
+            w: false,
+            s: false,
+            d: false
+        };
+        this.mapRenderer = new MapRenderer(this.canvas, this.map, this.viewport);
     }
 
     _createClass(MapScreen, [{
-        key: 'setMap',
-        value: function setMap(map) {
-            this.map = map;
-        }
-    }, {
         key: 'start',
         value: function start() {
-            this.mapRenderer.renderMap(this.map, this.viewport);
-            this.turnLoop();
+            this.mapRenderer.renderMap();
+            //this.turnLoop();
         }
     }, {
         key: 'turnLoop',
         value: function turnLoop() {
             var _this4 = this;
 
-            if (this.map.isResolved()) {} else {
+            if (this.map.isResolved()) {
+                // End
+            } else {
                 var turnActor = this.map.nextTurn();
-                turnActor.takeTurn().then(function () {
-                    _this4.turnLoop();
+                this.animateNextTurn(turnActor).then(function () {
+                    turnActor.takeTurn().then(function () {
+                        _this4.turnLoop();
+                    });
+                    //this.mapRenderer.renderMap(this.map, this.viewport);
                 });
-                this.mapRenderer.renderMap(this.map, this.viewport);
             }
         }
     }, {
-        key: 'draw',
-        value: function draw() {
-            this.mapRenderer.renderMap(this.map, this.viewport);
+        key: 'animateNextTurn',
+        value: function animateNextTurn(turnActor) {
+            return new Promise(function (resolve, reject) {
+                resolve();
+                //return this.mapRenderer.centerOn(turnActor);
+            });
         }
     }, {
         key: 'handleMouseDown',
@@ -566,18 +582,13 @@ var MapScreen = function () {
         key: 'handleMouseMove',
         value: function handleMouseMove(x, y) {
             if (this.startDragX !== null && this.startDragY !== null) {
-                var dx = x - this.startDragX;
-                var dy = y - this.startDragY;
-                this.viewport.x1 -= dx;
-                this.viewport.x2 -= dx;
-                this.viewport.y1 -= dy;
-                this.viewport.y2 -= dy;
+                var dx = this.startDragX - x;
+                var dy = this.startDragY - y;
+                this.viewport.translateAlongBasis(dx, dy);
                 this.startDragX = x;
                 this.startDragY = y;
             }
-            this.viewport.mx = this.viewport.x1 + x;
-            this.viewport.my = this.viewport.y1 + y;
-            this.mapRenderer.renderMap(this.map, this.viewport);
+            //this.mapRenderer.renderMap();
         }
     }, {
         key: 'handleMouseUp',
@@ -588,13 +599,13 @@ var MapScreen = function () {
     }, {
         key: 'handleClick',
         value: function handleClick(x, y) {
-            this.viewport.mx = this.viewport.x1 + x;
-            this.viewport.my = this.viewport.y1 + y;
-            var clickedObjs = this.mapRenderer.getClickedObjects(this.viewport);
-            var rerender = this.map.clicked(clickedObjs);
-            if (rerender) {
-                this.mapRenderer.renderMap(this.map, this.viewport);
-            }
+            //this.viewport.mx = this.viewport.x1 + x;
+            //this.viewport.my = this.viewport.y1 + y;
+            //const clickedObjs = this.mapRenderer.getClickedObjects(this.viewport);
+            //const rerender = this.map.clicked(clickedObjs);
+            //if (rerender) {
+            //this.mapRenderer.renderMap(this.map, this.viewport);
+            //}
         }
     }, {
         key: 'handleMouseLeave',
@@ -603,42 +614,392 @@ var MapScreen = function () {
             this.viewport.my = null;
             this.startDragX = null;
             this.startDragY = null;
-            this.mapRenderer.renderMap(this.map, this.viewport);
+            //this.mapRenderer.renderMap(this.map, this.viewport);
+        }
+    }, {
+        key: 'handleKeyDown',
+        value: function handleKeyDown(key) {
+            if (key === 'a') {
+                if (!this.pressed[key]) {
+                    this.viewport.updateRotateRate2(2);
+                    this.pressed[key] = true;
+                }
+            } else if (key === 'w') {
+                if (!this.pressed[key]) {
+                    this.viewport.updateRotateRate1(2);
+                    this.pressed[key] = true;
+                }
+            } else if (key === 'd') {
+                if (!this.pressed[key]) {
+                    this.viewport.updateRotateRate2(-2);
+                    this.pressed[key] = true;
+                }
+            } else if (key === 's') {
+                if (!this.pressed[key]) {
+                    this.viewport.updateRotateRate1(-2);
+                    this.pressed[key] = true;
+                }
+            }
+        }
+    }, {
+        key: 'handleKeyUp',
+        value: function handleKeyUp(key) {
+            if (key === 'a') {
+                if (this.pressed[key]) {
+                    this.viewport.updateRotateRate2(-2);
+                    this.pressed[key] = false;
+                }
+            } else if (key === 'w') {
+                if (this.pressed[key]) {
+                    this.viewport.updateRotateRate1(-2);
+                    this.pressed[key] = false;
+                }
+            } else if (key === 'd') {
+                if (this.pressed[key]) {
+                    this.viewport.updateRotateRate2(2);
+                    this.pressed[key] = false;
+                }
+            } else if (key === 's') {
+                if (this.pressed[key]) {
+                    this.viewport.updateRotateRate1(2);
+                    this.pressed[key] = false;
+                }
+            }
         }
     }]);
 
     return MapScreen;
 }();
 
+var Viewport = function () {
+
+    /*
+        p1 (origin)       p2
+        --------------------
+        |                  |
+        |                  |
+        |                  |
+        --------------------
+        p3                p4
+     */
+    function Viewport(p1, p2, p3, p4) {
+        _classCallCheck(this, Viewport);
+
+        this.p1 = p1;
+        this.p2 = p2;
+        this.p3 = p3;
+        this.p4 = p4;
+        this.calcBasis1();
+        this.calcBasis2();
+        this.calcUnitNormal();
+        var wx = p2.x - p1.x;
+        var wy = p2.y - p1.y;
+        var wz = p2.z - p2.z;
+        this.width = Math.sqrt(wx * wx + wy * wy + wz * wz);
+        var hx = p3.x - p1.x;
+        var hy = p3.y - p1.y;
+        var hz = p3.z - p1.z;
+        this.height = Math.sqrt(hx * hx + hy * hy + hz * hz);
+        this.rotateRate1 = 0;
+        this.rotateRate2 = 0;
+    }
+
+    _createClass(Viewport, [{
+        key: 'projectOntoPlane',
+        value: function projectOntoPlane(_ref) {
+            var x = _ref.x,
+                y = _ref.y,
+                z = _ref.z;
+
+            return {
+                x: x * this.basis1.x + y * this.basis1.y + z * this.basis1.z - this.p1.x * this.basis1.x - this.p1.y * this.basis1.y - this.p1.z * this.basis1.z,
+                y: x * this.basis2.x + y * this.basis2.y + z * this.basis2.z - this.p1.x * this.basis2.x - this.p1.y * this.basis2.y - this.p1.z * this.basis2.z,
+                z: x * this.unitNormal.x + y * this.unitNormal.y + z * this.unitNormal.z - this.p1.x * this.unitNormal.x - this.p1.y * this.unitNormal.y - this.p1.z * this.unitNormal.z
+            };
+        }
+    }, {
+        key: 'calcBasis1',
+        value: function calcBasis1() {
+            var bx = this.p2.x - this.p1.x;
+            var by = this.p2.y - this.p1.y;
+            var bz = this.p2.z - this.p1.z;
+            var mag = Math.sqrt(bx * bx + by * by + bz * bz);
+            this.basis1 = {
+                x: bx / mag,
+                y: by / mag,
+                z: bz / mag
+            };
+        }
+    }, {
+        key: 'calcBasis2',
+        value: function calcBasis2() {
+            var bx = this.p3.x - this.p1.x;
+            var by = this.p3.y - this.p1.y;
+            var bz = this.p3.z - this.p1.z;
+            var mag = Math.sqrt(bx * bx + by * by + bz * bz);
+            this.basis2 = {
+                x: bx / mag,
+                y: by / mag,
+                z: bz / mag
+            };
+        }
+
+        // Basis 
+
+    }, {
+        key: 'calcUnitNormal',
+        value: function calcUnitNormal() {
+            this.unitNormal = {
+                x: this.basis1.y * this.basis2.z - this.basis1.z * this.basis2.y,
+                y: this.basis1.z * this.basis2.x - this.basis1.x * this.basis2.z,
+                z: this.basis1.x * this.basis2.y - this.basis1.y * this.basis2.x
+            };
+        }
+    }, {
+        key: 'translateAlongBasis',
+        value: function translateAlongBasis(scalar1, scalar2) {
+            this.translate({
+                x: this.basis1.x * scalar1 + this.basis2.x * scalar2,
+                y: this.basis1.y * scalar1 + this.basis2.y * scalar2,
+                z: this.basis1.z * scalar1 + this.basis2.z * scalar2
+            });
+        }
+    }, {
+        key: 'translate',
+        value: function translate(a) {
+            this.p1 = this.translatePoint(this.p1, a);
+            this.p2 = this.translatePoint(this.p2, a);
+            this.p3 = this.translatePoint(this.p3, a);
+            this.p4 = this.translatePoint(this.p4, a);
+            this.calcBasis1();
+            this.calcBasis2();
+            this.calcUnitNormal();
+        }
+    }, {
+        key: 'translatePoint',
+        value: function translatePoint(p, a) {
+            return {
+                x: p.x + a.x,
+                y: p.y + a.y,
+                z: p.z + a.z
+            };
+        }
+    }, {
+        key: 'rotateByBasis1',
+        value: function rotateByBasis1(theta) {
+            var mx = (this.p1.x + this.p4.x) / 2;
+            var my = (this.p1.y + this.p4.y) / 2;
+            var mz = (this.p1.z + this.p4.z) / 2;
+            this.translate({
+                x: -mx,
+                y: -my,
+                z: -mz
+            });
+            this.rotate(this.basis1, theta);
+            this.translate({
+                x: mx,
+                y: my,
+                z: mz
+            });
+        }
+    }, {
+        key: 'rotateByBasis2',
+        value: function rotateByBasis2(theta) {
+            var mx = (this.p1.x + this.p4.x) / 2;
+            var my = (this.p1.y + this.p4.y) / 2;
+            var mz = (this.p1.z + this.p4.z) / 2;
+            this.translate({
+                x: -mx,
+                y: -my,
+                z: -mz
+            });
+            this.rotate(this.basis2, theta);
+            this.translate({
+                x: mx,
+                y: my,
+                z: mz
+            });
+        }
+    }, {
+        key: 'rotate',
+        value: function rotate(axis, theta) {
+            var mag = Math.sqrt(axis.x * axis.x + axis.y * axis.y + axis.z * axis.z);
+            var normAxis = {
+                x: axis.x / mag,
+                y: axis.y / mag,
+                z: axis.z / mag
+            };
+            var rad = theta / 360 * Math.PI;
+            this.p1 = this.rotatePoint(this.p1, normAxis, rad);
+            this.p2 = this.rotatePoint(this.p2, normAxis, rad);
+            this.p3 = this.rotatePoint(this.p3, normAxis, rad);
+            this.p4 = this.rotatePoint(this.p4, normAxis, rad);
+            this.calcBasis1();
+            this.calcBasis2();
+            this.calcUnitNormal();
+        }
+
+        // Axis must be unit, Theta must be radians.
+
+    }, {
+        key: 'rotatePoint',
+        value: function rotatePoint(p, ax, rad) {
+            var cost = Math.cos(rad);
+            var sint = Math.sin(rad);
+            var mcost = 1 - cost;
+            var dot = ax.x * p.x + ax.y * p.y + ax.z * p.z;
+            return {
+                x: p.x * cost + (ax.y * p.z - ax.z * p.y) * sint + ax.x * dot * mcost,
+                y: p.y * cost + (ax.z * p.x - ax.x * p.z) * sint + ax.y * dot * mcost,
+                z: p.z * cost + (ax.x * p.y - ax.y * p.x) * sint + ax.z * dot * mcost
+            };
+        }
+    }, {
+        key: 'updateRotation',
+        value: function updateRotation() {
+            if (this.rotateRate1 !== 0) {
+                this.rotateByBasis1(this.rotateRate1);
+            }
+            if (this.rotateRate2 !== 0) {
+                this.rotateByBasis2(this.rotateRate2);
+            }
+        }
+    }, {
+        key: 'updateRotateRate1',
+        value: function updateRotateRate1(rate) {
+            this.rotateRate1 += rate;
+        }
+    }, {
+        key: 'updateRotateRate2',
+        value: function updateRotateRate2(rate) {
+            this.rotateRate2 += rate;
+        }
+    }]);
+
+    return Viewport;
+}();
+
 var MapRenderer = function () {
-    function MapRenderer(canvas) {
+    function MapRenderer(canvas, map, viewport) {
         _classCallCheck(this, MapRenderer);
 
         this.canvas = canvas;
         this.boundingBoxes = [];
-        this.viewport = {
+        /*this.viewport = {
             x1: 0,
             x2: canvas.width,
             y1: 0,
-            y2: canvas.height
-        };
+            y2: canvas.height,
+        };*/
+        this.map = map;
+        this.viewport = viewport;
     }
 
     _createClass(MapRenderer, [{
         key: 'renderMap',
-        value: function renderMap(map, viewport) {
+        value: function renderMap() {
+            var _this5 = this;
+
             var ctx = this.canvas.getContext('2d');
             ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
             this.boundingBoxes = [];
-            var tiles = map.getTilesFlattened();
-            this.renderTiles(tiles, viewport);
-            var mapObjects = map.getMapObjects();
-            this.renderMapObjects(mapObjects, viewport);
+
+            /*const drawables = this.map.getDrawables();
+            drawables.forEach((drawable) => {
+                 //Check to see if visible given current viewport
+                th
+                   //If yes, draw and add bounding box
+                 drawable.getBoundingShape();
+                drawable.getBoundingBox();
+                const dx = drawable.getPixelX();
+                const dy = 
+                if (drawable instanceof PlainTile) {
+                 } else if (drawable instanceof Knight) {
+                 }
+            });*/
+
+            this.viewport.updateRotation();
+
+            //
+            var tiles = this.map.getTilesFlattened();
+            var tlen = 100;
+            for (var i = 0; i < tiles.length; i++) {
+                var tx = tiles[i].getX() * tlen;
+                var ty = tiles[i].getY() * tlen;
+                var tz = tiles[i].getH() * tlen;
+                var points = [{
+                    x: tx,
+                    y: ty,
+                    z: tz
+                }, {
+                    x: tx + 100,
+                    y: ty,
+                    z: tz
+                }, {
+                    x: tx + 100,
+                    y: ty + 100,
+                    z: tz
+                }, {
+                    x: tx,
+                    y: ty + 100,
+                    z: tz
+                }, {
+                    x: tx,
+                    y: ty,
+                    z: 0
+                }, {
+                    x: tx + 100,
+                    y: ty,
+                    z: 0
+                }, {
+                    x: tx + 100,
+                    y: ty + 100,
+                    z: 0
+                }, {
+                    x: tx,
+                    y: ty + 100,
+                    z: 0
+                }];
+                var projectedPoints = [];
+                for (var j = 0; j < points.length; j++) {
+                    projectedPoints.push(this.viewport.projectOntoPlane(points[j]));
+                }
+                ctx.strokeStyle = "#000000";
+                ctx.beginPath();
+                ctx.moveTo(projectedPoints[0].x, projectedPoints[0].y);
+                ctx.lineTo(projectedPoints[1].x, projectedPoints[1].y);
+                ctx.lineTo(projectedPoints[2].x, projectedPoints[2].y);
+                ctx.lineTo(projectedPoints[3].x, projectedPoints[3].y);
+                ctx.lineTo(projectedPoints[0].x, projectedPoints[0].y);
+                ctx.lineTo(projectedPoints[4].x, projectedPoints[4].y);
+                ctx.lineTo(projectedPoints[5].x, projectedPoints[5].y);
+                ctx.lineTo(projectedPoints[1].x, projectedPoints[1].y);
+                ctx.moveTo(projectedPoints[5].x, projectedPoints[5].y);
+                ctx.lineTo(projectedPoints[6].x, projectedPoints[6].y);
+                ctx.lineTo(projectedPoints[2].x, projectedPoints[2].y);
+                ctx.moveTo(projectedPoints[6].x, projectedPoints[6].y);
+                ctx.lineTo(projectedPoints[7].x, projectedPoints[7].y);
+                ctx.lineTo(projectedPoints[3].x, projectedPoints[3].y);
+                ctx.moveTo(projectedPoints[7].x, projectedPoints[7].y);
+                ctx.lineTo(projectedPoints[4].x, projectedPoints[4].y);
+                ctx.stroke();
+                //ctx.moveTo(projectedPoints[4].x, projectedPoints[4].y);
+                //ctx.lineTo(projectedPoints[5].x, projectedPoints[5].y);
+            }
+
+            //this.renderTiles(tiles, this.viewport);
+            //const mapObjects = map.getMapObjects();
+            //this.renderMapObjects(mapObjects, this.viewport);
+
+
+            window.requestAnimationFrame(function (step) {
+                _this5.renderMap();
+            });
         }
     }, {
         key: 'renderTiles',
         value: function renderTiles(tiles, viewport) {
-            var _this5 = this;
+            var _this6 = this;
 
             var ctx = this.canvas.getContext("2d");
             tiles.forEach(function (tile) {
@@ -676,7 +1037,7 @@ var MapRenderer = function () {
                         }
                         ctx.fillRect(sx1 - viewport.x1, sy1 - viewport.y1, 100, 100);
                         ctx.strokeRect(sx1 - viewport.x1, sy1 - viewport.y1, 100, 100);
-                        _this5.boundingBoxes.push({
+                        _this6.boundingBoxes.push({
                             obj: tile,
                             x1: sx1,
                             x2: sx2,
@@ -690,7 +1051,7 @@ var MapRenderer = function () {
     }, {
         key: 'renderMapObjects',
         value: function renderMapObjects(mapObjects, viewport) {
-            var _this6 = this;
+            var _this7 = this;
 
             var ctx = this.canvas.getContext("2d");
             ctx.fillStyle = "#0000FF";
@@ -719,7 +1080,7 @@ var MapRenderer = function () {
                     ctx.font = "48px serif";
                     ctx.fillText('' + counter, sx1 + 40 - viewport.x1, sy1 + 60 - viewport.y1);
                     counter += 1;
-                    _this6.boundingBoxes.push({
+                    _this7.boundingBoxes.push({
                         obj: mapObject,
                         x1: sx1,
                         x2: sx2,
@@ -743,6 +1104,9 @@ var MapRenderer = function () {
             }
             return clickedObjects;
         }
+    }, {
+        key: 'getCenteredViewport',
+        value: function getCenteredViewport(mapObject) {}
     }]);
 
     return MapRenderer;
@@ -793,34 +1157,42 @@ var Game = function () {
             var _this = this;
 
             document.body.appendChild(this.canvas);
-            window.canvas = this.canvas;
-            window.map = _DefaultMap2.default;
-            this.screen = new _Map.MapScreen(this.canvas);
-            this.screen.setMap(_DefaultMap2.default);
+            this.screen = new _Map.MapScreen(this.canvas, _DefaultMap2.default);
+            window.screen = this.screen;
             this.screen.start();
 
             this.canvas.addEventListener("click", function (e) {
-                var rect = canvas.getBoundingClientRect();
+                var rect = _this.canvas.getBoundingClientRect();
                 _this.screen.handleClick(e.clientX - rect.left, e.clientY - rect.top);
             });
 
             this.canvas.addEventListener("mousedown", function (e) {
-                var rect = canvas.getBoundingClientRect();
+                var rect = _this.canvas.getBoundingClientRect();
                 _this.screen.handleMouseDown(e.clientX - rect.left, e.clientY - rect.top);
             });
 
             this.canvas.addEventListener("mousemove", function (e) {
-                var rect = canvas.getBoundingClientRect();
+                var rect = _this.canvas.getBoundingClientRect();
                 _this.screen.handleMouseMove(e.clientX - rect.left, e.clientY - rect.top);
             });
 
             this.canvas.addEventListener("mouseup", function (e) {
-                var rect = canvas.getBoundingClientRect();
+                var rect = _this.canvas.getBoundingClientRect();
                 _this.screen.handleMouseUp(e.clientX - rect.left, e.clientY - rect.top);
             });
 
             this.canvas.addEventListener("mouseleave", function (e) {
                 _this.screen.handleMouseLeave();
+            });
+
+            document.addEventListener("keydown", function (e) {
+                e.preventDefault();
+                _this.screen.handleKeyDown(e.key);
+            });
+
+            document.addEventListener("keyup", function (e) {
+                e.preventDefault();
+                _this.screen.handleKeyUp(e.key);
             });
 
             /*this.loadAssets().then(() => {
@@ -889,7 +1261,7 @@ Object.defineProperty(exports, "__esModule", {
 
 var _Map = __webpack_require__(0);
 
-var exampleMapString = "p-1 p-1 p-1 p-1\np-1 e-1 p-1 p-1\np-1 p-1 p-1 e-1\np-1 p-1 p-1 p-1\ne-1 e-1 e-1 p-1\np-1 p-1 e-1 p-1\np-1 p-1 p-1 p-1\n===\nk-0-0-0-20\nk-2-1-0-30";
+var exampleMapString = "p-2 p-1 p-1 p-1\np-1 e-3 p-1 p-1\np-1 p-1 p-1 e-1\np-2 p-2 p-3 p-1\ne-1 e-2 e-1 p-1\np-1 p-2 e-1 p-1\np-1 p-1 p-1 p-1\n===\nk-0-0-0-20\nk-2-1-0-30";
 
 var serializer = new _Map.MapSerializer();
 var defaultMap = serializer.deserialize(exampleMapString);
@@ -934,6 +1306,7 @@ var Tile = function () {
         this.top = null;
         this.down = null;
         this.highlighted = false;
+        this.mapObject = null;
     }
 
     _createClass(Tile, [{
@@ -959,19 +1332,23 @@ var Tile = function () {
     }, {
         key: 'changeNeighbors',
         value: function changeNeighbors(steps, highlight) {
+            var filter = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : function () {
+                return true;
+            };
+
             if (steps === 0) {
                 return;
             }
             var neighbors = [this.left, this.right, this.top, this.down];
             neighbors.forEach(function (tile) {
-                if (tile !== null) {
+                if (tile !== null && filter(tile)) {
                     if (highlight && !tile.isHighlighted()) {
                         tile.highlight();
-                        tile.changeNeighbors(steps - 1, highlight);
+                        tile.changeNeighbors(steps - 1, highlight, filter);
                     }
                     if (!highlight && tile.isHighlighted()) {
                         tile.unhighlight();
-                        tile.changeNeighbors(steps - 1, highlight);
+                        tile.changeNeighbors(steps - 1, highlight, filter);
                     }
                 }
             });
@@ -990,6 +1367,21 @@ var Tile = function () {
         key: 'unhighlight',
         value: function unhighlight() {
             this.highlighted = false;
+        }
+    }, {
+        key: 'setMapObject',
+        value: function setMapObject(mapObject) {
+            this.mapObject = mapObject;
+        }
+    }, {
+        key: 'unsetMapObject',
+        value: function unsetMapObject(mapObject) {
+            this.mapObject = null;
+        }
+    }, {
+        key: 'getMapObject',
+        value: function getMapObject() {
+            return this.mapObject;
         }
     }]);
 
