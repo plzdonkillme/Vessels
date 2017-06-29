@@ -363,7 +363,7 @@ class MapScreen {
             x: this.canvas.width,
             y: this.canvas.height,
             z: 500,
-        });
+        }, 500);
         this.startDragX = null;
         this.startDragY = null;
         this.pressed = {
@@ -500,14 +500,17 @@ class Viewport {
         --------------------
         p3                p4
      */
-    constructor(p1, p2, p3 ,p4) {
+    constructor(p1, p2, p3 ,p4, d=-1) {
         this.p1 = p1;
         this.p2 = p2;
         this.p3 = p3;
         this.p4 = p4;
+        this.d = d;
+        this.p5 = null;
         this.calcBasis1();
         this.calcBasis2();
         this.calcUnitNormal();
+        this.calcFocalPoint();
         const wx = p2.x - p1.x;
         const wy = p2.y - p1.y;
         const wz = p2.z - p2.z;
@@ -521,11 +524,35 @@ class Viewport {
     }
 
     projectOntoPlane({x, y, z}) {
-        return {
-            x: x * this.basis1.x + y * this.basis1.y + z * this.basis1.z - this.p1.x * this.basis1.x - this.p1.y * this.basis1.y - this.p1.z * this.basis1.z,
-            y: x * this.basis2.x + y * this.basis2.y + z * this.basis2.z - this.p1.x * this.basis2.x - this.p1.y * this.basis2.y - this.p1.z * this.basis2.z,
-            z: x * this.unitNormal.x + y * this.unitNormal.y + z * this.unitNormal.z - this.p1.x * this.unitNormal.x - this.p1.y * this.unitNormal.y - this.p1.z * this.unitNormal.z,
-        };
+        if (this.d == -1) {
+            return {
+                x: x * this.basis1.x + y * this.basis1.y + z * this.basis1.z - this.p1.x * this.basis1.x - this.p1.y * this.basis1.y - this.p1.z * this.basis1.z,
+                y: x * this.basis2.x + y * this.basis2.y + z * this.basis2.z - this.p1.x * this.basis2.x - this.p1.y * this.basis2.y - this.p1.z * this.basis2.z,
+                z: x * this.unitNormal.x + y * this.unitNormal.y + z * this.unitNormal.z - this.p1.x * this.unitNormal.x - this.p1.y * this.unitNormal.y - this.p1.z * this.unitNormal.z,
+            };
+        } else {
+            const pz = x * this.unitNormal.x + y * this.unitNormal.y + z * this.unitNormal.z - this.p1.x * this.unitNormal.x - this.p1.y * this.unitNormal.y - this.p1.z * this.unitNormal.z;
+            const px = x * this.basis1.x + y * this.basis1.y + z * this.basis1.z - this.p1.x * this.basis1.x - this.p1.y * this.basis1.y - this.p1.z * this.basis1.z;
+            const py = x * this.basis2.x + y * this.basis2.y + z * this.basis2.z - this.p1.x * this.basis2.x - this.p1.y * this.basis2.y - this.p1.z * this.basis2.z;
+            return {
+                x: (this.width / 2 - px) / (1 + this.d / pz) + px,
+                y: (this.height / 2 - py) / (1 + this.d / pz) + py,
+                z: pz,
+            };
+        }
+    }
+
+    calcFocalPoint() {
+        if (this.d !== -1) {
+            const cx = (this.p1.x + this.p4.x) / 2;
+            const cy = (this.p1.y + this.p4.y) / 2;
+            const cz = (this.p1.z + this.p4.z) / 2;
+            this.p5 = {
+                x: cx - this.d * this.unitNormal.x,
+                y: cy - this.d * this.unitNormal.y,
+                z: cz - this.d * this.unitNormal.z,
+            };
+        }
     }
 
     calcBasis1() {
@@ -555,9 +582,9 @@ class Viewport {
     // Basis 
     calcUnitNormal() {
         this.unitNormal = {
-            x: this.basis1.y * this.basis2.z - this.basis1.z * this.basis2.y,
-            y: this.basis1.z * this.basis2.x - this.basis1.x * this.basis2.z,
-            z: this.basis1.x * this.basis2.y - this.basis1.y * this.basis2.x,
+            x: this.basis2.y * this.basis1.z - this.basis2.z * this.basis1.y,
+            y: this.basis2.z * this.basis1.x - this.basis2.x * this.basis1.z,
+            z: this.basis2.x * this.basis1.y - this.basis2.y * this.basis1.x,
         };
     };
 
@@ -577,6 +604,7 @@ class Viewport {
         this.calcBasis1();
         this.calcBasis2();
         this.calcUnitNormal();
+        this.calcFocalPoint();
     }
 
     translatePoint(p, a) {
@@ -636,6 +664,7 @@ class Viewport {
         this.calcBasis1();
         this.calcBasis2();
         this.calcUnitNormal();
+        this.calcFocalPoint();
     }
 
     // Axis must be unit, Theta must be radians.
@@ -756,24 +785,85 @@ class MapRenderer {
             const projectedPoints = [];
             for (let j = 0; j < points.length; j++) {
                 projectedPoints.push(this.viewport.projectOntoPlane(points[j]));
+                //console.log(projectedPoints[j]);
             }
             ctx.strokeStyle = "#000000";
             ctx.beginPath();
             ctx.moveTo(projectedPoints[0].x, projectedPoints[0].y);
+            if (projectedPoints[0].z < projectedPoints[1].z) {
+                ctx.setLineDash([5, 5]);
+            } else {
+                ctx.setLineDash([]);
+            }
             ctx.lineTo(projectedPoints[1].x, projectedPoints[1].y);
+            if (projectedPoints[1].z < projectedPoints[2].z) {
+                ctx.setLineDash([5, 5]);
+            } else {
+                ctx.setLineDash([]);
+            }
             ctx.lineTo(projectedPoints[2].x, projectedPoints[2].y);
+            if (projectedPoints[2].z < projectedPoints[3].z) {
+                ctx.setLineDash([5, 5]);
+            } else {
+                ctx.setLineDash([]);
+            }
             ctx.lineTo(projectedPoints[3].x, projectedPoints[3].y);
+            if (projectedPoints[3].z < projectedPoints[0].z) {
+                ctx.setLineDash([5, 5]);
+            } else {
+                ctx.setLineDash([]);
+            }
             ctx.lineTo(projectedPoints[0].x, projectedPoints[0].y);
+            if (projectedPoints[0].z < projectedPoints[4].z) {
+                ctx.setLineDash([5, 5]);
+            } else {
+                ctx.setLineDash([]);
+            }
             ctx.lineTo(projectedPoints[4].x, projectedPoints[4].y);
+            if (projectedPoints[4].z < projectedPoints[5].z) {
+                ctx.setLineDash([5, 5]);
+            } else {
+                ctx.setLineDash([]);
+            }
             ctx.lineTo(projectedPoints[5].x, projectedPoints[5].y);
+            if (projectedPoints[5].z < projectedPoints[1].z) {
+                ctx.setLineDash([5, 5]);
+            } else {
+                ctx.setLineDash([]);
+            }
             ctx.lineTo(projectedPoints[1].x, projectedPoints[1].y);
             ctx.moveTo(projectedPoints[5].x, projectedPoints[5].y);
+            if (projectedPoints[5].z < projectedPoints[6].z) {
+                ctx.setLineDash([5, 5]);
+            } else {
+                ctx.setLineDash([]);
+            }
             ctx.lineTo(projectedPoints[6].x, projectedPoints[6].y);
+            if (projectedPoints[6].z < projectedPoints[2].z) {
+                ctx.setLineDash([5, 5]);
+            } else {
+                ctx.setLineDash([]);
+            }
             ctx.lineTo(projectedPoints[2].x, projectedPoints[2].y);
             ctx.moveTo(projectedPoints[6].x, projectedPoints[6].y);
+            if (projectedPoints[6].z < projectedPoints[7].z) {
+                ctx.setLineDash([5, 5]);
+            } else {
+                ctx.setLineDash([]);
+            }
             ctx.lineTo(projectedPoints[7].x, projectedPoints[7].y);
+            if (projectedPoints[7].z < projectedPoints[3].z) {
+                ctx.setLineDash([5, 5]);
+            } else {
+                ctx.setLineDash([]);
+            }
             ctx.lineTo(projectedPoints[3].x, projectedPoints[3].y);
             ctx.moveTo(projectedPoints[7].x, projectedPoints[7].y);
+            if (projectedPoints[7].z < projectedPoints[4].z) {
+                ctx.setLineDash([5, 5]);
+            } else {
+                ctx.setLineDash([]);
+            }
             ctx.lineTo(projectedPoints[4].x, projectedPoints[4].y);
             ctx.stroke();
             //ctx.moveTo(projectedPoints[4].x, projectedPoints[4].y);

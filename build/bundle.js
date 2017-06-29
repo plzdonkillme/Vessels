@@ -529,7 +529,7 @@ var MapScreen = function () {
             x: this.canvas.width,
             y: this.canvas.height,
             z: 500
-        });
+        }, 500);
         this.startDragX = null;
         this.startDragY = null;
         this.pressed = {
@@ -683,15 +683,20 @@ var Viewport = function () {
         p3                p4
      */
     function Viewport(p1, p2, p3, p4) {
+        var d = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : -1;
+
         _classCallCheck(this, Viewport);
 
         this.p1 = p1;
         this.p2 = p2;
         this.p3 = p3;
         this.p4 = p4;
+        this.d = d;
+        this.p5 = null;
         this.calcBasis1();
         this.calcBasis2();
         this.calcUnitNormal();
+        this.calcFocalPoint();
         var wx = p2.x - p1.x;
         var wy = p2.y - p1.y;
         var wz = p2.z - p2.z;
@@ -711,11 +716,36 @@ var Viewport = function () {
                 y = _ref.y,
                 z = _ref.z;
 
-            return {
-                x: x * this.basis1.x + y * this.basis1.y + z * this.basis1.z - this.p1.x * this.basis1.x - this.p1.y * this.basis1.y - this.p1.z * this.basis1.z,
-                y: x * this.basis2.x + y * this.basis2.y + z * this.basis2.z - this.p1.x * this.basis2.x - this.p1.y * this.basis2.y - this.p1.z * this.basis2.z,
-                z: x * this.unitNormal.x + y * this.unitNormal.y + z * this.unitNormal.z - this.p1.x * this.unitNormal.x - this.p1.y * this.unitNormal.y - this.p1.z * this.unitNormal.z
-            };
+            if (this.d == -1) {
+                return {
+                    x: x * this.basis1.x + y * this.basis1.y + z * this.basis1.z - this.p1.x * this.basis1.x - this.p1.y * this.basis1.y - this.p1.z * this.basis1.z,
+                    y: x * this.basis2.x + y * this.basis2.y + z * this.basis2.z - this.p1.x * this.basis2.x - this.p1.y * this.basis2.y - this.p1.z * this.basis2.z,
+                    z: x * this.unitNormal.x + y * this.unitNormal.y + z * this.unitNormal.z - this.p1.x * this.unitNormal.x - this.p1.y * this.unitNormal.y - this.p1.z * this.unitNormal.z
+                };
+            } else {
+                var pz = x * this.unitNormal.x + y * this.unitNormal.y + z * this.unitNormal.z - this.p1.x * this.unitNormal.x - this.p1.y * this.unitNormal.y - this.p1.z * this.unitNormal.z;
+                var px = x * this.basis1.x + y * this.basis1.y + z * this.basis1.z - this.p1.x * this.basis1.x - this.p1.y * this.basis1.y - this.p1.z * this.basis1.z;
+                var py = x * this.basis2.x + y * this.basis2.y + z * this.basis2.z - this.p1.x * this.basis2.x - this.p1.y * this.basis2.y - this.p1.z * this.basis2.z;
+                return {
+                    x: (this.width / 2 - px) / (1 + this.d / pz) + px,
+                    y: (this.height / 2 - py) / (1 + this.d / pz) + py,
+                    z: pz
+                };
+            }
+        }
+    }, {
+        key: 'calcFocalPoint',
+        value: function calcFocalPoint() {
+            if (this.d !== -1) {
+                var cx = (this.p1.x + this.p4.x) / 2;
+                var cy = (this.p1.y + this.p4.y) / 2;
+                var cz = (this.p1.z + this.p4.z) / 2;
+                this.p5 = {
+                    x: cx - this.d * this.unitNormal.x,
+                    y: cy - this.d * this.unitNormal.y,
+                    z: cz - this.d * this.unitNormal.z
+                };
+            }
         }
     }, {
         key: 'calcBasis1',
@@ -750,9 +780,9 @@ var Viewport = function () {
         key: 'calcUnitNormal',
         value: function calcUnitNormal() {
             this.unitNormal = {
-                x: this.basis1.y * this.basis2.z - this.basis1.z * this.basis2.y,
-                y: this.basis1.z * this.basis2.x - this.basis1.x * this.basis2.z,
-                z: this.basis1.x * this.basis2.y - this.basis1.y * this.basis2.x
+                x: this.basis2.y * this.basis1.z - this.basis2.z * this.basis1.y,
+                y: this.basis2.z * this.basis1.x - this.basis2.x * this.basis1.z,
+                z: this.basis2.x * this.basis1.y - this.basis2.y * this.basis1.x
             };
         }
     }, {
@@ -774,6 +804,7 @@ var Viewport = function () {
             this.calcBasis1();
             this.calcBasis2();
             this.calcUnitNormal();
+            this.calcFocalPoint();
         }
     }, {
         key: 'translatePoint',
@@ -837,6 +868,7 @@ var Viewport = function () {
             this.calcBasis1();
             this.calcBasis2();
             this.calcUnitNormal();
+            this.calcFocalPoint();
         }
 
         // Axis must be unit, Theta must be radians.
@@ -963,24 +995,85 @@ var MapRenderer = function () {
                 var projectedPoints = [];
                 for (var j = 0; j < points.length; j++) {
                     projectedPoints.push(this.viewport.projectOntoPlane(points[j]));
+                    //console.log(projectedPoints[j]);
                 }
                 ctx.strokeStyle = "#000000";
                 ctx.beginPath();
                 ctx.moveTo(projectedPoints[0].x, projectedPoints[0].y);
+                if (projectedPoints[0].z < projectedPoints[1].z) {
+                    ctx.setLineDash([5, 5]);
+                } else {
+                    ctx.setLineDash([]);
+                }
                 ctx.lineTo(projectedPoints[1].x, projectedPoints[1].y);
+                if (projectedPoints[1].z < projectedPoints[2].z) {
+                    ctx.setLineDash([5, 5]);
+                } else {
+                    ctx.setLineDash([]);
+                }
                 ctx.lineTo(projectedPoints[2].x, projectedPoints[2].y);
+                if (projectedPoints[2].z < projectedPoints[3].z) {
+                    ctx.setLineDash([5, 5]);
+                } else {
+                    ctx.setLineDash([]);
+                }
                 ctx.lineTo(projectedPoints[3].x, projectedPoints[3].y);
+                if (projectedPoints[3].z < projectedPoints[0].z) {
+                    ctx.setLineDash([5, 5]);
+                } else {
+                    ctx.setLineDash([]);
+                }
                 ctx.lineTo(projectedPoints[0].x, projectedPoints[0].y);
+                if (projectedPoints[0].z < projectedPoints[4].z) {
+                    ctx.setLineDash([5, 5]);
+                } else {
+                    ctx.setLineDash([]);
+                }
                 ctx.lineTo(projectedPoints[4].x, projectedPoints[4].y);
+                if (projectedPoints[4].z < projectedPoints[5].z) {
+                    ctx.setLineDash([5, 5]);
+                } else {
+                    ctx.setLineDash([]);
+                }
                 ctx.lineTo(projectedPoints[5].x, projectedPoints[5].y);
+                if (projectedPoints[5].z < projectedPoints[1].z) {
+                    ctx.setLineDash([5, 5]);
+                } else {
+                    ctx.setLineDash([]);
+                }
                 ctx.lineTo(projectedPoints[1].x, projectedPoints[1].y);
                 ctx.moveTo(projectedPoints[5].x, projectedPoints[5].y);
+                if (projectedPoints[5].z < projectedPoints[6].z) {
+                    ctx.setLineDash([5, 5]);
+                } else {
+                    ctx.setLineDash([]);
+                }
                 ctx.lineTo(projectedPoints[6].x, projectedPoints[6].y);
+                if (projectedPoints[6].z < projectedPoints[2].z) {
+                    ctx.setLineDash([5, 5]);
+                } else {
+                    ctx.setLineDash([]);
+                }
                 ctx.lineTo(projectedPoints[2].x, projectedPoints[2].y);
                 ctx.moveTo(projectedPoints[6].x, projectedPoints[6].y);
+                if (projectedPoints[6].z < projectedPoints[7].z) {
+                    ctx.setLineDash([5, 5]);
+                } else {
+                    ctx.setLineDash([]);
+                }
                 ctx.lineTo(projectedPoints[7].x, projectedPoints[7].y);
+                if (projectedPoints[7].z < projectedPoints[3].z) {
+                    ctx.setLineDash([5, 5]);
+                } else {
+                    ctx.setLineDash([]);
+                }
                 ctx.lineTo(projectedPoints[3].x, projectedPoints[3].y);
                 ctx.moveTo(projectedPoints[7].x, projectedPoints[7].y);
+                if (projectedPoints[7].z < projectedPoints[4].z) {
+                    ctx.setLineDash([5, 5]);
+                } else {
+                    ctx.setLineDash([]);
+                }
                 ctx.lineTo(projectedPoints[4].x, projectedPoints[4].y);
                 ctx.stroke();
                 //ctx.moveTo(projectedPoints[4].x, projectedPoints[4].y);
@@ -1262,6 +1355,13 @@ Object.defineProperty(exports, "__esModule", {
 var _Map = __webpack_require__(0);
 
 var exampleMapString = "p-2 p-1 p-1 p-1\np-1 e-3 p-1 p-1\np-1 p-1 p-1 e-1\np-2 p-2 p-3 p-1\ne-1 e-2 e-1 p-1\np-1 p-2 e-1 p-1\np-1 p-1 p-1 p-1\n===\nk-0-0-0-20\nk-2-1-0-30";
+
+/*var exampleMapString = 
+`p-2 p-1 p-1 p-1
+p-1 p-1 p-2 p-1
+p-1 p-1 p-2 p-1
+===
+k-0-0-0-20`;*/
 
 var serializer = new _Map.MapSerializer();
 var defaultMap = serializer.deserialize(exampleMapString);
