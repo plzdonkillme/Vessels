@@ -40,12 +40,12 @@ export default class Game {
 
         document.addEventListener("keydown", (e) => {
             e.preventDefault();
-            this.screen.handleKeyDown(e.key);
+            this.screen.handleKeyDown(e.code);
         });
 
         document.addEventListener("keyup", (e) => {
             e.preventDefault();
-            this.screen.handleKeyUp(e.key);
+            this.screen.handleKeyUp(e.code);
         });
 
         /*this.loadAssets().then(() => {

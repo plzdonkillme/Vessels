@@ -532,12 +532,7 @@ var MapScreen = function () {
         }, 500);
         this.startDragX = null;
         this.startDragY = null;
-        this.pressed = {
-            a: false,
-            w: false,
-            s: false,
-            d: false
-        };
+        this.pressed = {};
         this.mapRenderer = new MapRenderer(this.canvas, this.map, this.viewport);
     }
 
@@ -618,52 +613,84 @@ var MapScreen = function () {
         }
     }, {
         key: 'handleKeyDown',
-        value: function handleKeyDown(key) {
-            if (key === 'a') {
-                if (!this.pressed[key]) {
-                    this.viewport.updateRotateRate2(2);
-                    this.pressed[key] = true;
+        value: function handleKeyDown(code) {
+            if (!this.pressed[code]) {
+                this.pressed[code] = true;
+                var updateRates = {};
+                switch (code) {
+                    case 'KeyA':
+                        updateRates.t1 = -20;
+                        break;
+                    case 'KeyW':
+                        updateRates.t3 = 20;
+                        break;
+                    case 'KeyD':
+                        updateRates.t1 = 20;
+                        break;
+                    case 'KeyS':
+                        updateRates.t3 = -20;
+                        break;
+                    case 'Space':
+                        updateRates.t2 = -20;
+                        break;
+                    case 'ShiftLeft':
+                        updateRates.t2 = 20;
+                        break;
+                    case 'ArrowUp':
+                        updateRates.r1 = -3;
+                        break;
+                    case 'ArrowDown':
+                        updateRates.r1 = 3;
+                        break;
+                    case 'ArrowLeft':
+                        updateRates.r2 = 3;
+                        break;
+                    case 'ArrowRight':
+                        updateRates.r2 = -3;
+                        break;
                 }
-            } else if (key === 'w') {
-                if (!this.pressed[key]) {
-                    this.viewport.updateRotateRate1(2);
-                    this.pressed[key] = true;
-                }
-            } else if (key === 'd') {
-                if (!this.pressed[key]) {
-                    this.viewport.updateRotateRate2(-2);
-                    this.pressed[key] = true;
-                }
-            } else if (key === 's') {
-                if (!this.pressed[key]) {
-                    this.viewport.updateRotateRate1(-2);
-                    this.pressed[key] = true;
-                }
+                this.viewport.updateRates(updateRates);
             }
         }
     }, {
         key: 'handleKeyUp',
-        value: function handleKeyUp(key) {
-            if (key === 'a') {
-                if (this.pressed[key]) {
-                    this.viewport.updateRotateRate2(-2);
-                    this.pressed[key] = false;
+        value: function handleKeyUp(code) {
+            if (this.pressed[code]) {
+                this.pressed[code] = false;
+                var updateRates = {};
+                switch (code) {
+                    case 'KeyA':
+                        updateRates.t1 = 20;
+                        break;
+                    case 'KeyW':
+                        updateRates.t3 = -20;
+                        break;
+                    case 'KeyD':
+                        updateRates.t1 = -20;
+                        break;
+                    case 'KeyS':
+                        updateRates.t3 = 20;
+                        break;
+                    case 'Space':
+                        updateRates.t2 = 20;
+                        break;
+                    case 'ShiftLeft':
+                        updateRates.t2 = -20;
+                        break;
+                    case 'ArrowUp':
+                        updateRates.r1 = 3;
+                        break;
+                    case 'ArrowDown':
+                        updateRates.r1 = -3;
+                        break;
+                    case 'ArrowLeft':
+                        updateRates.r2 = -3;
+                        break;
+                    case 'ArrowRight':
+                        updateRates.r2 = 3;
+                        break;
                 }
-            } else if (key === 'w') {
-                if (this.pressed[key]) {
-                    this.viewport.updateRotateRate1(-2);
-                    this.pressed[key] = false;
-                }
-            } else if (key === 'd') {
-                if (this.pressed[key]) {
-                    this.viewport.updateRotateRate2(2);
-                    this.pressed[key] = false;
-                }
-            } else if (key === 's') {
-                if (this.pressed[key]) {
-                    this.viewport.updateRotateRate1(2);
-                    this.pressed[key] = false;
-                }
+                this.viewport.updateRates(updateRates);
             }
         }
     }]);
@@ -705,27 +732,115 @@ var Viewport = function () {
         var hy = p3.y - p1.y;
         var hz = p3.z - p1.z;
         this.height = Math.sqrt(hx * hx + hy * hy + hz * hz);
-        this.rotateRate1 = 0;
-        this.rotateRate2 = 0;
+        this.rates = {
+            r1: 0,
+            r2: 0,
+            t1: 0,
+            t2: 0,
+            t3: 0
+        };
     }
 
     _createClass(Viewport, [{
-        key: 'projectOntoPlane',
-        value: function projectOntoPlane(_ref) {
-            var x = _ref.x,
-                y = _ref.y,
-                z = _ref.z;
+        key: 'dot',
+        value: function dot(p1, p2) {
+            return p1.x * p2.x + p1.y * p2.y + p1.z * p2.z;
+        }
+    }, {
+        key: 'projectPlane',
+        value: function projectPlane(_ref) {
+            var n = _ref.n,
+                points = _ref.points;
 
+            if (this.d === -1 && this.dot(n, this.unitNormal) > 0) {
+                return null;
+            }
+            var visiblePoints = [];
+            var normalCheck = null;
+            var pz = void 0,
+                lpz = void 0,
+                rpz = void 0,
+                midpoint = void 0;
+            for (var i = 0; i < points.length; i++) {
+                pz = this.dot(points[i], this.unitNormal) - this.dot(this.p1, this.unitNormal);
+                if (pz >= 0) {
+                    if (normalCheck === null) {
+                        normalCheck = this.dot({
+                            x: points[i].x - this.p5.x,
+                            y: points[i].y - this.p5.y,
+                            z: points[i].z - this.p5.z
+                        }, n);
+                        if (normalCheck > 0) {
+                            return null;
+                        }
+                    }
+                    visiblePoints.push(this.projectPoint(points[i]));
+                } else {
+                    //console.log('CLIPPING');
+                    var li = i == 0 ? points.length - 1 : i - 1;
+                    lpz = this.dot(points[li], this.unitNormal) - this.dot(this.p1, this.unitNormal);
+                    if (lpz > 0) {
+                        midpoint = {
+                            x: lpz / (lpz - pz) * points[i].x - pz / (lpz - pz) * points[li].x,
+                            y: lpz / (lpz - pz) * points[i].y - pz / (lpz - pz) * points[li].y,
+                            z: lpz / (lpz - pz) * points[i].z - pz / (lpz - pz) * points[li].z
+                        };
+                        if (normalCheck === null) {
+                            normalCheck = this.dot({
+                                x: midpoint.x - this.p5.x,
+                                y: midpoint.y - this.p5.y,
+                                z: midpoint.z - this.p5.z
+                            }, n);
+                            if (normalCheck > 0) {
+                                return null;
+                            }
+                        }
+                        visiblePoints.push(this.projectPoint(midpoint));
+                    }
+                    var ri = i == points.length - 1 ? 0 : i + 1;
+                    rpz = this.dot(points[ri], this.unitNormal) - this.dot(this.p1, this.unitNormal);
+                    if (rpz > 0) {
+                        midpoint = {
+                            x: rpz / (rpz - pz) * points[i].x - pz / (rpz - pz) * points[ri].x,
+                            y: rpz / (rpz - pz) * points[i].y - pz / (rpz - pz) * points[ri].y,
+                            z: rpz / (rpz - pz) * points[i].z - pz / (rpz - pz) * points[ri].z
+                        };
+                        if (normalCheck === null) {
+                            normalCheck = this.dot({
+                                x: midpoint.x - this.p5.x,
+                                y: midpoint.y - this.p5.y,
+                                z: midpoint.z - this.p5.z
+                            }, n);
+                            if (normalCheck > 0) {
+                                return null;
+                            }
+                        }
+                        visiblePoints.push(this.projectPoint(midpoint));
+                    }
+                }
+            }
+            if (visiblePoints.length === 0) {
+                return null;
+            }
+            return {
+                n: n,
+                points: points,
+                visiblePoints: visiblePoints
+            };
+        }
+    }, {
+        key: 'projectPoint',
+        value: function projectPoint(point) {
             if (this.d == -1) {
                 return {
-                    x: x * this.basis1.x + y * this.basis1.y + z * this.basis1.z - this.p1.x * this.basis1.x - this.p1.y * this.basis1.y - this.p1.z * this.basis1.z,
-                    y: x * this.basis2.x + y * this.basis2.y + z * this.basis2.z - this.p1.x * this.basis2.x - this.p1.y * this.basis2.y - this.p1.z * this.basis2.z,
-                    z: x * this.unitNormal.x + y * this.unitNormal.y + z * this.unitNormal.z - this.p1.x * this.unitNormal.x - this.p1.y * this.unitNormal.y - this.p1.z * this.unitNormal.z
+                    x: this.dot(point, this.basis1) - this.dot(this.p1, this.basis1),
+                    y: this.dot(point, this.basis2) - this.dot(this.p1, this.basis2),
+                    z: this.dot(point, this.unitNormal) - this.dot(this.p1, this.unitNormal)
                 };
             } else {
-                var pz = x * this.unitNormal.x + y * this.unitNormal.y + z * this.unitNormal.z - this.p1.x * this.unitNormal.x - this.p1.y * this.unitNormal.y - this.p1.z * this.unitNormal.z;
-                var px = x * this.basis1.x + y * this.basis1.y + z * this.basis1.z - this.p1.x * this.basis1.x - this.p1.y * this.basis1.y - this.p1.z * this.basis1.z;
-                var py = x * this.basis2.x + y * this.basis2.y + z * this.basis2.z - this.p1.x * this.basis2.x - this.p1.y * this.basis2.y - this.p1.z * this.basis2.z;
+                var px = this.dot(point, this.basis1) - this.dot(this.p1, this.basis1);
+                var py = this.dot(point, this.basis2) - this.dot(this.p1, this.basis2);
+                var pz = this.dot(point, this.unitNormal) - this.dot(this.p1, this.unitNormal);
                 return {
                     x: (this.width / 2 - px) / (1 + this.d / pz) + px,
                     y: (this.height / 2 - py) / (1 + this.d / pz) + py,
@@ -787,11 +902,11 @@ var Viewport = function () {
         }
     }, {
         key: 'translateAlongBasis',
-        value: function translateAlongBasis(scalar1, scalar2) {
+        value: function translateAlongBasis(scalar1, scalar2, scalar3) {
             this.translate({
-                x: this.basis1.x * scalar1 + this.basis2.x * scalar2,
-                y: this.basis1.y * scalar1 + this.basis2.y * scalar2,
-                z: this.basis1.z * scalar1 + this.basis2.z * scalar2
+                x: this.basis1.x * scalar1 + this.basis2.x * scalar2 + this.unitNormal.x * scalar3,
+                y: this.basis1.y * scalar1 + this.basis2.y * scalar2 + this.unitNormal.y * scalar3,
+                z: this.basis1.z * scalar1 + this.basis2.z * scalar2 + this.unitNormal.z * scalar3
             });
         }
     }, {
@@ -818,9 +933,18 @@ var Viewport = function () {
     }, {
         key: 'rotateByBasis1',
         value: function rotateByBasis1(theta) {
-            var mx = (this.p1.x + this.p4.x) / 2;
-            var my = (this.p1.y + this.p4.y) / 2;
-            var mz = (this.p1.z + this.p4.z) / 2;
+            var mx = void 0,
+                my = void 0,
+                mz = void 0;
+            if (this.d !== -1) {
+                mx = this.p5.x;
+                my = this.p5.y;
+                mz = this.p5.z;
+            } else {
+                mx = (this.p1.x + this.p4.x) / 2;
+                my = (this.p1.y + this.p4.y) / 2;
+                mz = (this.p1.z + this.p4.z) / 2;
+            }
             this.translate({
                 x: -mx,
                 y: -my,
@@ -836,9 +960,18 @@ var Viewport = function () {
     }, {
         key: 'rotateByBasis2',
         value: function rotateByBasis2(theta) {
-            var mx = (this.p1.x + this.p4.x) / 2;
-            var my = (this.p1.y + this.p4.y) / 2;
-            var mz = (this.p1.z + this.p4.z) / 2;
+            var mx = void 0,
+                my = void 0,
+                mz = void 0;
+            if (this.d !== -1) {
+                mx = this.p5.x;
+                my = this.p5.y;
+                mz = this.p5.z;
+            } else {
+                mx = (this.p1.x + this.p4.x) / 2;
+                my = (this.p1.y + this.p4.y) / 2;
+                mz = (this.p1.z + this.p4.z) / 2;
+            }
             this.translate({
                 x: -mx,
                 y: -my,
@@ -854,7 +987,7 @@ var Viewport = function () {
     }, {
         key: 'rotate',
         value: function rotate(axis, theta) {
-            var mag = Math.sqrt(axis.x * axis.x + axis.y * axis.y + axis.z * axis.z);
+            var mag = Math.sqrt(this.dot(axis, axis));
             var normAxis = {
                 x: axis.x / mag,
                 y: axis.y / mag,
@@ -879,7 +1012,7 @@ var Viewport = function () {
             var cost = Math.cos(rad);
             var sint = Math.sin(rad);
             var mcost = 1 - cost;
-            var dot = ax.x * p.x + ax.y * p.y + ax.z * p.z;
+            var dot = this.dot(ax, p);
             return {
                 x: p.x * cost + (ax.y * p.z - ax.z * p.y) * sint + ax.x * dot * mcost,
                 y: p.y * cost + (ax.z * p.x - ax.x * p.z) * sint + ax.y * dot * mcost,
@@ -887,24 +1020,26 @@ var Viewport = function () {
             };
         }
     }, {
-        key: 'updateRotation',
-        value: function updateRotation() {
-            if (this.rotateRate1 !== 0) {
-                this.rotateByBasis1(this.rotateRate1);
+        key: 'updatePosition',
+        value: function updatePosition() {
+            if (this.rates.r1 !== 0) {
+                this.rotateByBasis1(this.rates.r1);
             }
-            if (this.rotateRate2 !== 0) {
-                this.rotateByBasis2(this.rotateRate2);
+            if (this.rates.r2 !== 0) {
+                this.rotateByBasis2(this.rates.r2);
+            }
+            if (this.rates.t1 || this.rates.t2 || this.rates.t3) {
+                this.translateAlongBasis(this.rates.t1, this.rates.t2, this.rates.t3);
             }
         }
     }, {
-        key: 'updateRotateRate1',
-        value: function updateRotateRate1(rate) {
-            this.rotateRate1 += rate;
-        }
-    }, {
-        key: 'updateRotateRate2',
-        value: function updateRotateRate2(rate) {
-            this.rotateRate2 += rate;
+        key: 'updateRates',
+        value: function updateRates(rates) {
+            this.rates.r1 += rates.r1 || 0;
+            this.rates.r2 += rates.r2 || 0;
+            this.rates.t1 += rates.t1 || 0;
+            this.rates.t2 += rates.t2 || 0;
+            this.rates.t3 += rates.t3 || 0;
         }
     }]);
 
@@ -950,7 +1085,7 @@ var MapRenderer = function () {
                  }
             });*/
 
-            this.viewport.updateRotation();
+            this.viewport.updatePosition();
 
             //
             var tiles = this.map.getTilesFlattened();
@@ -959,7 +1094,7 @@ var MapRenderer = function () {
                 var tx = tiles[i].getX() * tlen;
                 var ty = tiles[i].getY() * tlen;
                 var tz = tiles[i].getH() * tlen;
-                var points = [{
+                var vertices = [{
                     x: tx,
                     y: ty,
                     z: tz
@@ -992,92 +1127,92 @@ var MapRenderer = function () {
                     y: ty + 100,
                     z: 0
                 }];
-                var projectedPoints = [];
-                for (var j = 0; j < points.length; j++) {
+                /*const projectedPoints = [];
+                for (let j = 0; j < points.length; j++) {
                     projectedPoints.push(this.viewport.projectOntoPlane(points[j]));
-                    //console.log(projectedPoints[j]);
+                    //console.log(j]);
+                }*/
+
+                var cubeFaces = [{
+                    n: {
+                        x: 0,
+                        y: 0,
+                        z: 1
+                    },
+                    points: [vertices[0], vertices[1], vertices[2], vertices[3]]
+                }, {
+                    n: {
+                        x: 0,
+                        y: 0,
+                        z: -1
+                    },
+                    points: [vertices[4], vertices[5], vertices[6], vertices[7]]
+                }, {
+                    n: {
+                        x: 1,
+                        y: 0,
+                        z: 0
+                    },
+                    points: [vertices[1], vertices[2], vertices[6], vertices[5]]
+                }, {
+                    n: {
+                        x: -1,
+                        y: 0,
+                        z: 0
+                    },
+                    points: [vertices[0], vertices[3], vertices[7], vertices[4]]
+                }, {
+                    n: {
+                        x: 0,
+                        y: 1,
+                        z: 0
+                    },
+                    points: [vertices[2], vertices[3], vertices[7], vertices[6]]
+                }, {
+                    n: {
+                        x: 0,
+                        y: -1,
+                        z: 0
+                    },
+                    points: [vertices[0], vertices[1], vertices[5], vertices[4]]
+                }];
+
+                var visibleProjectedCubeFaces = [];
+                for (var j = 0; j < cubeFaces.length; j++) {
+                    var projectedCubeFace = this.viewport.projectPlane(cubeFaces[j]);
+                    if (projectedCubeFace !== null) {
+                        visibleProjectedCubeFaces.push(projectedCubeFace);
+
+                        ctx.strokeStyle = "#000000";
+                        ctx.fillStyle = "#CCCCCC";
+                        ctx.beginPath();
+                        for (var k = 0; k < projectedCubeFace.visiblePoints.length; k++) {
+                            if (k == 0) {
+                                ctx.moveTo(projectedCubeFace.visiblePoints[k].x, projectedCubeFace.visiblePoints[k].y);
+                            }
+                            if (k == projectedCubeFace.visiblePoints.length - 1) {
+                                ctx.lineTo(projectedCubeFace.visiblePoints[0].x, projectedCubeFace.visiblePoints[0].y);
+                            } else {
+                                ctx.lineTo(projectedCubeFace.visiblePoints[k + 1].x, projectedCubeFace.visiblePoints[k + 1].y);
+                            }
+                        }
+                        ctx.fill();
+                        ctx.beginPath();
+                        for (var _k = 0; _k < projectedCubeFace.visiblePoints.length; _k++) {
+                            if (_k == 0) {
+                                ctx.moveTo(projectedCubeFace.visiblePoints[_k].x, projectedCubeFace.visiblePoints[_k].y);
+                            }
+                            if (_k == projectedCubeFace.visiblePoints.length - 1) {
+                                ctx.lineTo(projectedCubeFace.visiblePoints[0].x, projectedCubeFace.visiblePoints[0].y);
+                            } else {
+                                ctx.lineTo(projectedCubeFace.visiblePoints[_k + 1].x, projectedCubeFace.visiblePoints[_k + 1].y);
+                            }
+                        }
+                        ctx.stroke();
+                    } else {
+                        //console.log(cubeFaces[j].n);
+                    }
                 }
-                ctx.strokeStyle = "#000000";
-                ctx.beginPath();
-                ctx.moveTo(projectedPoints[0].x, projectedPoints[0].y);
-                if (projectedPoints[0].z < projectedPoints[1].z) {
-                    ctx.setLineDash([5, 5]);
-                } else {
-                    ctx.setLineDash([]);
-                }
-                ctx.lineTo(projectedPoints[1].x, projectedPoints[1].y);
-                if (projectedPoints[1].z < projectedPoints[2].z) {
-                    ctx.setLineDash([5, 5]);
-                } else {
-                    ctx.setLineDash([]);
-                }
-                ctx.lineTo(projectedPoints[2].x, projectedPoints[2].y);
-                if (projectedPoints[2].z < projectedPoints[3].z) {
-                    ctx.setLineDash([5, 5]);
-                } else {
-                    ctx.setLineDash([]);
-                }
-                ctx.lineTo(projectedPoints[3].x, projectedPoints[3].y);
-                if (projectedPoints[3].z < projectedPoints[0].z) {
-                    ctx.setLineDash([5, 5]);
-                } else {
-                    ctx.setLineDash([]);
-                }
-                ctx.lineTo(projectedPoints[0].x, projectedPoints[0].y);
-                if (projectedPoints[0].z < projectedPoints[4].z) {
-                    ctx.setLineDash([5, 5]);
-                } else {
-                    ctx.setLineDash([]);
-                }
-                ctx.lineTo(projectedPoints[4].x, projectedPoints[4].y);
-                if (projectedPoints[4].z < projectedPoints[5].z) {
-                    ctx.setLineDash([5, 5]);
-                } else {
-                    ctx.setLineDash([]);
-                }
-                ctx.lineTo(projectedPoints[5].x, projectedPoints[5].y);
-                if (projectedPoints[5].z < projectedPoints[1].z) {
-                    ctx.setLineDash([5, 5]);
-                } else {
-                    ctx.setLineDash([]);
-                }
-                ctx.lineTo(projectedPoints[1].x, projectedPoints[1].y);
-                ctx.moveTo(projectedPoints[5].x, projectedPoints[5].y);
-                if (projectedPoints[5].z < projectedPoints[6].z) {
-                    ctx.setLineDash([5, 5]);
-                } else {
-                    ctx.setLineDash([]);
-                }
-                ctx.lineTo(projectedPoints[6].x, projectedPoints[6].y);
-                if (projectedPoints[6].z < projectedPoints[2].z) {
-                    ctx.setLineDash([5, 5]);
-                } else {
-                    ctx.setLineDash([]);
-                }
-                ctx.lineTo(projectedPoints[2].x, projectedPoints[2].y);
-                ctx.moveTo(projectedPoints[6].x, projectedPoints[6].y);
-                if (projectedPoints[6].z < projectedPoints[7].z) {
-                    ctx.setLineDash([5, 5]);
-                } else {
-                    ctx.setLineDash([]);
-                }
-                ctx.lineTo(projectedPoints[7].x, projectedPoints[7].y);
-                if (projectedPoints[7].z < projectedPoints[3].z) {
-                    ctx.setLineDash([5, 5]);
-                } else {
-                    ctx.setLineDash([]);
-                }
-                ctx.lineTo(projectedPoints[3].x, projectedPoints[3].y);
-                ctx.moveTo(projectedPoints[7].x, projectedPoints[7].y);
-                if (projectedPoints[7].z < projectedPoints[4].z) {
-                    ctx.setLineDash([5, 5]);
-                } else {
-                    ctx.setLineDash([]);
-                }
-                ctx.lineTo(projectedPoints[4].x, projectedPoints[4].y);
-                ctx.stroke();
-                //ctx.moveTo(projectedPoints[4].x, projectedPoints[4].y);
-                //ctx.lineTo(projectedPoints[5].x, projectedPoints[5].y);
             }
 
             //this.renderTiles(tiles, this.viewport);
@@ -1280,12 +1415,12 @@ var Game = function () {
 
             document.addEventListener("keydown", function (e) {
                 e.preventDefault();
-                _this.screen.handleKeyDown(e.key);
+                _this.screen.handleKeyDown(e.code);
             });
 
             document.addEventListener("keyup", function (e) {
                 e.preventDefault();
-                _this.screen.handleKeyUp(e.key);
+                _this.screen.handleKeyUp(e.code);
             });
 
             /*this.loadAssets().then(() => {
@@ -1354,7 +1489,7 @@ Object.defineProperty(exports, "__esModule", {
 
 var _Map = __webpack_require__(0);
 
-var exampleMapString = "p-2 p-1 p-1 p-1\np-1 e-3 p-1 p-1\np-1 p-1 p-1 e-1\np-2 p-2 p-3 p-1\ne-1 e-2 e-1 p-1\np-1 p-2 e-1 p-1\np-1 p-1 p-1 p-1\n===\nk-0-0-0-20\nk-2-1-0-30";
+var exampleMapString = "p-2 p-1 p-1 p-1\np-1 e-3 p-1 p-1\np-1 p-1 p-1 e-1\np-2 p-2 p-2 p-1\ne-1 e-2 e-1 p-1\np-1 p-2 e-1 p-1\np-1 p-1 p-1 p-1\n===\nk-0-0-0-20\nk-2-1-0-30";
 
 /*var exampleMapString = 
 `p-2 p-1 p-1 p-1
