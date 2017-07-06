@@ -63,7 +63,7 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 5);
+/******/ 	return __webpack_require__(__webpack_require__.s = 6);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -82,7 +82,9 @@ var _get = function get(object, property, receiver) { if (object === null) objec
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
-var _Tile = __webpack_require__(4);
+var _Tile = __webpack_require__(5);
+
+var _BSPTree = __webpack_require__(3);
 
 function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
 
@@ -126,7 +128,7 @@ var Map = function () {
     }
 
     _createClass(Map, [{
-        key: 'getTilesFlattened',
+        key: "getTilesFlattened",
         value: function getTilesFlattened() {
             var flattenedArray = [];
             this.tiles.forEach(function (row) {
@@ -135,12 +137,12 @@ var Map = function () {
             return flattenedArray;
         }
     }, {
-        key: 'getTiles',
+        key: "getTiles",
         value: function getTiles() {
             return this.tiles;
         }
     }, {
-        key: 'getMapObjects',
+        key: "getMapObjects",
         value: function getMapObjects() {
             return this.mapObjects;
         }
@@ -148,12 +150,12 @@ var Map = function () {
         //TODO: Implement Map Objective Functions
 
     }, {
-        key: 'isResolved',
+        key: "isResolved",
         value: function isResolved() {
             return false;
         }
     }, {
-        key: 'clicked',
+        key: "clicked",
         value: function clicked(objs) {
             var rerender = false;
             for (var i = 0; i < objs.length; i++) {
@@ -171,13 +173,13 @@ var Map = function () {
             return rerender;
         }
     }, {
-        key: 'serialize',
+        key: "serialize",
         value: function serialize() {
             var serializer = new MapSerializer();
             return serializer.serialize(this);
         }
     }, {
-        key: 'nextTurn',
+        key: "nextTurn",
         value: function nextTurn() {
             if (this.turnActor !== null) {
                 this.turnQueue.pop();
@@ -224,7 +226,7 @@ var MapSerializer = function () {
     }
 
     _createClass(MapSerializer, [{
-        key: 'serialize',
+        key: "serialize",
         value: function serialize(map) {
             var mapString = '';
             var tiles = map.getTiles();
@@ -232,7 +234,7 @@ var MapSerializer = function () {
                 var tileRow = tiles[i];
                 for (var j = 0; j < tileRow.length; j++) {
                     var tile = tileRow[j];
-                    var tileString = this.classNameToString[tile.getClassName()] + '-' + tile.getH();
+                    var tileString = this.classNameToString[tile.getClassName()] + "-" + tile.getH();
                     mapString += tileString;
                     if (j !== tileRow.length - 1) {
                         mapString += ' ';
@@ -244,7 +246,7 @@ var MapSerializer = function () {
             var mapObjects = map.getMapObjects();
             for (var _i = 0; _i < mapObjects.length; _i++) {
                 var mapObject = mapObjects[_i];
-                var mapObjectString = this.classNameToString[mapObject.getClassName()] + '-' + mapObject.serialize();
+                var mapObjectString = this.classNameToString[mapObject.getClassName()] + "-" + mapObject.serialize();
                 mapString += mapObjectString;
                 if (_i !== mapObjects.length - 1) {
                     mapString += '\n';
@@ -253,7 +255,7 @@ var MapSerializer = function () {
             return mapString;
         }
     }, {
-        key: 'deserialize',
+        key: "deserialize",
         value: function deserialize(mapString) {
             var splitString = mapString.split('\n===\n');
             var tileArrayString = splitString[0];
@@ -302,7 +304,7 @@ var MapSerializer = function () {
 
 var MapObject = function () {
     _createClass(MapObject, [{
-        key: 'getClassName',
+        key: "getClassName",
         value: function getClassName() {
             return 'MapObject';
         }
@@ -318,32 +320,32 @@ var MapObject = function () {
     }
 
     _createClass(MapObject, [{
-        key: 'getTile',
+        key: "getTile",
         value: function getTile() {
             return this.tile;
         }
     }, {
-        key: 'getX',
+        key: "getX",
         value: function getX() {
             return this.x;
         }
     }, {
-        key: 'getY',
+        key: "getY",
         value: function getY() {
             return this.y;
         }
     }, {
-        key: 'isHighlighted',
+        key: "isHighlighted",
         value: function isHighlighted() {
             return this.highlighted;
         }
     }, {
-        key: 'setHighlight',
+        key: "setHighlight",
         value: function setHighlight(h) {
             this.highlighted = h;
         }
     }, {
-        key: 'moveTo',
+        key: "moveTo",
         value: function moveTo(tile) {
             this.tile.unsetMapObject(this);
             tile.setMapObject(this);
@@ -352,23 +354,23 @@ var MapObject = function () {
             this.y = tile.getY();
         }
     }, {
-        key: 'isActor',
+        key: "isActor",
         value: function isActor() {
             return false;
         }
     }, {
-        key: 'serialize',
+        key: "serialize",
         value: function serialize() {
-            return this.x + '-' + this.getY();
+            return this.x + "-" + this.getY();
         }
     }, {
-        key: 'setReferences',
+        key: "setReferences",
         value: function setReferences(tiles, mapObjects) {
             this.tile = tiles[this.y][this.x];
             this.tile.setMapObject(this);
         }
     }], [{
-        key: 'parseAttributes',
+        key: "parseAttributes",
         value: function parseAttributes(attrString) {
             var attrSplit = attrString.split('-');
             var attr = {
@@ -378,7 +380,7 @@ var MapObject = function () {
             return attr;
         }
     }, {
-        key: 'deserialize',
+        key: "deserialize",
         value: function deserialize(attrString) {
             return new this(this.parseAttributes(attrString));
         }
@@ -401,48 +403,48 @@ var Actor = function (_MapObject) {
     }
 
     _createClass(Actor, [{
-        key: 'getTicks',
+        key: "getTicks",
         value: function getTicks() {
             return this.ticks;
         }
     }, {
-        key: 'getTickAmount',
+        key: "getTickAmount",
         value: function getTickAmount() {
             return this.tickAmount;
         }
     }, {
-        key: 'tickForward',
+        key: "tickForward",
         value: function tickForward() {
             this.ticks += this.tickAmount;
         }
     }, {
-        key: 'subtractTicks',
+        key: "subtractTicks",
         value: function subtractTicks(amt) {
             this.ticks -= amt;
         }
     }, {
-        key: 'isActor',
+        key: "isActor",
         value: function isActor() {
             return true;
         }
     }, {
-        key: 'takeTurn',
+        key: "takeTurn",
         value: function takeTurn() {
             return new Promise(function (resolve, reject) {
                 resolve();
             });
         }
     }, {
-        key: 'serialize',
+        key: "serialize",
         value: function serialize() {
-            return _get(Actor.prototype.__proto__ || Object.getPrototypeOf(Actor.prototype), 'serialize', this).call(this) + '-' + this.ticks + '-' + this.tickAmount;
+            return _get(Actor.prototype.__proto__ || Object.getPrototypeOf(Actor.prototype), "serialize", this).call(this) + "-" + this.ticks + "-" + this.tickAmount;
         }
     }], [{
-        key: 'parseAttributes',
+        key: "parseAttributes",
         value: function parseAttributes(attrString) {
             var attrSplit = attrString.split('-');
             var parAttrString = attrSplit.slice(0, attrSplit.length - 2).join('-');
-            var attr = _get(Actor.__proto__ || Object.getPrototypeOf(Actor), 'parseAttributes', this).call(this, parAttrString);
+            var attr = _get(Actor.__proto__ || Object.getPrototypeOf(Actor), "parseAttributes", this).call(this, parAttrString);
             attr.ticks = parseInt(attrSplit[attrSplit.length - 2]);
             attr.tickAmount = parseInt(attrSplit[attrSplit.length - 1]);
             return attr;
@@ -456,7 +458,7 @@ var Knight = function (_Actor) {
     _inherits(Knight, _Actor);
 
     _createClass(Knight, [{
-        key: 'getClassName',
+        key: "getClassName",
         value: function getClassName() {
             return 'Knight';
         }
@@ -482,7 +484,7 @@ var Knight = function (_Actor) {
     }
 
     _createClass(Knight, [{
-        key: 'takeTurn',
+        key: "takeTurn",
         value: function takeTurn() {
             var _this3 = this;
 
@@ -495,11 +497,11 @@ var Knight = function (_Actor) {
             });
         }
     }, {
-        key: 'moveTo',
+        key: "moveTo",
         value: function moveTo(tile) {
             this.setHighlight(false);
             this.tile.changeNeighbors(2, false);
-            _get(Knight.prototype.__proto__ || Object.getPrototypeOf(Knight.prototype), 'moveTo', this).call(this, tile);
+            _get(Knight.prototype.__proto__ || Object.getPrototypeOf(Knight.prototype), "moveTo", this).call(this, tile);
             this.turnResolve();
         }
     }]);
@@ -537,13 +539,13 @@ var MapScreen = function () {
     }
 
     _createClass(MapScreen, [{
-        key: 'start',
+        key: "start",
         value: function start() {
             this.mapRenderer.renderMap();
             //this.turnLoop();
         }
     }, {
-        key: 'turnLoop',
+        key: "turnLoop",
         value: function turnLoop() {
             var _this4 = this;
 
@@ -560,7 +562,7 @@ var MapScreen = function () {
             }
         }
     }, {
-        key: 'animateNextTurn',
+        key: "animateNextTurn",
         value: function animateNextTurn(turnActor) {
             return new Promise(function (resolve, reject) {
                 resolve();
@@ -568,13 +570,13 @@ var MapScreen = function () {
             });
         }
     }, {
-        key: 'handleMouseDown',
+        key: "handleMouseDown",
         value: function handleMouseDown(x, y) {
             this.startDragX = x;
             this.startDragY = y;
         }
     }, {
-        key: 'handleMouseMove',
+        key: "handleMouseMove",
         value: function handleMouseMove(x, y) {
             if (this.startDragX !== null && this.startDragY !== null) {
                 var dx = this.startDragX - x;
@@ -586,13 +588,13 @@ var MapScreen = function () {
             //this.mapRenderer.renderMap();
         }
     }, {
-        key: 'handleMouseUp',
+        key: "handleMouseUp",
         value: function handleMouseUp(x, y) {
             this.startDragX = null;
             this.startDragY = null;
         }
     }, {
-        key: 'handleClick',
+        key: "handleClick",
         value: function handleClick(x, y) {
             //this.viewport.mx = this.viewport.x1 + x;
             //this.viewport.my = this.viewport.y1 + y;
@@ -603,7 +605,7 @@ var MapScreen = function () {
             //}
         }
     }, {
-        key: 'handleMouseLeave',
+        key: "handleMouseLeave",
         value: function handleMouseLeave() {
             this.viewport.mx = null;
             this.viewport.my = null;
@@ -612,7 +614,7 @@ var MapScreen = function () {
             //this.mapRenderer.renderMap(this.map, this.viewport);
         }
     }, {
-        key: 'handleKeyDown',
+        key: "handleKeyDown",
         value: function handleKeyDown(code) {
             if (!this.pressed[code]) {
                 this.pressed[code] = true;
@@ -653,7 +655,7 @@ var MapScreen = function () {
             }
         }
     }, {
-        key: 'handleKeyUp',
+        key: "handleKeyUp",
         value: function handleKeyUp(code) {
             if (this.pressed[code]) {
                 this.pressed[code] = false;
@@ -742,25 +744,36 @@ var Viewport = function () {
     }
 
     _createClass(Viewport, [{
-        key: 'dot',
+        key: "dot",
         value: function dot(p1, p2) {
             return p1.x * p2.x + p1.y * p2.y + p1.z * p2.z;
         }
     }, {
-        key: 'projectPlane',
-        value: function projectPlane(_ref) {
-            var n = _ref.n,
-                points = _ref.points;
+        key: "squaredP5Dist",
+        value: function squaredP5Dist(_ref) {
+            var x = _ref.x,
+                y = _ref.y,
+                z = _ref.z;
+
+            return (x - this.p5.x) * (x - this.p5.x) + (y - this.p5.y) * (y - this.p5.y) + (z - this.p5.z) * (z - this.p5.z);
+        }
+    }, {
+        key: "projectPlane",
+        value: function projectPlane(_ref2) {
+            var n = _ref2.n,
+                points = _ref2.points;
 
             if (this.d === -1 && this.dot(n, this.unitNormal) > 0) {
                 return null;
             }
             var visiblePoints = [];
+            var clippedPoints = [];
             var normalCheck = null;
             var pz = void 0,
                 lpz = void 0,
                 rpz = void 0,
-                midpoint = void 0;
+                midpoint = void 0,
+                projected = void 0;
             for (var i = 0; i < points.length; i++) {
                 pz = this.dot(points[i], this.unitNormal) - this.dot(this.p1, this.unitNormal);
                 if (pz >= 0) {
@@ -770,13 +783,10 @@ var Viewport = function () {
                             y: points[i].y - this.p5.y,
                             z: points[i].z - this.p5.z
                         }, n);
-                        if (normalCheck > 0) {
-                            return null;
-                        }
                     }
-                    visiblePoints.push(this.projectPoint(points[i]));
+                    projected = this.projectPoint(points[i]);
+                    visiblePoints.push(projected);
                 } else {
-                    //console.log('CLIPPING');
                     var li = i == 0 ? points.length - 1 : i - 1;
                     lpz = this.dot(points[li], this.unitNormal) - this.dot(this.p1, this.unitNormal);
                     if (lpz > 0) {
@@ -785,17 +795,9 @@ var Viewport = function () {
                             y: lpz / (lpz - pz) * points[i].y - pz / (lpz - pz) * points[li].y,
                             z: lpz / (lpz - pz) * points[i].z - pz / (lpz - pz) * points[li].z
                         };
-                        if (normalCheck === null) {
-                            normalCheck = this.dot({
-                                x: midpoint.x - this.p5.x,
-                                y: midpoint.y - this.p5.y,
-                                z: midpoint.z - this.p5.z
-                            }, n);
-                            if (normalCheck > 0) {
-                                return null;
-                            }
-                        }
-                        visiblePoints.push(this.projectPoint(midpoint));
+                        projected = this.projectPoint(midpoint);
+                        visiblePoints.push(projected);
+                        clippedPoints.push(projected);
                     }
                     var ri = i == points.length - 1 ? 0 : i + 1;
                     rpz = this.dot(points[ri], this.unitNormal) - this.dot(this.p1, this.unitNormal);
@@ -805,17 +807,9 @@ var Viewport = function () {
                             y: rpz / (rpz - pz) * points[i].y - pz / (rpz - pz) * points[ri].y,
                             z: rpz / (rpz - pz) * points[i].z - pz / (rpz - pz) * points[ri].z
                         };
-                        if (normalCheck === null) {
-                            normalCheck = this.dot({
-                                x: midpoint.x - this.p5.x,
-                                y: midpoint.y - this.p5.y,
-                                z: midpoint.z - this.p5.z
-                            }, n);
-                            if (normalCheck > 0) {
-                                return null;
-                            }
-                        }
-                        visiblePoints.push(this.projectPoint(midpoint));
+                        projected = this.projectPoint(midpoint);
+                        visiblePoints.push(projected);
+                        clippedPoints.push(projected);
                     }
                 }
             }
@@ -825,11 +819,13 @@ var Viewport = function () {
             return {
                 n: n,
                 points: points,
-                visiblePoints: visiblePoints
+                visiblePoints: visiblePoints,
+                clippedPoints: clippedPoints,
+                visible: normalCheck !== null && normalCheck <= 0
             };
         }
     }, {
-        key: 'projectPoint',
+        key: "projectPoint",
         value: function projectPoint(point) {
             if (this.d == -1) {
                 return {
@@ -849,7 +845,7 @@ var Viewport = function () {
             }
         }
     }, {
-        key: 'calcFocalPoint',
+        key: "calcFocalPoint",
         value: function calcFocalPoint() {
             if (this.d !== -1) {
                 var cx = (this.p1.x + this.p4.x) / 2;
@@ -863,7 +859,7 @@ var Viewport = function () {
             }
         }
     }, {
-        key: 'calcBasis1',
+        key: "calcBasis1",
         value: function calcBasis1() {
             var bx = this.p2.x - this.p1.x;
             var by = this.p2.y - this.p1.y;
@@ -876,7 +872,7 @@ var Viewport = function () {
             };
         }
     }, {
-        key: 'calcBasis2',
+        key: "calcBasis2",
         value: function calcBasis2() {
             var bx = this.p3.x - this.p1.x;
             var by = this.p3.y - this.p1.y;
@@ -892,7 +888,7 @@ var Viewport = function () {
         // Basis 
 
     }, {
-        key: 'calcUnitNormal',
+        key: "calcUnitNormal",
         value: function calcUnitNormal() {
             this.unitNormal = {
                 x: this.basis2.y * this.basis1.z - this.basis2.z * this.basis1.y,
@@ -901,7 +897,7 @@ var Viewport = function () {
             };
         }
     }, {
-        key: 'translateAlongBasis',
+        key: "translateAlongBasis",
         value: function translateAlongBasis(scalar1, scalar2, scalar3) {
             this.translate({
                 x: this.basis1.x * scalar1 + this.basis2.x * scalar2 + this.unitNormal.x * scalar3,
@@ -910,7 +906,7 @@ var Viewport = function () {
             });
         }
     }, {
-        key: 'translate',
+        key: "translate",
         value: function translate(a) {
             this.p1 = this.translatePoint(this.p1, a);
             this.p2 = this.translatePoint(this.p2, a);
@@ -922,7 +918,7 @@ var Viewport = function () {
             this.calcFocalPoint();
         }
     }, {
-        key: 'translatePoint',
+        key: "translatePoint",
         value: function translatePoint(p, a) {
             return {
                 x: p.x + a.x,
@@ -931,7 +927,7 @@ var Viewport = function () {
             };
         }
     }, {
-        key: 'rotateByBasis1',
+        key: "rotateByBasis1",
         value: function rotateByBasis1(theta) {
             var mx = void 0,
                 my = void 0,
@@ -958,7 +954,7 @@ var Viewport = function () {
             });
         }
     }, {
-        key: 'rotateByBasis2',
+        key: "rotateByBasis2",
         value: function rotateByBasis2(theta) {
             var mx = void 0,
                 my = void 0,
@@ -985,7 +981,7 @@ var Viewport = function () {
             });
         }
     }, {
-        key: 'rotate',
+        key: "rotate",
         value: function rotate(axis, theta) {
             var mag = Math.sqrt(this.dot(axis, axis));
             var normAxis = {
@@ -1007,7 +1003,7 @@ var Viewport = function () {
         // Axis must be unit, Theta must be radians.
 
     }, {
-        key: 'rotatePoint',
+        key: "rotatePoint",
         value: function rotatePoint(p, ax, rad) {
             var cost = Math.cos(rad);
             var sint = Math.sin(rad);
@@ -1020,7 +1016,7 @@ var Viewport = function () {
             };
         }
     }, {
-        key: 'updatePosition',
+        key: "updatePosition",
         value: function updatePosition() {
             if (this.rates.r1 !== 0) {
                 this.rotateByBasis1(this.rates.r1);
@@ -1033,7 +1029,7 @@ var Viewport = function () {
             }
         }
     }, {
-        key: 'updateRates',
+        key: "updateRates",
         value: function updateRates(rates) {
             this.rates.r1 += rates.r1 || 0;
             this.rates.r2 += rates.r2 || 0;
@@ -1063,7 +1059,7 @@ var MapRenderer = function () {
     }
 
     _createClass(MapRenderer, [{
-        key: 'renderMap',
+        key: "renderMap",
         value: function renderMap() {
             var _this5 = this;
 
@@ -1090,6 +1086,8 @@ var MapRenderer = function () {
             //
             var tiles = this.map.getTilesFlattened();
             var tlen = 100;
+            var visibleFaces = [];
+            var clippedFaces = [];
             for (var i = 0; i < tiles.length; i++) {
                 var tx = tiles[i].getX() * tlen;
                 var ty = tiles[i].getY() * tlen;
@@ -1127,12 +1125,6 @@ var MapRenderer = function () {
                     y: ty + 100,
                     z: 0
                 }];
-                /*const projectedPoints = [];
-                for (let j = 0; j < points.length; j++) {
-                    projectedPoints.push(this.viewport.projectOntoPlane(points[j]));
-                    //console.log(j]);
-                }*/
-
                 var cubeFaces = [{
                     n: {
                         x: 0,
@@ -1142,6 +1134,13 @@ var MapRenderer = function () {
                     points: [vertices[0], vertices[1], vertices[2], vertices[3]]
                 }, {
                     n: {
+                        x: 1,
+                        y: 0,
+                        z: 0
+                    },
+                    points: [vertices[1], vertices[2], vertices[6], vertices[5]]
+                }, {
+                    n: {
                         x: 0,
                         y: 0,
                         z: -1
@@ -1149,11 +1148,11 @@ var MapRenderer = function () {
                     points: [vertices[4], vertices[5], vertices[6], vertices[7]]
                 }, {
                     n: {
-                        x: 1,
-                        y: 0,
+                        x: 0,
+                        y: -1,
                         z: 0
                     },
-                    points: [vertices[1], vertices[2], vertices[6], vertices[5]]
+                    points: [vertices[0], vertices[1], vertices[5], vertices[4]]
                 }, {
                     n: {
                         x: -1,
@@ -1168,52 +1167,83 @@ var MapRenderer = function () {
                         z: 0
                     },
                     points: [vertices[2], vertices[3], vertices[7], vertices[6]]
-                }, {
-                    n: {
-                        x: 0,
-                        y: -1,
-                        z: 0
-                    },
-                    points: [vertices[0], vertices[1], vertices[5], vertices[4]]
                 }];
 
-                var visibleProjectedCubeFaces = [];
+                var clippedFace = {
+                    visiblePoints: []
+                };
                 for (var j = 0; j < cubeFaces.length; j++) {
                     var projectedCubeFace = this.viewport.projectPlane(cubeFaces[j]);
                     if (projectedCubeFace !== null) {
-                        visibleProjectedCubeFaces.push(projectedCubeFace);
-
-                        ctx.strokeStyle = "#000000";
-                        ctx.fillStyle = "#CCCCCC";
-                        ctx.beginPath();
-                        for (var k = 0; k < projectedCubeFace.visiblePoints.length; k++) {
-                            if (k == 0) {
-                                ctx.moveTo(projectedCubeFace.visiblePoints[k].x, projectedCubeFace.visiblePoints[k].y);
-                            }
-                            if (k == projectedCubeFace.visiblePoints.length - 1) {
-                                ctx.lineTo(projectedCubeFace.visiblePoints[0].x, projectedCubeFace.visiblePoints[0].y);
+                        if (projectedCubeFace.visible) {
+                            visibleFaces.push(projectedCubeFace);
+                        }
+                        // Construct clipped face from clippsed points
+                        if (projectedCubeFace.clippedPoints.length == 2) {
+                            if (clippedFace.visiblePoints.length == 0) {
+                                clippedFace.visiblePoints = [].concat(projectedCubeFace.clippedPoints);
                             } else {
-                                ctx.lineTo(projectedCubeFace.visiblePoints[k + 1].x, projectedCubeFace.visiblePoints[k + 1].y);
+                                var c1Match = null;
+                                var c2Match = null;
+                                for (var l = 0; l < clippedFace.visiblePoints.length; l++) {
+                                    if (clippedFace.visiblePoints[l].x == projectedCubeFace.clippedPoints[0].x && clippedFace.visiblePoints[l].y == projectedCubeFace.clippedPoints[0].y && clippedFace.visiblePoints[l].z == projectedCubeFace.clippedPoints[0].z) {
+                                        c1Match = l;
+                                    }
+                                    if (clippedFace.visiblePoints[l].x == projectedCubeFace.clippedPoints[1].x && clippedFace.visiblePoints[l].y == projectedCubeFace.clippedPoints[1].y && clippedFace.visiblePoints[l].z == projectedCubeFace.clippedPoints[1].z) {
+                                        c2Match = l;
+                                    }
+                                }
+                                if (c1Match !== null && c2Match === null) {
+                                    clippedFace.visiblePoints.splice(c1Match, 0, projectedCubeFace.clippedPoints[1]);
+                                }
+                                if (c2Match !== null && c1Match === null) {
+                                    clippedFace.visiblePoints.splice(c2Match + 1, 0, projectedCubeFace.clippedPoints[0]);
+                                }
                             }
                         }
-                        ctx.fill();
-                        ctx.beginPath();
-                        for (var _k = 0; _k < projectedCubeFace.visiblePoints.length; _k++) {
-                            if (_k == 0) {
-                                ctx.moveTo(projectedCubeFace.visiblePoints[_k].x, projectedCubeFace.visiblePoints[_k].y);
-                            }
-                            if (_k == projectedCubeFace.visiblePoints.length - 1) {
-                                ctx.lineTo(projectedCubeFace.visiblePoints[0].x, projectedCubeFace.visiblePoints[0].y);
-                            } else {
-                                ctx.lineTo(projectedCubeFace.visiblePoints[_k + 1].x, projectedCubeFace.visiblePoints[_k + 1].y);
-                            }
-                        }
-                        ctx.stroke();
-                    } else {
-                        //console.log(cubeFaces[j].n);
                     }
                 }
+
+                if (clippedFace.visiblePoints.length > 0) {
+                    clippedFaces.push(clippedFace);
+                }
             }
+
+            var BSP = new _BSPTree.BSPTree(visibleFaces);
+
+            function draw(face) {
+                ctx.strokeStyle = "#000000";
+                ctx.fillStyle = "#CCCCCC";
+                ctx.beginPath();
+                for (var k = 0; k < face.visiblePoints.length; k++) {
+                    if (k == 0) {
+                        ctx.moveTo(face.visiblePoints[k].x, face.visiblePoints[k].y);
+                    }
+                    if (k == face.visiblePoints.length - 1) {
+                        ctx.lineTo(face.visiblePoints[0].x, face.visiblePoints[0].y);
+                    } else {
+                        ctx.lineTo(face.visiblePoints[k + 1].x, face.visiblePoints[k + 1].y);
+                    }
+                }
+                ctx.fill();
+                ctx.beginPath();
+                for (var _k = 0; _k < face.visiblePoints.length; _k++) {
+                    if (_k == 0) {
+                        ctx.moveTo(face.visiblePoints[_k].x, face.visiblePoints[_k].y);
+                    }
+                    if (_k == face.visiblePoints.length - 1) {
+                        ctx.lineTo(face.visiblePoints[0].x, face.visiblePoints[0].y);
+                    } else {
+                        ctx.lineTo(face.visiblePoints[_k + 1].x, face.visiblePoints[_k + 1].y);
+                    }
+                }
+                ctx.stroke();
+            }
+
+            BSP.traverse(draw);
+            clippedFaces.forEach(draw);
+            //visibleFaces = visibleFaces.concat(clippedFaces);
+
 
             //this.renderTiles(tiles, this.viewport);
             //const mapObjects = map.getMapObjects();
@@ -1225,7 +1255,7 @@ var MapRenderer = function () {
             });
         }
     }, {
-        key: 'renderTiles',
+        key: "renderTiles",
         value: function renderTiles(tiles, viewport) {
             var _this6 = this;
 
@@ -1277,7 +1307,7 @@ var MapRenderer = function () {
             });
         }
     }, {
-        key: 'renderMapObjects',
+        key: "renderMapObjects",
         value: function renderMapObjects(mapObjects, viewport) {
             var _this7 = this;
 
@@ -1306,7 +1336,7 @@ var MapRenderer = function () {
                     ctx.strokeRect(sx1 + 15 - viewport.x1, sy1 + 15 - viewport.y1, 70, 70);
                     ctx.fillStyle = "#000000";
                     ctx.font = "48px serif";
-                    ctx.fillText('' + counter, sx1 + 40 - viewport.x1, sy1 + 60 - viewport.y1);
+                    ctx.fillText("" + counter, sx1 + 40 - viewport.x1, sy1 + 60 - viewport.y1);
                     counter += 1;
                     _this7.boundingBoxes.push({
                         obj: mapObject,
@@ -1319,7 +1349,7 @@ var MapRenderer = function () {
             });
         }
     }, {
-        key: 'getClickedObjects',
+        key: "getClickedObjects",
         value: function getClickedObjects(viewport) {
             var clickedObjects = [];
             var mx = viewport.mx;
@@ -1333,7 +1363,7 @@ var MapRenderer = function () {
             return clickedObjects;
         }
     }, {
-        key: 'getCenteredViewport',
+        key: "getCenteredViewport",
         value: function getCenteredViewport(mapObject) {}
     }]);
 
@@ -1362,7 +1392,7 @@ var _createClass = function () { function defineProperties(target, props) { for 
 
 var _Map = __webpack_require__(0);
 
-var _DefaultMap = __webpack_require__(3);
+var _DefaultMap = __webpack_require__(4);
 
 var _DefaultMap2 = _interopRequireDefault(_DefaultMap);
 
@@ -1452,7 +1482,7 @@ exports.default = Game;
 // style-loader: Adds some css to the DOM by adding a <style> tag
 
 // load the styles
-var content = __webpack_require__(8);
+var content = __webpack_require__(9);
 if(typeof content === 'string') content = [[module.i, content, '']];
 // Prepare cssTransformation
 var transform;
@@ -1460,7 +1490,7 @@ var transform;
 var options = {}
 options.transform = transform
 // add the styles to the DOM
-var update = __webpack_require__(9)(content, options);
+var update = __webpack_require__(10)(content, options);
 if(content.locals) module.exports = content.locals;
 // Hot Module Replacement
 if(false) {
@@ -1484,17 +1514,104 @@ if(false) {
 
 
 Object.defineProperty(exports, "__esModule", {
+	value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var BSPTree = function () {
+	function BSPTree(planes) {
+		_classCallCheck(this, BSPTree);
+
+		this.nodes = [];
+		this.frontnodes = null;
+		this.backnodes = null;
+		if (planes.length == 0) {
+			return;
+		}
+
+		var i = 0;
+		for (var j = 0; j < planes.length; j++) {
+			if (planes[j].n.z === 0) {
+				i = j;
+				break;
+			}
+		}
+		if (i === planes.length) {
+			i = 0;
+		}
+
+		this.nodes = [planes[i]];
+
+		var p0 = planes[i].points[0];
+		var n = planes[i].n;
+		var frontnodes = [];
+		var backnodes = [];
+		for (var _j = 0; _j < planes.length; _j++) {
+			if (_j !== i) {
+				var p = planes[_j];
+				var p1 = p.points[0];
+				var p2 = p.points[2];
+				var p1d = (p1.x - p0.x) * n.x + (p1.y - p0.y) * n.y + (p1.z - p0.z) * n.z;
+				var p2d = (p2.x - p0.x) * n.x + (p2.y - p0.y) * n.y + (p2.z - p0.z) * n.z;
+				if (p1d === 0 && p2d === 0) {
+					this.nodes.push(planes[_j]);
+				} else if (p1d <= 0 && p2d <= 0) {
+					backnodes.push(planes[_j]);
+				} else if (p1d >= 0 && p2d >= 0) {
+					frontnodes.push(planes[_j]);
+				}
+			}
+		}
+
+		if (frontnodes.length > 0) {
+			this.frontnodes = new BSPTree(frontnodes);
+		}
+		if (backnodes.length > 0) {
+			this.backnodes = new BSPTree(backnodes);
+		}
+	}
+
+	_createClass(BSPTree, [{
+		key: "traverse",
+		value: function traverse(fn) {
+			if (this.backnodes !== null) {
+				this.backnodes.traverse(fn);
+			}
+			for (var _i = 0; _i < this.nodes.length; _i++) {
+				fn(this.nodes[_i]);
+			}
+			if (this.frontnodes !== null) {
+				this.frontnodes.traverse(fn);
+			}
+		}
+	}]);
+
+	return BSPTree;
+}();
+
+exports.BSPTree = BSPTree;
+
+/***/ }),
+/* 4 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
 var _Map = __webpack_require__(0);
 
-var exampleMapString = "p-2 p-1 p-1 p-1\np-1 e-3 p-1 p-1\np-1 p-1 p-1 e-1\np-2 p-2 p-2 p-1\ne-1 e-2 e-1 p-1\np-1 p-2 e-1 p-1\np-1 p-1 p-1 p-1\n===\nk-0-0-0-20\nk-2-1-0-30";
-
-/*var exampleMapString = 
-`p-2 p-1 p-1 p-1
-p-1 p-1 p-2 p-1
-p-1 p-1 p-2 p-1
+var exampleMapString = "p-2 p-1 p-1 p-1 p-2 p-1 p-1 p-1\np-1 e-3 p-1 p-1 p-1 e-3 p-1 p-1\np-1 p-1 p-1 e-1 p-1 p-1 p-1 e-1\np-2 p-2 p-2 p-1 p-2 p-2 p-2 p-1\ne-1 e-2 e-1 p-1 e-1 e-2 e-1 p-1\np-1 p-2 e-1 p-1 p-1 p-2 e-1 p-1\np-1 p-1 p-1 p-1 p-1 p-1 p-1 p-1\n===\nk-0-0-0-20\nk-2-1-0-30";
+/*
+var exampleMapString = 
+`p-1
+p-3
 ===
 k-0-0-0-20`;*/
 
@@ -1504,7 +1621,7 @@ var defaultMap = serializer.deserialize(exampleMapString);
 exports.default = defaultMap;
 
 /***/ }),
-/* 4 */
+/* 5 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1681,7 +1798,7 @@ exports.EmptyTile = EmptyTile;
 exports.PlainTile = PlainTile;
 
 /***/ }),
-/* 5 */
+/* 6 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1699,7 +1816,7 @@ var g = new _Game2.default(window.innerWidth - 16, window.innerHeight - 16);
 g.start();
 
 /***/ }),
-/* 6 */
+/* 7 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1781,7 +1898,7 @@ function toComment(sourceMap) {
 }
 
 /***/ }),
-/* 7 */
+/* 8 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1876,10 +1993,10 @@ module.exports = function (css) {
 };
 
 /***/ }),
-/* 8 */
+/* 9 */
 /***/ (function(module, exports, __webpack_require__) {
 
-exports = module.exports = __webpack_require__(6)(undefined);
+exports = module.exports = __webpack_require__(7)(undefined);
 // imports
 
 
@@ -1890,7 +2007,7 @@ exports.push([module.i, "canvas {\n\tborder: 1px solid black;\n}", ""]);
 
 
 /***/ }),
-/* 9 */
+/* 10 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /*
@@ -1936,7 +2053,7 @@ var singleton = null;
 var	singletonCounter = 0;
 var	stylesInsertedAtTop = [];
 
-var	fixUrls = __webpack_require__(7);
+var	fixUrls = __webpack_require__(8);
 
 module.exports = function(list, options) {
 	if (typeof DEBUG !== "undefined" && DEBUG) {
