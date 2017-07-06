@@ -749,23 +749,10 @@ var Viewport = function () {
             return p1.x * p2.x + p1.y * p2.y + p1.z * p2.z;
         }
     }, {
-        key: "squaredP5Dist",
-        value: function squaredP5Dist(_ref) {
-            var x = _ref.x,
-                y = _ref.y,
-                z = _ref.z;
-
-            return (x - this.p5.x) * (x - this.p5.x) + (y - this.p5.y) * (y - this.p5.y) + (z - this.p5.z) * (z - this.p5.z);
-        }
-    }, {
         key: "projectPlane",
-        value: function projectPlane(_ref2) {
-            var n = _ref2.n,
-                points = _ref2.points;
-
-            if (this.d === -1 && this.dot(n, this.unitNormal) > 0) {
-                return null;
-            }
+        value: function projectPlane(plane) {
+            var n = plane.n;
+            var points = plane.points;
             var visiblePoints = [];
             var clippedPoints = [];
             var normalCheck = null;
@@ -812,9 +799,6 @@ var Viewport = function () {
                         clippedPoints.push(projected);
                     }
                 }
-            }
-            if (visiblePoints.length === 0) {
-                return null;
             }
             return {
                 n: n,
@@ -1048,46 +1032,19 @@ var MapRenderer = function () {
 
         this.canvas = canvas;
         this.boundingBoxes = [];
-        /*this.viewport = {
-            x1: 0,
-            x2: canvas.width,
-            y1: 0,
-            y2: canvas.height,
-        };*/
         this.map = map;
         this.viewport = viewport;
+
+        this.buildTileFaces();
+        this.buildBSP();
     }
 
     _createClass(MapRenderer, [{
-        key: "renderMap",
-        value: function renderMap() {
-            var _this5 = this;
-
-            var ctx = this.canvas.getContext('2d');
-            ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-            this.boundingBoxes = [];
-
-            /*const drawables = this.map.getDrawables();
-            drawables.forEach((drawable) => {
-                 //Check to see if visible given current viewport
-                th
-                   //If yes, draw and add bounding box
-                 drawable.getBoundingShape();
-                drawable.getBoundingBox();
-                const dx = drawable.getPixelX();
-                const dy = 
-                if (drawable instanceof PlainTile) {
-                 } else if (drawable instanceof Knight) {
-                 }
-            });*/
-
-            this.viewport.updatePosition();
-
-            //
+        key: "buildTileFaces",
+        value: function buildTileFaces() {
+            this.tileFaces = [];
             var tiles = this.map.getTilesFlattened();
             var tlen = 100;
-            var visibleFaces = [];
-            var clippedFaces = [];
             for (var i = 0; i < tiles.length; i++) {
                 var tx = tiles[i].getX() * tlen;
                 var ty = tiles[i].getY() * tlen;
@@ -1168,87 +1125,115 @@ var MapRenderer = function () {
                     },
                     points: [vertices[2], vertices[3], vertices[7], vertices[6]]
                 }];
+                this.tileFaces.push(cubeFaces);
+            }
+        }
+    }, {
+        key: "buildBSP",
+        value: function buildBSP() {
+            var flattened = this.tileFaces.reduce(function (a, b) {
+                return a.concat(b);
+            }, []);
+            this.bsp = new _BSPTree.BSPTree(flattened);
+        }
+    }, {
+        key: "drawFace",
+        value: function drawFace(face) {
+            var ctx = this.canvas.getContext('2d');
+            ctx.strokeStyle = "#000000";
+            ctx.fillStyle = "#CCCCCC";
+            ctx.beginPath();
+            for (var k = 0; k < face.visiblePoints.length; k++) {
+                if (k == 0) {
+                    ctx.moveTo(face.visiblePoints[k].x, face.visiblePoints[k].y);
+                }
+                if (k == face.visiblePoints.length - 1) {
+                    ctx.lineTo(face.visiblePoints[0].x, face.visiblePoints[0].y);
+                } else {
+                    ctx.lineTo(face.visiblePoints[k + 1].x, face.visiblePoints[k + 1].y);
+                }
+            }
+            ctx.fill();
+            ctx.beginPath();
+            for (var _k = 0; _k < face.visiblePoints.length; _k++) {
+                if (_k == 0) {
+                    ctx.moveTo(face.visiblePoints[_k].x, face.visiblePoints[_k].y);
+                }
+                if (_k == face.visiblePoints.length - 1) {
+                    ctx.lineTo(face.visiblePoints[0].x, face.visiblePoints[0].y);
+                } else {
+                    ctx.lineTo(face.visiblePoints[_k + 1].x, face.visiblePoints[_k + 1].y);
+                }
+            }
+            ctx.stroke();
+        }
+    }, {
+        key: "renderMap",
+        value: function renderMap() {
+            var _this5 = this;
 
-                var clippedFace = {
-                    visiblePoints: []
-                };
-                for (var j = 0; j < cubeFaces.length; j++) {
-                    var projectedCubeFace = this.viewport.projectPlane(cubeFaces[j]);
-                    if (projectedCubeFace !== null) {
-                        if (projectedCubeFace.visible) {
-                            visibleFaces.push(projectedCubeFace);
-                        }
-                        // Construct clipped face from clippsed points
-                        if (projectedCubeFace.clippedPoints.length == 2) {
-                            if (clippedFace.visiblePoints.length == 0) {
-                                clippedFace.visiblePoints = [].concat(projectedCubeFace.clippedPoints);
-                            } else {
-                                var c1Match = null;
-                                var c2Match = null;
-                                for (var l = 0; l < clippedFace.visiblePoints.length; l++) {
-                                    if (clippedFace.visiblePoints[l].x == projectedCubeFace.clippedPoints[0].x && clippedFace.visiblePoints[l].y == projectedCubeFace.clippedPoints[0].y && clippedFace.visiblePoints[l].z == projectedCubeFace.clippedPoints[0].z) {
-                                        c1Match = l;
-                                    }
-                                    if (clippedFace.visiblePoints[l].x == projectedCubeFace.clippedPoints[1].x && clippedFace.visiblePoints[l].y == projectedCubeFace.clippedPoints[1].y && clippedFace.visiblePoints[l].z == projectedCubeFace.clippedPoints[1].z) {
-                                        c2Match = l;
-                                    }
+            var ctx = this.canvas.getContext('2d');
+            ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            this.boundingBoxes = [];
+
+            this.viewport.updatePosition();
+
+            this.bsp.traverse(function (face) {
+                var projected = _this5.viewport.projectPlane(face);
+                face.visible = projected.visible;
+                face.clippedPoints = projected.clippedPoints;
+                face.visiblePoints = projected.visiblePoints;
+                if (face.visible) {
+                    _this5.drawFace(face);
+                }
+            }, this.viewport.p5);
+
+            /*const clippedFace = {
+                visiblePoints: [],
+            }
+            for (let j = 0; j < cubeFaces.length; j++) {
+                let projectedCubeFace = this.viewport.projectPlane(cubeFaces[j]);
+                if (projectedCubeFace !== null) {
+                    if (projectedCubeFace.visible) {
+                        visibleFaces.push(projectedCubeFace);
+                    }
+                    // Construct clipped face from clippsed points
+                    if (projectedCubeFace.clippedPoints.length == 2) {
+                        if (clippedFace.visiblePoints.length == 0) {
+                            clippedFace.visiblePoints = [].concat(projectedCubeFace.clippedPoints);
+                        } else {
+                            let c1Match = null;
+                            let c2Match = null;
+                            for (let l = 0; l < clippedFace.visiblePoints.length; l++) {
+                                if (clippedFace.visiblePoints[l].x == projectedCubeFace.clippedPoints[0].x &&
+                                    clippedFace.visiblePoints[l].y == projectedCubeFace.clippedPoints[0].y &&
+                                    clippedFace.visiblePoints[l].z == projectedCubeFace.clippedPoints[0].z) {
+                                    c1Match = l;
                                 }
-                                if (c1Match !== null && c2Match === null) {
-                                    clippedFace.visiblePoints.splice(c1Match, 0, projectedCubeFace.clippedPoints[1]);
+                                if (clippedFace.visiblePoints[l].x == projectedCubeFace.clippedPoints[1].x &&
+                                    clippedFace.visiblePoints[l].y == projectedCubeFace.clippedPoints[1].y &&
+                                    clippedFace.visiblePoints[l].z == projectedCubeFace.clippedPoints[1].z) {
+                                    c2Match = l;
                                 }
-                                if (c2Match !== null && c1Match === null) {
-                                    clippedFace.visiblePoints.splice(c2Match + 1, 0, projectedCubeFace.clippedPoints[0]);
-                                }
+                            }
+                            if (c1Match !== null && c2Match === null) {
+                                clippedFace.visiblePoints.splice(c1Match, 0, projectedCubeFace.clippedPoints[1]);
+                            }
+                            if (c2Match !== null && c1Match === null) {
+                                clippedFace.visiblePoints.splice(c2Match + 1, 0, projectedCubeFace.clippedPoints[0]);
                             }
                         }
                     }
                 }
-
-                if (clippedFace.visiblePoints.length > 0) {
-                    clippedFaces.push(clippedFace);
-                }
             }
-
-            var BSP = new _BSPTree.BSPTree(visibleFaces);
-
-            function draw(face) {
-                ctx.strokeStyle = "#000000";
-                ctx.fillStyle = "#CCCCCC";
-                ctx.beginPath();
-                for (var k = 0; k < face.visiblePoints.length; k++) {
-                    if (k == 0) {
-                        ctx.moveTo(face.visiblePoints[k].x, face.visiblePoints[k].y);
-                    }
-                    if (k == face.visiblePoints.length - 1) {
-                        ctx.lineTo(face.visiblePoints[0].x, face.visiblePoints[0].y);
-                    } else {
-                        ctx.lineTo(face.visiblePoints[k + 1].x, face.visiblePoints[k + 1].y);
-                    }
-                }
-                ctx.fill();
-                ctx.beginPath();
-                for (var _k = 0; _k < face.visiblePoints.length; _k++) {
-                    if (_k == 0) {
-                        ctx.moveTo(face.visiblePoints[_k].x, face.visiblePoints[_k].y);
-                    }
-                    if (_k == face.visiblePoints.length - 1) {
-                        ctx.lineTo(face.visiblePoints[0].x, face.visiblePoints[0].y);
-                    } else {
-                        ctx.lineTo(face.visiblePoints[_k + 1].x, face.visiblePoints[_k + 1].y);
-                    }
-                }
-                ctx.stroke();
+             if (clippedFace.visiblePoints.length > 0) {
+                clippedFaces.push(clippedFace);
             }
+            }
+            const BSP = new BSPTree(visibleFaces);*/
 
-            BSP.traverse(draw);
-            clippedFaces.forEach(draw);
-            //visibleFaces = visibleFaces.concat(clippedFaces);
-
-
-            //this.renderTiles(tiles, this.viewport);
-            //const mapObjects = map.getMapObjects();
-            //this.renderMapObjects(mapObjects, this.viewport);
-
+            //BSP.traverse(draw);
+            //clippedFaces.forEach(draw);
 
             window.requestAnimationFrame(function (step) {
                 _this5.renderMap();
@@ -1557,7 +1542,11 @@ var BSPTree = function () {
 				var p1d = (p1.x - p0.x) * n.x + (p1.y - p0.y) * n.y + (p1.z - p0.z) * n.z;
 				var p2d = (p2.x - p0.x) * n.x + (p2.y - p0.y) * n.y + (p2.z - p0.z) * n.z;
 				if (p1d === 0 && p2d === 0) {
-					this.nodes.push(planes[_j]);
+					if (n.x == p.n.x && n.y == p.n.y && n.z == p.n.z) {
+						this.nodes.push(planes[_j]);
+					} else {
+						backnodes.push(planes[_j]);
+					}
 				} else if (p1d <= 0 && p2d <= 0) {
 					backnodes.push(planes[_j]);
 				} else if (p1d >= 0 && p2d >= 0) {
@@ -1576,15 +1565,32 @@ var BSPTree = function () {
 
 	_createClass(BSPTree, [{
 		key: "traverse",
-		value: function traverse(fn) {
-			if (this.backnodes !== null) {
-				this.backnodes.traverse(fn);
-			}
-			for (var _i = 0; _i < this.nodes.length; _i++) {
-				fn(this.nodes[_i]);
-			}
-			if (this.frontnodes !== null) {
-				this.frontnodes.traverse(fn);
+		value: function traverse(fn, v) {
+			if (this.nodes.length > 0) {
+				var _n = this.nodes[0].n;
+				var p = this.nodes[0].points[0];
+				var ndir = (p.x - v.x) * _n.x + (p.y - v.y) * _n.y + (p.z - v.z) * _n.z;
+				if (ndir <= 0) {
+					if (this.backnodes !== null) {
+						this.backnodes.traverse(fn, v);
+					}
+					for (var _i = 0; _i < this.nodes.length; _i++) {
+						fn(this.nodes[_i]);
+					}
+					if (this.frontnodes !== null) {
+						this.frontnodes.traverse(fn, v);
+					}
+				} else {
+					if (this.frontnodes !== null) {
+						this.frontnodes.traverse(fn, v);
+					}
+					for (var _i2 = 0; _i2 < this.nodes.length; _i2++) {
+						fn(this.nodes[_i2]);
+					}
+					if (this.backnodes !== null) {
+						this.backnodes.traverse(fn, v);
+					}
+				}
 			}
 		}
 	}]);

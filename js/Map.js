@@ -560,14 +560,9 @@ class Viewport {
         return p1.x * p2.x + p1.y * p2.y + p1.z * p2.z;
     }
 
-    squaredP5Dist({x, y, z}) {
-        return (x - this.p5.x) * (x - this.p5.x) + (y - this.p5.y) * (y - this.p5.y) + (z - this.p5.z) * (z - this.p5.z);
-    }
-
-    projectPlane({n, points}) {
-        if (this.d === -1 && this.dot(n, this.unitNormal) > 0) {
-            return null;
-        }
+    projectPlane(plane) {
+        const n = plane.n;
+        const points = plane.points;
         const visiblePoints = [];
         const clippedPoints = [];
         let normalCheck = null;
@@ -610,9 +605,6 @@ class Viewport {
                     clippedPoints.push(projected);
                 }
             }
-        }
-        if (visiblePoints.length === 0) {
-            return null;
         }
         return {
             n: n,
@@ -822,20 +814,15 @@ class MapRenderer {
         this.boundingBoxes = [];
         this.map = map;
         this.viewport = viewport;
+
+        this.buildTileFaces();
+        this.buildBSP();
     }
 
-    
-    renderMap() {
-        const ctx = this.canvas.getContext('2d');
-        ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        this.boundingBoxes = [];
-
-        this.viewport.updatePosition();
-
+    buildTileFaces() {
+        this.tileFaces = [];
         const tiles = this.map.getTilesFlattened();
         const tlen = 100;
-        let visibleFaces = [];
-        const clippedFaces = [];
         for (let i = 0; i < tiles.length; i++) {
             const tx = tiles[i].getX() * tlen;
             const ty = tiles[i].getY() * tlen;
@@ -953,8 +940,66 @@ class MapRenderer {
                     ],
                 },
             ];
+            this.tileFaces.push(cubeFaces);
+        }
+    }
 
-            const clippedFace = {
+    buildBSP() {
+        const flattened = this.tileFaces.reduce(function(a, b) {
+            return a.concat(b);
+        }, []);
+        this.bsp = new BSPTree(flattened);
+    }
+
+    drawFace(face) {
+        const ctx = this.canvas.getContext('2d');
+        ctx.strokeStyle = "#000000";
+        ctx.fillStyle = "#CCCCCC";
+        ctx.beginPath();
+        for (let k = 0; k < face.visiblePoints.length; k++) {
+            if (k == 0) {
+                ctx.moveTo(face.visiblePoints[k].x, face.visiblePoints[k].y);
+            }
+            if (k == face.visiblePoints.length - 1) {
+                ctx.lineTo(face.visiblePoints[0].x, face.visiblePoints[0].y);
+            } else {
+                ctx.lineTo(face.visiblePoints[k + 1].x, face.visiblePoints[k + 1].y);
+            }
+        }
+        ctx.fill();
+        ctx.beginPath();
+        for (let k = 0; k < face.visiblePoints.length; k++) {
+            if (k == 0) {
+                ctx.moveTo(face.visiblePoints[k].x, face.visiblePoints[k].y);
+            }
+            if (k == face.visiblePoints.length - 1) {
+                ctx.lineTo(face.visiblePoints[0].x, face.visiblePoints[0].y);
+            } else {
+                ctx.lineTo(face.visiblePoints[k + 1].x, face.visiblePoints[k + 1].y);
+            }
+        }
+        ctx.stroke();
+    }
+
+    
+    renderMap() {
+        const ctx = this.canvas.getContext('2d');
+        ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.boundingBoxes = [];
+
+        this.viewport.updatePosition();
+
+        this.bsp.traverse((face) => {
+            const projected = this.viewport.projectPlane(face);
+            face.visible = projected.visible;
+            face.clippedPoints = projected.clippedPoints;
+            face.visiblePoints = projected.visiblePoints;
+            if (face.visible) {
+                this.drawFace(face)
+            }
+        }, this.viewport.p5);
+
+            /*const clippedFace = {
                 visiblePoints: [],
             }
             for (let j = 0; j < cubeFaces.length; j++) {
@@ -998,40 +1043,12 @@ class MapRenderer {
             }
         }
 
-        const BSP = new BSPTree(visibleFaces);
+        const BSP = new BSPTree(visibleFaces);*/
 
 
-        function draw(face) {
-            ctx.strokeStyle = "#000000";
-            ctx.fillStyle = "#CCCCCC";
-            ctx.beginPath();
-            for (let k = 0; k < face.visiblePoints.length; k++) {
-                if (k == 0) {
-                    ctx.moveTo(face.visiblePoints[k].x, face.visiblePoints[k].y);
-                }
-                if (k == face.visiblePoints.length - 1) {
-                    ctx.lineTo(face.visiblePoints[0].x, face.visiblePoints[0].y);
-                } else {
-                    ctx.lineTo(face.visiblePoints[k + 1].x, face.visiblePoints[k + 1].y);
-                }
-            }
-            ctx.fill();
-            ctx.beginPath();
-            for (let k = 0; k < face.visiblePoints.length; k++) {
-                if (k == 0) {
-                    ctx.moveTo(face.visiblePoints[k].x, face.visiblePoints[k].y);
-                }
-                if (k == face.visiblePoints.length - 1) {
-                    ctx.lineTo(face.visiblePoints[0].x, face.visiblePoints[0].y);
-                } else {
-                    ctx.lineTo(face.visiblePoints[k + 1].x, face.visiblePoints[k + 1].y);
-                }
-            }
-            ctx.stroke();
-        }
 
-        BSP.traverse(draw);
-        clippedFaces.forEach(draw);
+        //BSP.traverse(draw);
+        //clippedFaces.forEach(draw);
 
         window.requestAnimationFrame((step) => {
             this.renderMap();

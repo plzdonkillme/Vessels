@@ -33,7 +33,11 @@ class BSPTree {
 				let p1d = (p1.x - p0.x) * n.x + (p1.y - p0.y) * n.y + (p1.z - p0.z) * n.z;
 				let p2d = (p2.x - p0.x) * n.x + (p2.y - p0.y) * n.y + (p2.z - p0.z) * n.z;
 				if (p1d === 0 && p2d === 0) {
-					this.nodes.push(planes[j]);
+					if (n.x == p.n.x && n.y == p.n.y && n.z == p.n.z) {
+						this.nodes.push(planes[j]);
+					} else {
+						backnodes.push(planes[j]);
+					}
 				} else if (p1d <= 0 && p2d <= 0) {
 					backnodes.push(planes[j]);
 				} else if (p1d >= 0 && p2d >= 0) {
@@ -50,15 +54,33 @@ class BSPTree {
 		}
 	}
 
-	traverse(fn) {
-		if (this.backnodes !== null) {
-			this.backnodes.traverse(fn);
-		}
-		for (let i = 0; i < this.nodes.length; i++) {
-			fn(this.nodes[i]);
-		}
-		if (this.frontnodes !== null) {
-			this.frontnodes.traverse(fn);
+	traverse(fn, v) {
+		if (this.nodes.length > 0) {
+			const n = this.nodes[0].n;
+			const p = this.nodes[0].points[0];
+			const ndir = (p.x - v.x) * n.x + (p.y - v.y) * n.y + (p.z - v.z) * n.z;
+			if (ndir <= 0) {
+				if (this.backnodes !== null) {
+					this.backnodes.traverse(fn, v);
+				}
+				for (let i = 0; i < this.nodes.length; i++) {
+					fn(this.nodes[i]);
+				}
+				if (this.frontnodes !== null) {
+					this.frontnodes.traverse(fn, v);
+				}
+			} else {
+				if (this.frontnodes !== null) {
+					this.frontnodes.traverse(fn, v);
+				}
+				for (let i = 0; i < this.nodes.length; i++) {
+					fn(this.nodes[i]);
+				}
+				if (this.backnodes !== null) {
+					this.backnodes.traverse(fn, v);
+				}
+				
+			}
 		}
 	}
 }
