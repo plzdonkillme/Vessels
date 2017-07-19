@@ -1,5 +1,9 @@
 import { Tile, PlainTile, EmptyTile } from "./Tile";
 import { BSPTree } from "./BSPTree";
+import { MapSerializer } from "./MapSerializer";
+import { Viewport } from "./Viewport";
+import { Point } from "./Vector";
+import { TileRenderObject } from "./TileRenderObject";
 
 class Map {
 
@@ -99,91 +103,6 @@ class Map {
         }
         this.turnActor = this.turnQueue[this.turnQueue.length - 1][0];
         return this.turnActor;
-    }
-}
-
-class MapSerializer {
-    constructor() {
-        this.classNameToString = {
-            'Plain' : 'p',
-            'Empty' : 'e',
-            'Knight' : 'k',
-        }
-        this.stringToClass = {
-            'p': PlainTile,
-            'e': EmptyTile,
-            'k': Knight,
-        }
-    }
-
-    serialize(map) {
-        let mapString = '';
-        const tiles = map.getTiles();
-        for (let i = 0; i < tiles.length; i++) {
-            const tileRow = tiles[i];
-            for (let j = 0; j < tileRow.length; j++) {
-                const tile = tileRow[j];
-                const tileString = `${this.classNameToString[tile.getClassName()]}-${tile.getH()}`;
-                mapString += tileString;
-                if (j !== tileRow.length - 1) {
-                    mapString += ' ';
-                }
-            }
-            mapString += '\n';
-        }
-        mapString += '===\n';
-        const mapObjects = map.getMapObjects();
-        for (let i = 0; i < mapObjects.length; i++) {
-            const mapObject = mapObjects[i];
-            const mapObjectString = `${this.classNameToString[mapObject.getClassName()]}-${mapObject.serialize()}`;
-            mapString += mapObjectString;
-            if (i !== mapObjects.length - 1) {
-                mapString += '\n';
-            }
-        }
-        return mapString;
-    }
-
-    deserialize(mapString) {
-        const splitString = mapString.split('\n===\n');
-        const tileArrayString = splitString[0];
-        const mapObjectArrayString = splitString[1];
-        const tiles = [];
-        const tileRowStrings = tileArrayString.split('\n');
-        for (let y = 0; y < tileRowStrings.length; y++) {
-            const tileRow = [];
-            const tileStrings = tileRowStrings[y].split(' ');
-            for (let x = 0; x < tileStrings.length; x++) {
-                const props = tileStrings[x].split('-');
-                const tileClass = this.stringToClass[props[0]];
-                const tile = new tileClass(x, y, props[1]);
-
-                if (x > 0) {
-                    tile.link('left', tileRow[x - 1]);
-                    tileRow[x - 1].link('right', tile);
-                }
-                if (y > 0) {
-                    tile.link('top', tiles[y - 1][x]);
-                    tiles[y - 1][x].link('down', tile);
-                }
-                tileRow.push(tile);
-            }
-            tiles.push(tileRow);
-        }
-        const mapObjects = [];
-        const mapObjectStrings = mapObjectArrayString.split('\n');
-        for (let i = 0; i < mapObjectStrings.length; i++) {
-            const props = mapObjectStrings[i].split('-');
-            const classString = props[0];
-            const attrString = props.slice(1, props.length).join('-');
-            const mapObjectClass = this.stringToClass[props[0]];
-            const mapObject = mapObjectClass.deserialize(attrString);
-            mapObjects.push(mapObject);
-        }
-        for (let i = 0; i < mapObjects.length; i++) {
-            mapObjects[i].setReferences(tiles, mapObjects);
-        }
-        return new Map(tiles, mapObjects);
     }
 }
 
@@ -348,23 +267,13 @@ class MapScreen {
     constructor(canvas, map) {
         this.canvas = canvas;
         this.map = map;
-        this.viewport = new Viewport({
-            x: 0,
-            y: 0,
-            z: 500,
-        }, {
-            x: this.canvas.width,
-            y: 0,
-            z: 500,
-        }, {
-            x: 0,
-            y: this.canvas.height,
-            z: 500,
-        }, {
-            x: this.canvas.width,
-            y: this.canvas.height,
-            z: 500,
-        }, 500);
+        this.viewport = new Viewport(
+            new Point(0, 0, 500),
+            new Point(this.canvas.width, 0, 500),
+            new Point(0, this.canvas.height, 500),
+            new Point(this.canvas.width, this.canvas.height, 500),
+            500
+        );
         this.startDragX = null;
         this.startDragY = null;
         this.pressed = {};
@@ -398,8 +307,8 @@ class MapScreen {
     }
 
     handleMouseDown(x, y) {
-        this.startDragX = x;
-        this.startDragY = y;
+        //this.startDragX = x;
+        //this.startDragY = y;
     }
 
     handleMouseMove(x, y) {
@@ -415,8 +324,8 @@ class MapScreen {
     }
 
     handleMouseUp(x, y) {
-        this.startDragX = null;
-        this.startDragY = null;
+        //this.startDragX = null;
+        //this.startDragY = null;
     }
 
     handleClick(x, y) {
@@ -430,10 +339,9 @@ class MapScreen {
     }
 
     handleMouseLeave() {
-        this.viewport.mx = null;
-        this.viewport.my = null;
-        this.startDragX = null;
-        this.startDragY = null;
+        this.viewport.setMouse(null, null);
+        //this.startDragX = null;
+        //this.startDragY = null;
         //this.mapRenderer.renderMap(this.map, this.viewport);
     }
 
@@ -518,329 +426,6 @@ class MapScreen {
     }
 }
 
-class Viewport {
-
-    /*
-        p1 (origin)       p2
-        --------------------
-        |                  |
-        |                  |
-        |                  |
-        --------------------
-        p3                p4
-     */
-    constructor(p1, p2, p3 ,p4, d=-1) {
-        this.p1 = p1;
-        this.p2 = p2;
-        this.p3 = p3;
-        this.p4 = p4;
-        this.d = d;
-        this.p5 = null;
-        this.calcBasis1();
-        this.calcBasis2();
-        this.calcUnitNormal();
-        this.calcFocalPoint();
-        const wx = p2.x - p1.x;
-        const wy = p2.y - p1.y;
-        const wz = p2.z - p2.z;
-        this.width = Math.sqrt(wx * wx + wy * wy + wz * wz);
-        const hx = p3.x - p1.x;
-        const hy = p3.y - p1.y;
-        const hz = p3.z - p1.z;
-        this.height = Math.sqrt(hx * hx + hy * hy + hz * hz);
-        this.rates = {
-            r1: 0,
-            r2: 0,
-            t1: 0,
-            t2: 0,
-            t3: 0,
-        };
-        this.mx = null;
-        this.my = null;
-    }
-
-    dot(p1, p2) {
-        return p1.x * p2.x + p1.y * p2.y + p1.z * p2.z;
-    }
-
-    projectPlane(plane) {
-        const n = plane.n;
-        const points = plane.points;
-        const visiblePoints = [];
-        const clippedPoints = [];
-        let normalCheck = null;
-        let pz, lpz, rpz, midpoint, projected;
-        for (let i = 0; i < points.length; i++) {
-            pz = this.dot(points[i], this.unitNormal) - this.dot(this.p1, this.unitNormal);
-            if (pz >= 0) {
-                if (normalCheck === null) {
-                    normalCheck = this.dot({
-                        x: points[i].x - this.p5.x,
-                        y: points[i].y - this.p5.y,
-                        z: points[i].z - this.p5.z,
-                    }, n);
-                }
-                projected = this.projectPoint(points[i]);
-                visiblePoints.push(projected);
-            } else {
-                let li = i == 0 ? points.length - 1 : i - 1;
-                lpz = this.dot(points[li], this.unitNormal) - this.dot(this.p1, this.unitNormal);
-                if (lpz > 0) {
-                    midpoint = {
-                        x: lpz / (lpz - pz) * points[i].x - pz / (lpz - pz) * points[li].x,
-                        y: lpz / (lpz - pz) * points[i].y - pz / (lpz - pz) * points[li].y,
-                        z: lpz / (lpz - pz) * points[i].z - pz / (lpz - pz) * points[li].z,
-                    };
-                    projected = this.projectPoint(midpoint);
-                    visiblePoints.push(projected);
-                    clippedPoints.push(projected);
-                }
-                let ri = i == points.length - 1 ? 0 : i + 1;
-                rpz = this.dot(points[ri], this.unitNormal) - this.dot(this.p1, this.unitNormal);
-                if (rpz > 0) {
-                    midpoint = {
-                        x: rpz / (rpz - pz) * points[i].x - pz / (rpz - pz) * points[ri].x,
-                        y: rpz / (rpz - pz) * points[i].y - pz / (rpz - pz) * points[ri].y,
-                        z: rpz / (rpz - pz) * points[i].z - pz / (rpz - pz) * points[ri].z,
-                    };
-                    projected = this.projectPoint(midpoint);
-                    visiblePoints.push(projected);
-                    clippedPoints.push(projected);
-                }
-            }
-        }
-        return {
-            n: n,
-            points: points,
-            visiblePoints: visiblePoints,
-            clippedPoints: clippedPoints,
-            visible: normalCheck !== null && normalCheck <= 0,
-        };
-    }
-
-    projectPoint(point) {
-        if (this.d == -1) {
-            return {
-                x: this.dot(point, this.basis1) - this.dot(this.p1, this.basis1),
-                y: this.dot(point, this.basis2) - this.dot(this.p1, this.basis2),
-                z: this.dot(point, this.unitNormal) - this.dot(this.p1, this.unitNormal),
-            };
-        } else {
-            const px = this.dot(point, this.basis1) - this.dot(this.p1, this.basis1);
-            const py = this.dot(point, this.basis2) - this.dot(this.p1, this.basis2);
-            const pz = this.dot(point, this.unitNormal) - this.dot(this.p1, this.unitNormal);
-            return {
-                x: (this.width / 2 - px) / (1 + this.d / pz) + px,
-                y: (this.height / 2 - py) / (1 + this.d / pz) + py,
-                z: pz,
-            };
-        }
-    }
-
-    calcFocalPoint() {
-        if (this.d !== -1) {
-            const cx = (this.p1.x + this.p4.x) / 2;
-            const cy = (this.p1.y + this.p4.y) / 2;
-            const cz = (this.p1.z + this.p4.z) / 2;
-            this.p5 = {
-                x: cx - this.d * this.unitNormal.x,
-                y: cy - this.d * this.unitNormal.y,
-                z: cz - this.d * this.unitNormal.z,
-            };
-        }
-    }
-
-    calcBasis1() {
-        const bx = this.p2.x - this.p1.x;
-        const by = this.p2.y - this.p1.y;
-        const bz = this.p2.z - this.p1.z;
-        const mag = Math.sqrt(bx * bx + by * by + bz * bz);
-        this.basis1 = {
-            x: bx / mag,
-            y: by / mag,
-            z: bz / mag,
-        };
-    }
-
-    calcBasis2() {
-        const bx = this.p3.x - this.p1.x;
-        const by = this.p3.y - this.p1.y;
-        const bz = this.p3.z - this.p1.z;
-        const mag = Math.sqrt(bx * bx + by * by + bz * bz);
-        this.basis2 = {
-            x: bx / mag,
-            y: by / mag,
-            z: bz / mag,
-        };
-    }
-
-    // Basis 
-    calcUnitNormal() {
-        this.unitNormal = {
-            x: this.basis2.y * this.basis1.z - this.basis2.z * this.basis1.y,
-            y: this.basis2.z * this.basis1.x - this.basis2.x * this.basis1.z,
-            z: this.basis2.x * this.basis1.y - this.basis2.y * this.basis1.x,
-        };
-    };
-
-    translateAlongBasis(scalar1, scalar2, scalar3) {
-        this.translate({
-            x: this.basis1.x * scalar1 + this.basis2.x * scalar2 + this.unitNormal.x * scalar3,
-            y: this.basis1.y * scalar1 + this.basis2.y * scalar2 + this.unitNormal.y * scalar3,
-            z: this.basis1.z * scalar1 + this.basis2.z * scalar2 + this.unitNormal.z * scalar3,
-        });
-    }
-
-    translate(a) {
-        this.p1 = this.translatePoint(this.p1, a);
-        this.p2 = this.translatePoint(this.p2, a);
-        this.p3 = this.translatePoint(this.p3, a);
-        this.p4 = this.translatePoint(this.p4, a);
-        this.calcBasis1();
-        this.calcBasis2();
-        this.calcUnitNormal();
-        this.calcFocalPoint();
-    }
-
-    translatePoint(p, a) {
-        return {
-            x: p.x + a.x,
-            y: p.y + a.y,
-            z: p.z + a.z,
-        };
-    }
-
-    rotateByBasis1(theta) {
-        let mx, my, mz;
-        if (this.d !== -1) {
-            mx = this.p5.x;
-            my = this.p5.y;
-            mz = this.p5.z;
-        } else {
-            mx = (this.p1.x + this.p4.x) / 2;
-            my = (this.p1.y + this.p4.y) / 2;
-            mz = (this.p1.z + this.p4.z) / 2;
-        }
-        this.translate({
-            x: -mx,
-            y: -my,
-            z: -mz,
-        });
-        this.rotate(this.basis1, theta);
-        this.translate({
-            x: mx,
-            y: my,
-            z: mz,
-        });
-    }
-
-    rotateByBasis2(theta) {
-        let mx, my, mz;
-        if (this.d !== -1) {
-            mx = this.p5.x;
-            my = this.p5.y;
-            mz = this.p5.z;
-        } else {
-            mx = (this.p1.x + this.p4.x) / 2;
-            my = (this.p1.y + this.p4.y) / 2;
-            mz = (this.p1.z + this.p4.z) / 2;
-        }
-        this.translate({
-            x: -mx,
-            y: -my,
-            z: -mz,
-        });
-        this.rotate(this.basis2, theta);
-        this.translate({
-            x: mx,
-            y: my,
-            z: mz,
-        });
-    }
-
-    rotate(axis, theta) {
-        const mag = Math.sqrt(this.dot(axis, axis));
-        const normAxis = {
-            x: axis.x / mag,
-            y: axis.y / mag,
-            z: axis.z / mag,
-        };
-        const rad = theta / 360 * Math.PI;
-        this.p1 = this.rotatePoint(this.p1, normAxis, rad);
-        this.p2 = this.rotatePoint(this.p2, normAxis, rad);
-        this.p3 = this.rotatePoint(this.p3, normAxis, rad);
-        this.p4 = this.rotatePoint(this.p4, normAxis, rad);
-        this.calcBasis1();
-        this.calcBasis2();
-        this.calcUnitNormal();
-        this.calcFocalPoint();
-    }
-
-    // Axis must be unit, Theta must be radians.
-    rotatePoint(p, ax, rad) {
-        const cost = Math.cos(rad);
-        const sint = Math.sin(rad);
-        const mcost = 1 - cost;
-        const dot = this.dot(ax, p);
-        return {
-            x: p.x * cost + (ax.y * p.z - ax.z * p.y) * sint + ax.x * dot * mcost,
-            y: p.y * cost + (ax.z * p.x - ax.x * p.z) * sint + ax.y * dot * mcost,
-            z: p.z * cost + (ax.x * p.y - ax.y * p.x) * sint + ax.z * dot * mcost,
-        };
-    }
-
-    updatePosition() {
-        if (this.rates.r1 !== 0) {
-            this.rotateByBasis1(this.rates.r1);
-        }
-        if (this.rates.r2 !== 0) {
-            this.rotateByBasis2(this.rates.r2);
-        }
-        if (this.rates.t1 || this.rates.t2 || this.rates.t3) {
-            this.translateAlongBasis(this.rates.t1, this.rates.t2, this.rates.t3);
-        }
-    }
-
-    updateRates(rates) {
-        this.rates.r1 += (rates.r1 || 0);
-        this.rates.r2 += (rates.r2 || 0);
-        this.rates.t1 += (rates.t1 || 0);
-        this.rates.t2 += (rates.t2 || 0);
-        this.rates.t3 += (rates.t3 || 0);
-    }
-
-    setMouse(x, y) {
-        this.mx = x;
-        this.my = y;
-    }
-
-    mouseInside(face) {
-        if (this.mx === null && this.my === null) {
-            return false;
-        }
-        let zPos = null;
-        for (let i = 0; i < face.visiblePoints.length; i++) {
-            const p = face.visiblePoints[i];
-            const np = i === face.visiblePoints.length - 1 ? face.visiblePoints[0] : face.visiblePoints[i + 1];
-            const v1 = {
-                x: np.x - p.x,
-                y: np.y - p.y,
-            };
-            const v2 = {
-                x: this.mx - p.x,
-                y: this.my - p.y,
-            };
-            const cross = (v1.x * v2.y) - (v1.y * v2.x);
-            if (zPos === null) {
-                zPos = cross > 0;
-            } else if ((cross > 0) !== zPos) {
-                return false;
-            }
-        }
-        return true;
-    }
-}
-
 class MapRenderer {
 
     constructor(canvas, map, viewport) {
@@ -849,184 +434,16 @@ class MapRenderer {
         this.map = map;
         this.viewport = viewport;
 
-        this.buildTileFaces();
+        this.tileRenderObjects = this.map.getTilesFlattened().map(tile => new TileRenderObject(tile));
         this.buildBSP();
     }
 
-    buildTileFaces() {
-        this.renderTiles = [];
-        const tiles = this.map.getTilesFlattened();
-        const tlen = 100;
-        for (let i = 0; i < tiles.length; i++) {
-            const renderTile = {
-                tile: tiles[i],
-            }
-            const tx = tiles[i].getX() * tlen;
-            const ty = tiles[i].getY() * tlen;
-            const tz = tiles[i].getH() * tlen;
-            const vertices = [{
-                x: tx,
-                y: ty,
-                z: tz,
-            }, {
-                x: tx + 100,
-                y: ty,
-                z: tz,
-            }, {
-                x: tx + 100,
-                y: ty + 100,
-                z: tz,
-            }, {
-                x: tx,
-                y: ty + 100,
-                z: tz,
-            }, {
-                x: tx,
-                y: ty,
-                z: 0,
-            }, {
-                x: tx + 100,
-                y: ty,
-                z: 0,
-            }, {
-                x: tx + 100,
-                y: ty + 100,
-                z: 0,
-            }, {
-                x: tx,
-                y: ty + 100,
-                z: 0,
-            }];
-            renderTile.vertices = vertices;
-            const cubeFaces = [
-                {
-                    n: {
-                        x: 0,
-                        y: 0,
-                        z: 1,
-                    },
-                    points: [
-                        vertices[0],
-                        vertices[1],
-                        vertices[2],
-                        vertices[3],
-                    ],
-                },
-                {
-                    n: {
-                        x: 1,
-                        y: 0,
-                        z: 0,
-                    },
-                    points: [
-                        vertices[1],
-                        vertices[2],
-                        vertices[6],
-                        vertices[5],
-                    ],
-                },
-                {
-                    n: {
-                        x: 0,
-                        y: 0,
-                        z: -1,
-                    },
-                    points: [
-                        vertices[4],
-                        vertices[5],
-                        vertices[6],
-                        vertices[7],
-                    ],
-                },
-                {
-                    n: {
-                        x: 0,
-                        y: -1,
-                        z: 0,
-                    },
-                    points: [
-                        vertices[0],
-                        vertices[1],
-                        vertices[5],
-                        vertices[4],
-                    ],
-                },
-                {
-                    n: {
-                        x: -1,
-                        y: 0,
-                        z: 0,
-                    },
-                    points: [
-                        vertices[0],
-                        vertices[3],
-                        vertices[7],
-                        vertices[4],
-                    ],
-                },
-                {
-                    n: {
-                        x: 0,
-                        y: 1,
-                        z: 0,
-                    },
-                    points: [
-                        vertices[2],
-                        vertices[3],
-                        vertices[7],
-                        vertices[6],
-                    ],
-                },
-            ];
-            renderTile.faces = cubeFaces;
-            cubeFaces.forEach((face) => {
-                face.renderTile = renderTile;
-            });
-            this.renderTiles.push(renderTile);
-        }
-    }
-
     buildBSP() {
-        const flattened = this.renderTiles.reduce(function(a, b) {
-            return a.concat(b.faces);
+        const flattened = this.tileRenderObjects.reduce(function(a, b) {
+            return a.concat(b.getFaces());
         }, []);
         this.bsp = new BSPTree(flattened);
     }
-
-    drawFace(face, stroke="#000000", fill="#CCCCCC") {
-        const ctx = this.canvas.getContext('2d');
-        if (fill !== null) {
-            ctx.fillStyle = fill;
-            ctx.beginPath();
-            for (let k = 0; k < face.visiblePoints.length; k++) {
-                if (k == 0) {
-                    ctx.moveTo(face.visiblePoints[k].x, face.visiblePoints[k].y);
-                }
-                if (k == face.visiblePoints.length - 1) {
-                    ctx.lineTo(face.visiblePoints[0].x, face.visiblePoints[0].y);
-                } else {
-                    ctx.lineTo(face.visiblePoints[k + 1].x, face.visiblePoints[k + 1].y);
-                }
-            }
-            ctx.fill();
-        }
-        if (stroke !== null) {
-            ctx.strokeStyle = stroke;
-            ctx.beginPath();
-            for (let k = 0; k < face.visiblePoints.length; k++) {
-                if (k == 0) {
-                    ctx.moveTo(face.visiblePoints[k].x, face.visiblePoints[k].y);
-                }
-                if (k == face.visiblePoints.length - 1) {
-                    ctx.lineTo(face.visiblePoints[0].x, face.visiblePoints[0].y);
-                } else {
-                    ctx.lineTo(face.visiblePoints[k + 1].x, face.visiblePoints[k + 1].y);
-                }
-            }
-            ctx.stroke();
-        }
-    }
-
     
     renderMap() {
         const ctx = this.canvas.getContext('2d');
@@ -1038,20 +455,18 @@ class MapRenderer {
         let selectedFace = null;
         const facesToDraw = [];
         this.bsp.traverse((face) => {
-            face.hover = false;
-            const projected = this.viewport.projectPlane(face);
-            face.visible = projected.visible;
-            face.clippedPoints = projected.clippedPoints;
-            face.visiblePoints = projected.visiblePoints;
-            if (face.visible) {
-                if (this.viewport.mouseInside(face)) {
+            const { visiblePoints, clippedPoints, visible} = this.viewport.projectPlane(face.getPoints(), face.getNormal());
+            if (visible) {
+                if (this.viewport.mouseInside(visiblePoints)) {
                     selectedFace = face;
                 }
+                face.setVisiblePoints(visiblePoints);
+                face.setClippedPoints(clippedPoints);
                 facesToDraw.push(face);
             }
-        }, this.viewport.p5);
+        }, this.viewport.getReference());
 
-        this.renderTiles.forEach((renderTile) => {
+        /*this.renderTiles.forEach((renderTile) => {
             renderTile.clippedFace = null;
             let clippedFace = null;
             renderTile.faces.forEach((face) => {
@@ -1101,78 +516,28 @@ class MapRenderer {
                 renderTile.clippedFace = clippedFace;
                 facesToDraw.push(clippedFace);
             }
-        });
+        });*/
 
-        if (selectedFace !== null) {
+        /*if (selectedFace !== null) {
             selectedFace.renderTile.faces.forEach((face) => {
                 face.hover = true;
             });
             if (selectedFace.renderTile.clippedFace !== null) {
                 selectedFace.renderTile.clippedFace.hover = true;
             }
-        }
+        }*/
 
         facesToDraw.forEach((face) => {
-            if (face.hover) {
+            face.draw(ctx);
+            /*if (face.hover) {
                 this.drawFace(face, "#000000", "#e6e6e6");
             } else {
                 this.drawFace(face);
-            }
+            }*/
         });
 
         window.requestAnimationFrame((step) => {
             this.renderMap();
-        });
-    }
-
-
-
-    renderTiles(tiles, viewport) {
-        const ctx = this.canvas.getContext("2d");
-        tiles.forEach((tile) => {
-            const tx = tile.getX();
-            const ty = tile.getY();
-
-            //map tx and ty into screen x and y (sx & sy) 
-            const sx1 = tx * 100;
-            const sx2 = tx * 100 + 100;
-            const sy1 = ty * 100;
-            const sy2 = ty * 100 + 100;
-
-            if (sx2 >= viewport.x1 && sx1 <= viewport.x2 && sy2 >= viewport.y1 && sy1 <= viewport.y2) {
-
-                let hover = false;
-                if (viewport.mx !== null && viewport.my !== null) {
-                    if (viewport.mx > sx1 && viewport.mx < sx2 && viewport.my > sy1 && viewport.my < sy2) {
-                        hover = true;
-                    }
-                }
-                if (tile instanceof PlainTile) {
-                    ctx.strokeStyle = "#000000";
-                    if (tile.isHighlighted()) {
-                        if (hover) {
-                            ctx.fillStyle = "#0066FF";
-                        }  else {
-                            ctx.fillStyle = "#0000FF";
-                        }
-                    } else {
-                        if (hover) {
-                        ctx.fillStyle = "#D9D9D9";
-                        } else {
-                            ctx.fillStyle = "#CCCCCC";
-                        }
-                    }
-                    ctx.fillRect(sx1 - viewport.x1, sy1 - viewport.y1, 100, 100);
-                    ctx.strokeRect(sx1 - viewport.x1, sy1 - viewport.y1, 100, 100);
-                    this.boundingBoxes.push({
-                        obj: tile,
-                        x1: sx1,
-                        x2: sx2,
-                        y1: sy1,
-                        y2: sy2,
-                    });
-                }
-            }
         });
     }
 
@@ -1233,4 +598,4 @@ class MapRenderer {
     }
 }
 
-export {Map, MapObject, MapSerializer, MapRenderer, MapScreen, Knight}
+export {Map, MapObject, MapRenderer, MapScreen, Knight}

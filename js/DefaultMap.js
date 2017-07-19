@@ -1,4 +1,4 @@
-import { MapSerializer } from "./Map";
+import { MapSerializer } from "./MapSerializer";
 
 var exampleMapString = 
 `p-2 p-1 p-1 p-1 p-2 p-1 p-1 p-1
