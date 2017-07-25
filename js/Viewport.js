@@ -98,6 +98,40 @@ class Viewport {
         };
     }
 
+    projectPoint(point) {
+        let viewVector, pointVector, threshold;
+        if (this.d !== -1) {
+            viewVector = Vector.createFromPoints(this.p5, point);
+            threshold = this.d;
+        } else {
+            viewVector = Vector.createFromPoints(this.midpoint, point);
+            threshhold = 0;
+        }
+
+        const pz = viewVector.dot(this.unitNormal);
+        if (pz >= threshold) {
+            if (this.d !== -1) {
+                const midpoint = this.p5.midpoint(point, this.d / pz);
+                pointVector = Vector.createFromPoints(this.p1, midpoint);
+            } else {
+                pointVector = Vector.createFromPoints(this.p1, point);
+            }
+            return new Point(pointVector.dot(this.basis1), pointVector.dot(this.basis2), 0);
+        }
+        return null;
+    }
+
+    calcViewAngle(point, vector) {
+        let viewVector;
+        if (this.d !== -1) {
+            viewVector = Vector.createFromPoints(this.p5, point);
+        } else {
+            viewVector = this.unitNormal;
+        }
+        const cosTheta = viewVector.dot(vector) / viewVector.getMag();
+        return Math.acos(cosTheta);
+    }
+
     calcVectors() {
         this.basis1 = Vector.createFromPoints(this.p1, this.p2);
         this.width = this.basis1.mag;
@@ -205,337 +239,23 @@ class Viewport {
         return true;
     }
 
-    getReference() {
+    getViewDir(point, n) {
+        let dot;
         if (this.d === -1) {
-            return this.midpoint;
+            dot = n.dot(this.unitNormal);
         } else {
-            return this.p5;
+            dot = n.dot(Vector.createFromPoints(this.p5, point));
+        }
+        return dot <= 0 ? 'towards' : 'away';
+    }
+
+    getViewVector(point) {
+        if (this.d !== -1) {
+            return new Vector.createFromPoints(this.p5, point);
+        } else {
+            return this.unitNormal;
         }
     }
 }
-
-/*
-class Viewport {
-
-    /*
-        p1 (origin)       p2
-        --------------------
-        |                  |
-        |                  |
-        |                  |
-        --------------------
-        p3                p4
-     *//*
-    constructor(p1, p2, p3 ,p4, d=-1) {
-        this.p1 = p1;
-        this.p2 = p2;
-        this.p3 = p3;
-        this.p4 = p4;
-        this.d = d;
-        this.p5 = null;
-        this.calcBasis1();
-        this.calcBasis2();
-        this.calcUnitNormal();
-        this.calcFocalPoint();
-        const wx = p2.x - p1.x;
-        const wy = p2.y - p1.y;
-        const wz = p2.z - p2.z;
-        this.width = Math.sqrt(wx * wx + wy * wy + wz * wz);
-        const hx = p3.x - p1.x;
-        const hy = p3.y - p1.y;
-        const hz = p3.z - p1.z;
-        this.height = Math.sqrt(hx * hx + hy * hy + hz * hz);
-        this.rates = {
-            r1: 0,
-            r2: 0,
-            t1: 0,
-            t2: 0,
-            t3: 0,
-        };
-        this.mx = null;
-        this.my = null;
-    }
-
-    dot(p1, p2) {
-        return p1.x * p2.x + p1.y * p2.y + p1.z * p2.z;
-    }
-
-    projectPlane(plane) {
-        const n = plane.n;
-        const points = plane.points;
-        const visiblePoints = [];
-        const clippedPoints = [];
-        let normalCheck = null;
-        let pz, lpz, rpz, midpoint, projected;
-        for (let i = 0; i < points.length; i++) {
-            pz = this.dot(points[i], this.unitNormal) - this.dot(this.p1, this.unitNormal);
-            if (pz >= 0) {
-                if (normalCheck === null) {
-                    normalCheck = this.dot({
-                        x: points[i].x - this.p5.x,
-                        y: points[i].y - this.p5.y,
-                        z: points[i].z - this.p5.z,
-                    }, n);
-                }
-                projected = this.projectPoint(points[i]);
-                visiblePoints.push(projected);
-            } else {
-                let li = i == 0 ? points.length - 1 : i - 1;
-                lpz = this.dot(points[li], this.unitNormal) - this.dot(this.p1, this.unitNormal);
-                if (lpz > 0) {
-                    midpoint = {
-                        x: lpz / (lpz - pz) * points[i].x - pz / (lpz - pz) * points[li].x,
-                        y: lpz / (lpz - pz) * points[i].y - pz / (lpz - pz) * points[li].y,
-                        z: lpz / (lpz - pz) * points[i].z - pz / (lpz - pz) * points[li].z,
-                    };
-                    projected = this.projectPoint(midpoint);
-                    visiblePoints.push(projected);
-                    clippedPoints.push(projected);
-                }
-                let ri = i == points.length - 1 ? 0 : i + 1;
-                rpz = this.dot(points[ri], this.unitNormal) - this.dot(this.p1, this.unitNormal);
-                if (rpz > 0) {
-                    midpoint = {
-                        x: rpz / (rpz - pz) * points[i].x - pz / (rpz - pz) * points[ri].x,
-                        y: rpz / (rpz - pz) * points[i].y - pz / (rpz - pz) * points[ri].y,
-                        z: rpz / (rpz - pz) * points[i].z - pz / (rpz - pz) * points[ri].z,
-                    };
-                    projected = this.projectPoint(midpoint);
-                    visiblePoints.push(projected);
-                    clippedPoints.push(projected);
-                }
-            }
-        }
-        return {
-            n: n,
-            points: points,
-            visiblePoints: visiblePoints,
-            clippedPoints: clippedPoints,
-            visible: normalCheck !== null && normalCheck <= 0,
-        };
-    }
-
-    projectPoint(point) {
-        if (this.d == -1) {
-            return {
-                x: this.dot(point, this.basis1) - this.dot(this.p1, this.basis1),
-                y: this.dot(point, this.basis2) - this.dot(this.p1, this.basis2),
-                z: this.dot(point, this.unitNormal) - this.dot(this.p1, this.unitNormal),
-            };
-        } else {
-            const px = this.dot(point, this.basis1) - this.dot(this.p1, this.basis1);
-            const py = this.dot(point, this.basis2) - this.dot(this.p1, this.basis2);
-            const pz = this.dot(point, this.unitNormal) - this.dot(this.p1, this.unitNormal);
-            return {
-                x: (this.width / 2 - px) / (1 + this.d / pz) + px,
-                y: (this.height / 2 - py) / (1 + this.d / pz) + py,
-                z: pz,
-            };
-        }
-    }
-
-    calcFocalPoint() {
-        if (this.d !== -1) {
-            const cx = (this.p1.x + this.p4.x) / 2;
-            const cy = (this.p1.y + this.p4.y) / 2;
-            const cz = (this.p1.z + this.p4.z) / 2;
-            this.p5 = {
-                x: cx - this.d * this.unitNormal.x,
-                y: cy - this.d * this.unitNormal.y,
-                z: cz - this.d * this.unitNormal.z,
-            };
-        }
-    }
-
-    calcBasis1() {
-        const bx = this.p2.x - this.p1.x;
-        const by = this.p2.y - this.p1.y;
-        const bz = this.p2.z - this.p1.z;
-        const mag = Math.sqrt(bx * bx + by * by + bz * bz);
-        this.basis1 = {
-            x: bx / mag,
-            y: by / mag,
-            z: bz / mag,
-        };
-    }
-
-    calcBasis2() {
-        const bx = this.p3.x - this.p1.x;
-        const by = this.p3.y - this.p1.y;
-        const bz = this.p3.z - this.p1.z;
-        const mag = Math.sqrt(bx * bx + by * by + bz * bz);
-        this.basis2 = {
-            x: bx / mag,
-            y: by / mag,
-            z: bz / mag,
-        };
-    }
-
-    // Basis 
-    calcUnitNormal() {
-        this.unitNormal = {
-            x: this.basis2.y * this.basis1.z - this.basis2.z * this.basis1.y,
-            y: this.basis2.z * this.basis1.x - this.basis2.x * this.basis1.z,
-            z: this.basis2.x * this.basis1.y - this.basis2.y * this.basis1.x,
-        };
-    };
-
-    translateAlongBasis(scalar1, scalar2, scalar3) {
-        this.translate({
-            x: this.basis1.x * scalar1 + this.basis2.x * scalar2 + this.unitNormal.x * scalar3,
-            y: this.basis1.y * scalar1 + this.basis2.y * scalar2 + this.unitNormal.y * scalar3,
-            z: this.basis1.z * scalar1 + this.basis2.z * scalar2 + this.unitNormal.z * scalar3,
-        });
-    }
-
-    translate(a) {
-        this.p1 = this.translatePoint(this.p1, a);
-        this.p2 = this.translatePoint(this.p2, a);
-        this.p3 = this.translatePoint(this.p3, a);
-        this.p4 = this.translatePoint(this.p4, a);
-        this.calcBasis1();
-        this.calcBasis2();
-        this.calcUnitNormal();
-        this.calcFocalPoint();
-    }
-
-    translatePoint(p, a) {
-        return {
-            x: p.x + a.x,
-            y: p.y + a.y,
-            z: p.z + a.z,
-        };
-    }
-
-    rotateByBasis1(theta) {
-        let mx, my, mz;
-        if (this.d !== -1) {
-            mx = this.p5.x;
-            my = this.p5.y;
-            mz = this.p5.z;
-        } else {
-            mx = (this.p1.x + this.p4.x) / 2;
-            my = (this.p1.y + this.p4.y) / 2;
-            mz = (this.p1.z + this.p4.z) / 2;
-        }
-        this.translate({
-            x: -mx,
-            y: -my,
-            z: -mz,
-        });
-        this.rotate(this.basis1, theta);
-        this.translate({
-            x: mx,
-            y: my,
-            z: mz,
-        });
-    }
-
-    rotateByBasis2(theta) {
-        let mx, my, mz;
-        if (this.d !== -1) {
-            mx = this.p5.x;
-            my = this.p5.y;
-            mz = this.p5.z;
-        } else {
-            mx = (this.p1.x + this.p4.x) / 2;
-            my = (this.p1.y + this.p4.y) / 2;
-            mz = (this.p1.z + this.p4.z) / 2;
-        }
-        this.translate({
-            x: -mx,
-            y: -my,
-            z: -mz,
-        });
-        this.rotate(this.basis2, theta);
-        this.translate({
-            x: mx,
-            y: my,
-            z: mz,
-        });
-    }
-
-    rotate(axis, theta) {
-        const mag = Math.sqrt(this.dot(axis, axis));
-        const normAxis = {
-            x: axis.x / mag,
-            y: axis.y / mag,
-            z: axis.z / mag,
-        };
-        const rad = theta / 360 * Math.PI;
-        this.p1 = this.rotatePoint(this.p1, normAxis, rad);
-        this.p2 = this.rotatePoint(this.p2, normAxis, rad);
-        this.p3 = this.rotatePoint(this.p3, normAxis, rad);
-        this.p4 = this.rotatePoint(this.p4, normAxis, rad);
-        this.calcBasis1();
-        this.calcBasis2();
-        this.calcUnitNormal();
-        this.calcFocalPoint();
-    }
-
-    // Axis must be unit, Theta must be radians.
-    rotatePoint(p, ax, rad) {
-        const cost = Math.cos(rad);
-        const sint = Math.sin(rad);
-        const mcost = 1 - cost;
-        const dot = this.dot(ax, p);
-        return {
-            x: p.x * cost + (ax.y * p.z - ax.z * p.y) * sint + ax.x * dot * mcost,
-            y: p.y * cost + (ax.z * p.x - ax.x * p.z) * sint + ax.y * dot * mcost,
-            z: p.z * cost + (ax.x * p.y - ax.y * p.x) * sint + ax.z * dot * mcost,
-        };
-    }
-
-    updatePosition() {
-        if (this.rates.r1 !== 0) {
-            this.rotateByBasis1(this.rates.r1);
-        }
-        if (this.rates.r2 !== 0) {
-            this.rotateByBasis2(this.rates.r2);
-        }
-        if (this.rates.t1 || this.rates.t2 || this.rates.t3) {
-            this.translateAlongBasis(this.rates.t1, this.rates.t2, this.rates.t3);
-        }
-    }
-
-    updateRates(rates) {
-        this.rates.r1 += (rates.r1 || 0);
-        this.rates.r2 += (rates.r2 || 0);
-        this.rates.t1 += (rates.t1 || 0);
-        this.rates.t2 += (rates.t2 || 0);
-        this.rates.t3 += (rates.t3 || 0);
-    }
-
-    setMouse(x, y) {
-        this.mx = x;
-        this.my = y;
-    }
-
-    mouseInside(face) {
-        if (this.mx === null && this.my === null) {
-            return false;
-        }
-        let zPos = null;
-        for (let i = 0; i < face.visiblePoints.length; i++) {
-            const p = face.visiblePoints[i];
-            const np = i === face.visiblePoints.length - 1 ? face.visiblePoints[0] : face.visiblePoints[i + 1];
-            const v1 = {
-                x: np.x - p.x,
-                y: np.y - p.y,
-            };
-            const v2 = {
-                x: this.mx - p.x,
-                y: this.my - p.y,
-            };
-            const cross = (v1.x * v2.y) - (v1.y * v2.x);
-            if (zPos === null) {
-                zPos = cross > 0;
-            } else if ((cross > 0) !== zPos) {
-                return false;
-            }
-        }
-        return true;
-    }
-}*/
 
 export { Viewport };

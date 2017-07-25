@@ -54,6 +54,10 @@ class Point {
     copy() {
         return new Point(this.x, this.y, this.z);
     }
+
+    equals(p) {
+        return this.x === p.getX() && this.y === p.getY() && this.z === p.getZ();
+    }
 }
 
 class Vector {

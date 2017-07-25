@@ -58,21 +58,34 @@ class Map {
         return false;
     }
 
-    clicked(objs) {
-        let rerender = false;
-        for (let i = 0; i < objs.length; i++) {
-            const obj = objs[i];
-            if (obj instanceof MapObject) {
-                //this.setSelection(obj);
-                //rerender = true;
-            } else if (obj instanceof Tile) {
-                if (obj.isHighlighted()) {
-                    this.turnActor.moveTo(obj);
-                    rerender = true;
-                }
+    getSelectedAction(obj) {
+        if (obj instanceof Tile) {
+            if (obj.isHighlighted()) {
+                return {
+                    actor: this.turnActor,
+                    action: 'move',
+                    receiver: obj,
+                };
             }
         }
-        return rerender;
+        return null;
+    }
+
+    applyAction(actor, action, receiver) {
+        if (action === 'move') {
+            actor.moveTo(receiver);
+        }
+    }
+
+    clicked(obj) {
+        if (obj instanceof MapObject) {
+            //this.setSelection(obj);
+            //rerender = true;
+        } else if (obj instanceof Tile) {
+            if (obj.isHighlighted()) {
+                this.turnActor.moveTo(obj);
+            }
+        }
     }
 
     serialize() {
@@ -104,6 +117,10 @@ class Map {
         this.turnActor = this.turnQueue[this.turnQueue.length - 1][0];
         return this.turnActor;
     }
+
+    getTurnActor() {
+        return this.turnActor;
+    }
 }
 
 class MapObject {
@@ -116,6 +133,7 @@ class MapObject {
         this.tile = null;
         this.x = attributes.x;
         this.y = attributes.y;
+        this.orientation = attributes.orientation || 'u';
         this.highlighted = false;
     }
 
@@ -129,6 +147,10 @@ class MapObject {
 
     getY() {
         return this.y;
+    }
+
+    getOrientation() {
+        return this.orientation;
     }
 
     isHighlighted() {
@@ -152,7 +174,7 @@ class MapObject {
     }
 
     serialize() {
-        return `${this.x}-${this.getY()}`;
+        return `${this.x}-${this.getY()}-${this.getOrientation()}`;
     }
 
     static parseAttributes(attrString) {
@@ -160,6 +182,7 @@ class MapObject {
         const attr = {
             x: parseInt(attrSplit[0]),
             y: parseInt(attrSplit[1]),
+            orientation: attrSplit[2],
         };
         return attr;
     }
@@ -282,7 +305,7 @@ class MapScreen {
 
     start() {
         this.mapRenderer.renderMap();
-        //this.turnLoop();
+        this.turnLoop();
     }
 
     turnLoop() {
@@ -331,11 +354,25 @@ class MapScreen {
     handleClick(x, y) {
         //this.viewport.mx = this.viewport.x1 + x;
         //this.viewport.my = this.viewport.y1 + y;
-        //const clickedObjs = this.mapRenderer.getClickedObjects(this.viewport);
+        const tile = this.mapRenderer.getClickedTile();
+        if (tile !== null) {
+            const action = this.map.getSelectedAction(tile);
+            if (action !== null && action.action === 'move') {
+                this.mapRenderer.animateMove(action.actor, action.receiver).then(() => {
+                    this.map.applyAction(action.actor, action.action, action.receiver);
+                });
+            }
+        }
+        //const clickedObjs = this.mapRenderer.getClickedObjects();
+
         //const rerender = this.map.clicked(clickedObjs);
         //if (rerender) {
             //this.mapRenderer.renderMap(this.map, this.viewport);
         //}
+    }
+
+    animateAction() {
+        this.mapRenderer
     }
 
     handleMouseLeave() {
@@ -434,7 +471,13 @@ class MapRenderer {
         this.map = map;
         this.viewport = viewport;
 
-        this.tileRenderObjects = this.map.getTilesFlattened().map(tile => new TileRenderObject(tile));
+        this.hoveredRenderObject = null;
+        this.tileRenderObjects = this.map.getTilesFlattened()
+            .filter(tile => !(tile instanceof EmptyTile))
+            .map(tile => new TileRenderObject(tile));
+        this.mapObjectFaces = this.tileRenderObjects
+            .filter(t => t.getMapObjectFace() !== null)
+            .map(t => t.getMapObjectFace());
         this.buildBSP();
     }
 
@@ -451,94 +494,108 @@ class MapRenderer {
         this.boundingBoxes = [];
 
         this.viewport.updatePosition();
+        this.mapObjectFaces.forEach(m => m.updatePosition());
 
         let selectedFace = null;
         const facesToDraw = [];
         this.bsp.traverse((face) => {
             const { visiblePoints, clippedPoints, visible} = this.viewport.projectPlane(face.getPoints(), face.getNormal());
+            face.setVisiblePoints(visiblePoints);
+            face.setClippedPoints(clippedPoints);
             if (visible) {
                 if (this.viewport.mouseInside(visiblePoints)) {
                     selectedFace = face;
                 }
-                face.setVisiblePoints(visiblePoints);
-                face.setClippedPoints(clippedPoints);
                 facesToDraw.push(face);
             }
-        }, this.viewport.getReference());
+            const mapObjectFace = face.getMapObjectFace();
+            if (mapObjectFace !== null) {
+                const projectedBottom = this.viewport.projectPoint(mapObjectFace.getBottomPoint());
+                const projectedTop = this.viewport.projectPoint(mapObjectFace.getTopPoint());
 
-        /*this.renderTiles.forEach((renderTile) => {
-            renderTile.clippedFace = null;
-            let clippedFace = null;
-            renderTile.faces.forEach((face) => {
-                if (face.clippedPoints.length == 2) {
-                    if (clippedFace == null) {
-                        clippedFace = {
-                            visiblePoints: face.clippedPoints.slice(),
-                        };
-                    } else {
-                        for (let i = 0; i < face.clippedPoints.length; i++) {
-                            const c = face.clippedPoints[i];
-                            let minDist = null;
-                            let minDistIdx = null;
-                            let match = false;
-                            for (let j = 0; j < clippedFace.visiblePoints.length; j++) {
-                                const cp = clippedFace.visiblePoints[j];
-                                const nextcp = j == clippedFace.visiblePoints.length - 1 ? clippedFace.visiblePoints[0] : clippedFace.visiblePoints[j + 1];
-                                const currDist = Math.sqrt((nextcp.x - cp.x) * (nextcp.x - cp.x) + (nextcp.y - cp.y) * (nextcp.y - cp.y) + (nextcp.z - cp.z) * (nextcp.z - cp.z));
-                                const cDist1 = Math.sqrt((cp.x - c.x) * (cp.x - c.x) + (cp.y - c.y) * (cp.y - c.y) + (cp.z - c.z) * (cp.z - c.z));
-                                const cDist2 = Math.sqrt((nextcp.x - c.x) * (nextcp.x - c.x) + (nextcp.y - c.y) * (nextcp.y - c.y) + (nextcp.z - c.z) * (nextcp.z - c.z));
-                                const distInc = cDist1 + cDist2 - currDist;
-                                if (distInc == 0) {
-                                    match = true;
-                                    break;
-                                }
-                                if (minDist == null | distInc < minDist) {
-                                    minDist = distInc;
-                                    minDistIdx = j;
-                                }
-                            }
-                            if (!match) {
-                                if (minDistIdx == clippedFace.visiblePoints.length - 1) {
-                                    clippedFace.visiblePoints.splice(0, 0, c);
-                                } else {
-                                    clippedFace.visiblePoints.splice(minDistIdx + 1, 0, c);
-                                }
-                            }
-                        }
+                if (projectedBottom !== null && projectedTop !== null) {
+                    const viewDir = this.viewport.getViewDir(mapObjectFace.getBottomPoint(), mapObjectFace.getTopVector());
+                    const viewVector = this.viewport.getViewVector(mapObjectFace.getBottomPoint());
+                    
+                    const x = viewVector.getX();
+                    const y = viewVector.getY();
+                    let angle = Math.atan(y / x);
+                    if (x > 0) {
+                        angle += Math.PI;
                     }
+                    if (angle < 0) {
+                        angle += 2 * Math.PI;
+                    }
+
+                    mapObjectFace.setViewAngle(angle);
+                    mapObjectFace.setProjectedTop(projectedTop);
+                    mapObjectFace.setProjectedBottom(projectedBottom);
+                    mapObjectFace.setViewDir(viewDir);
+                    facesToDraw.push(mapObjectFace);
                 }
-            });
+            }
+        }, this.viewport);
+
+        this.tileRenderObjects.forEach(obj => {
+            obj.calcClippedFace();
+            const clippedFace = obj.getClippedFace();
             if (clippedFace !== null) {
-                if (this.viewport.mouseInside(clippedFace)) {
+                if (this.viewport.mouseInside(clippedFace.getVisiblePoints())) {
                     selectedFace = clippedFace;
                 }
-                clippedFace.renderTile = renderTile;
-                renderTile.clippedFace = clippedFace;
                 facesToDraw.push(clippedFace);
             }
-        });*/
+        });
 
-        /*if (selectedFace !== null) {
-            selectedFace.renderTile.faces.forEach((face) => {
-                face.hover = true;
-            });
-            if (selectedFace.renderTile.clippedFace !== null) {
-                selectedFace.renderTile.clippedFace.hover = true;
-            }
-        }*/
+        if (this.hoveredRenderObject !== null) {
+            this.hoveredRenderObject.toggleHover();
+        }
+        if (selectedFace !== null) {
+            this.hoveredRenderObject = selectedFace.getTileRenderObject();
+            this.hoveredRenderObject.toggleHover();
+        } else {
+            this.hoveredRenderObject = null;
+        }
 
         facesToDraw.forEach((face) => {
             face.draw(ctx);
-            /*if (face.hover) {
-                this.drawFace(face, "#000000", "#e6e6e6");
-            } else {
-                this.drawFace(face);
-            }*/
         });
 
         window.requestAnimationFrame((step) => {
             this.renderMap();
         });
+    }
+
+    animateMove(mapObject, destTile) {
+        return new Promise((resolve, reject) => {
+            const mapObjectFace = this.mapObjectFaces.filter(m => m.getMapObject() === mapObject)[0];
+            const tileRenderObject = this.tileRenderObjects.filter(t => t.getTile() === destTile)[0];
+            const endpoint = tileRenderObject.getMapObjectPoint();
+            /*mapObjectFace.setTileRenderObject(tileRenderObject);
+            mapObjectFace.animate({
+                endpoint: endpoint,
+                rate: null,
+                frames: 30,
+            }).then(() => {
+                resolve();
+            });*/
+            const midpoint = mapObjectFace.getBottomPoint().midpoint(endpoint, 0.5);
+            mapObjectFace.animate({
+                endpoint: midpoint,
+                rate: null,
+                frames: 30, 
+            }).then(() => {
+                mapObjectFace.setTileRenderObject(tileRenderObject);
+                mapObjectFace.animate({
+                    endpoint: endpoint,
+                    rate: null,
+                    frames: 30,
+                }).then(() => {
+                    resolve();
+                });
+            });
+        });
+
     }
 
     renderMapObjects(mapObjects, viewport) {
@@ -578,6 +635,13 @@ class MapRenderer {
                 });
             }
         });
+    }
+
+    getClickedTile() {
+        if (this.hoveredRenderObject !== null) {
+            return this.hoveredRenderObject.getTile();
+        }
+        return null;
     }
 
     getClickedObjects(viewport) {

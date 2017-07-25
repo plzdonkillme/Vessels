@@ -61,31 +61,30 @@ class BSPTree {
         }
     }
 
-    traverse(fn, ref) {
+    traverse(fn, viewport) {
         if (this.nodes.length > 0) {
             const n = this.nodes[0].getNormal();
             const p = this.nodes[0].getPoints()[0];
-            const viewVector = Vector.createFromPoints(ref, p);
-            const ndir = viewVector.dot(n);
-            if (ndir <= 0) {
+            const viewDir = viewport.getViewDir(p, n);
+            if (viewDir === 'towards') {
                 if (this.backnodes !== null) {
-                    this.backnodes.traverse(fn, ref);
+                    this.backnodes.traverse(fn, viewport);
                 }
                 for (let i = 0; i < this.nodes.length; i++) {
                     fn(this.nodes[i]);
                 }
                 if (this.frontnodes !== null) {
-                    this.frontnodes.traverse(fn, ref);
+                    this.frontnodes.traverse(fn, viewport);
                 }
             } else {
                 if (this.frontnodes !== null) {
-                    this.frontnodes.traverse(fn, ref);
+                    this.frontnodes.traverse(fn, viewport);
                 }
                 for (let i = 0; i < this.nodes.length; i++) {
                     fn(this.nodes[i]);
                 }
                 if (this.backnodes !== null) {
-                    this.backnodes.traverse(fn, ref);
+                    this.backnodes.traverse(fn, viewport);
                 }
                 
             }
