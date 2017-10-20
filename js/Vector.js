@@ -47,6 +47,12 @@ class Point {
         this.z = newz;
     }
 
+    scale(s) {
+        this.x *= s;
+        this.y *= s;
+        this.z *= s;
+    }
+
     dot(p) {
         return this.x * p.getX() + this.y * p.getY() + this.z * p.getZ();
     }

@@ -138,6 +138,13 @@ var Point = function () {
             this.z = newz;
         }
     }, {
+        key: "scale",
+        value: function scale(s) {
+            this.x *= s;
+            this.y *= s;
+            this.z *= s;
+        }
+    }, {
         key: "dot",
         value: function dot(p) {
             return this.x * p.getX() + this.y * p.getY() + this.z * p.getZ();
@@ -1232,6 +1239,8 @@ var MapScreen = function () {
         var polygons = this.map.getTilesFlattened().map(function (t) {
             return _Polygon.Polygon.createBox(t.getX() * TLEN, t.getY() * TLEN, 0, TLEN, TLEN, t.getH() * TLEN);
         });
+        polygons.push(_Polygon.Polygon.createIcosahedron(50, 50, 200, 20));
+
         this.renderer = new _PolygonRenderer.PolygonRenderer(this.canvas, polygons);
     }
 
@@ -1617,7 +1626,6 @@ var Polygon = function () {
             var face1Blacklist = [sharedPoints];
             var face2Blacklist = [sharedPoints];
             for (var i = 0; i < blacklist.length; i++) {
-                debugger;
                 var b = blacklist[i];
                 var idx1 = points1.indexOf(b[0]);
                 var idx2 = points1.indexOf(b[1]);
@@ -1680,6 +1688,30 @@ var Polygon = function () {
             var faces = [new PolygonFace([v[0], v[1], v[2], v[3]], new _Vector.Vector(0, 0, 1)), new PolygonFace([v[1], v[2], v[6], v[5]], new _Vector.Vector(1, 0, 0)), new PolygonFace([v[4], v[5], v[6], v[7]], new _Vector.Vector(0, 0, -1)), new PolygonFace([v[0], v[1], v[5], v[4]], new _Vector.Vector(0, -1, 0)), new PolygonFace([v[0], v[3], v[7], v[4]], new _Vector.Vector(-1, 0, 0)), new PolygonFace([v[2], v[3], v[7], v[6]], new _Vector.Vector(0, 1, 0))];
 
             return new Polygon(faces, 'box');
+        }
+    }, {
+        key: 'createIcosahedron',
+        value: function createIcosahedron(x, y, z, scale) {
+            var t = (1 + Math.sqrt(5)) / 2;
+            var v = [new _Vector.Point(-1, t, 0), new _Vector.Point(1, t, 0), new _Vector.Point(-1, -t, 0), new _Vector.Point(1, -t, 0), new _Vector.Point(0, -1, t), new _Vector.Point(0, 1, t), new _Vector.Point(0, -1, -t), new _Vector.Point(0, 1, -t), new _Vector.Point(t, 0, -1), new _Vector.Point(t, 0, 1), new _Vector.Point(-t, 0, -1), new _Vector.Point(-t, 0, 1)];
+
+            var faces = [[0, 11, 5], [0, 5, 1], [0, 1, 7], [0, 7, 10], [0, 10, 11], [1, 5, 9], [5, 11, 4], [11, 10, 2], [10, 7, 6], [7, 1, 8], [3, 9, 4], [3, 4, 2], [3, 2, 6], [3, 6, 8], [3, 8, 9], [4, 9, 5], [2, 4, 11], [6, 2, 10], [8, 6, 7], [9, 8, 1]].map(function (idx) {
+                var p1 = v[idx[0]];
+                var p2 = v[idx[1]];
+                var p3 = v[idx[2]];
+                var v1 = _Vector.Vector.createFromPoints(p1, p2);
+                var v2 = _Vector.Vector.createFromPoints(p1, p3);
+                var n = v1.cross(v2);
+                n.normalize();
+                return new PolygonFace([p1, p2, p3], n);
+            });
+
+            v.forEach(function (v) {
+                v.scale(scale);
+                v.translate(x, y, z);
+            });
+
+            return new Polygon(faces, 'icosahedron');
         }
     }]);
 

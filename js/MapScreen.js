@@ -19,6 +19,8 @@ class MapScreen {
 
         const TLEN = 100;
         const polygons = this.map.getTilesFlattened().map(t => Polygon.createBox(t.getX() * TLEN, t.getY() * TLEN, 0, TLEN, TLEN, t.getH() *TLEN));
+        polygons.push(Polygon.createIcosahedron(50, 50, 200, 20));
+
         this.renderer = new PolygonRenderer(this.canvas, polygons);
     }
 
