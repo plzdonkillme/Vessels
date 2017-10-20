@@ -2,62 +2,91 @@ import { Vector } from './Vector';
 
 class BSPTree {
     
-    constructor(planes) {
+    constructor(faces) {
         this.nodes = [];
-        this.frontnodes = null;
-        this.backnodes = null;
-        if (planes.length == 0) {
+        this.front = null;
+        this.back = null;
+        if (faces.length == 0) {
             return;
         }
 
-        // Hacky thing to avoid cutting planes
-        let i = 0;
-        for (let j = 0; j < planes.length; j++) {
-            if (planes[j].getNormal().getZ() === 0) {
-                i = j;
-                break;
+        this.nodes = [faces[0]];
+        const p0 = faces[0].getPoints()[0];
+        const n = faces[0].getNormal();
+        const frontFaces = [];
+        const backFaces = [];
+
+        for (let i = 1; i < faces.length; i++) {
+            let pos;
+            let cut = false;
+            const frontPoints = [];
+            const backPoints = [];
+            const points = faces[i].getPoints();
+
+            //Get initial pos
+            const lastD = Vector.createFromPoints(p0, points[points.length - 1]).dot(n);
+            if (lastD === 0) {
+                pos = null;
+            } else if (lastD > 0) {
+                pos = 'front';
+            } else {
+                pos = 'back';
             }
-        }
-        if (i === planes.length) {
-            i = 0;
-        }
 
-        this.nodes = [planes[i]];
-
-        const p0 = planes[i].getPoints()[0];
-        const n = planes[i].getNormal();
-        const frontnodes = [];
-        const backnodes = [];
-        for (let j = 0; j < planes.length; j++) {
-            if (j !== i) {
-                let p1 = planes[j].getPoints()[0];
-                let p2 = planes[j].getPoints()[2];
-                let vector1 = Vector.createFromPoints(p0, p1);
-                let vector2 = Vector.createFromPoints(p0, p2);
-                let d1 = vector1.dot(n);
-                let d2 = vector2.dot(n);
-                
-                if (d1 === 0 && d2 === 0) {
-                    if (planes[j].getNormal().equals(n)) {
-                        this.nodes.push(planes[j]);
-                    } else {
-                        backnodes.push(planes[j]);
+            // Iterate over points
+            for (let j = 0; j < points.length; j++) {
+                const p = points[j];
+                const d = Vector.createFromPoints(p0, p).dot(n);
+                if (d === 0) {
+                    pos = null;
+                    frontPoints.push(p);
+                    backPoints.push(p);
+                } else if (d > 0) {
+                    if (pos === 'back') {
+                        const prevP = j === 0 ? points[points.length - 1] : points[j - 1];
+                        const prevD = Vector.createFromPoints(p0, prevP).dot(n);
+                        const mid = p.midpoint(prevP, d / (d - prevD));
+                        frontPoints.push(mid);
+                        backPoints.push(mid);
+                        cut = true;
                     }
-                } else if (d1 <= 0 && d2 <= 0) {
-                    backnodes.push(planes[j]);
-                } else if (d1 >= 0 && d2 >= 0) {
-                    frontnodes.push(planes[j]);
+                    frontPoints.push(p);
+                    pos = 'front';
                 } else {
-                    throw Error('BSP should not reach this point...');
+                    if (pos === 'front') {
+                        const prevP = j === 0 ? points[points.length - 1] : points[j - 1];
+                        const prevD = Vector.createFromPoints(p0, prevP).dot(n);
+                        const mid = p.midpoint(prevP, d / (d - prevD));
+                        frontPoints.push(mid);
+                        backPoints.push(mid);
+                        cut = true;
+                    }
+                    backPoints.push(p);
+                    pos = 'back';
+                }
+            }
+
+            if (cut) {
+                // Split a face...
+                const { face1, face2 } = faces[i].getPolygon().splitFace(faces[i], frontPoints, backPoints);
+                frontFaces.push(face1);
+                backFaces.push(face2);
+            } else {
+                if (frontPoints.length === points.length && backPoints.length === points.length) {
+                    this.nodes.push(faces[i]);
+                } else if (frontPoints.length === points.length) {
+                    frontFaces.push(faces[i]);
+                } else {
+                    backFaces.push(faces[i]);
                 }
             }
         }
 
-        if (frontnodes.length > 0) {
-            this.frontnodes = new BSPTree(frontnodes);
+        if (frontFaces.length > 0) {
+            this.front = new BSPTree(frontFaces);
         }
-        if (backnodes.length > 0) {
-            this.backnodes = new BSPTree(backnodes);
+        if (backFaces.length > 0) {
+            this.back = new BSPTree(backFaces);
         }
     }
 
@@ -67,24 +96,24 @@ class BSPTree {
             const p = this.nodes[0].getPoints()[0];
             const viewDir = viewport.getViewDir(p, n);
             if (viewDir === 'towards') {
-                if (this.backnodes !== null) {
-                    this.backnodes.traverse(fn, viewport);
+                if (this.back !== null) {
+                    this.back.traverse(fn, viewport);
                 }
                 for (let i = 0; i < this.nodes.length; i++) {
                     fn(this.nodes[i]);
                 }
-                if (this.frontnodes !== null) {
-                    this.frontnodes.traverse(fn, viewport);
+                if (this.front !== null) {
+                    this.front.traverse(fn, viewport);
                 }
             } else {
-                if (this.frontnodes !== null) {
-                    this.frontnodes.traverse(fn, viewport);
+                if (this.front !== null) {
+                    this.front.traverse(fn, viewport);
                 }
                 for (let i = 0; i < this.nodes.length; i++) {
                     fn(this.nodes[i]);
                 }
-                if (this.backnodes !== null) {
-                    this.backnodes.traverse(fn, viewport);
+                if (this.back !== null) {
+                    this.back.traverse(fn, viewport);
                 }
                 
             }

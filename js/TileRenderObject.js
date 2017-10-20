@@ -39,7 +39,7 @@ class TileRenderObject {
         }
     }
 
-    getTile() {
+    getObject() {
         return this.tile;
     }
 
@@ -143,7 +143,7 @@ class TileFace {
         this.mapObjectFace = null;
     }
 
-    getTileRenderObject() {
+    getRenderObject() {
         return this.tileRenderObject;
     }
 
@@ -300,7 +300,7 @@ class MapObjectFace {
         return this.mapObject;
     }
 
-    getTileRenderObject() {
+    getRenderObject() {
         return this.tileRenderObject;
     }
 
@@ -327,11 +327,11 @@ class MapObjectFace {
     }
 
     draw(ctx) {
-        ctx.strokeStyle = "#000000";
+        /*ctx.strokeStyle = "#000000";
         ctx.beginPath();
         ctx.moveTo(this.projectedBottom.getX(), this.projectedBottom.getY());
         ctx.lineTo(this.projectedTop.getX(), this.projectedTop.getY());
-        ctx.stroke();
+        ctx.stroke();*/
 
         let image = document.getElementById('gray');
         let needOffset = false;
@@ -377,7 +377,7 @@ class MapObjectFace {
         const angle = Math.atan(-angleVector.getY() / angleVector.getX());
 
         ctx.translate(x, y);
-        if (angleVector.getX() > 0) {
+        if (angleVector.getX() >= 0) {
             ctx.rotate(-angle + Math.PI / 2);
         } else {
             ctx.rotate(Math.PI - angle + Math.PI / 2);
@@ -395,4 +395,82 @@ class MapObjectFace {
 
 }
 
-export { TileRenderObject };
+class MenuFace {
+
+    constructor(action, position) {
+        this.action = action;
+        this.visiblePoints = [
+            new Point(10, 10 + 50 * position, 0),
+            new Point(160, 10 + 50 * position, 0),
+            new Point(160, 60 + 50 * position, 0),
+            new Point(10, 60 + 50 * position)
+        ];
+        this.hover = false;
+    }
+
+    getVisiblePoints() {
+        return this.visiblePoints;
+    }
+
+    getRenderObject() {
+        return this;
+    }
+
+    toggleHover() {
+        this.hover = !this.hover;
+    }
+
+    getObject() {
+        if (this.action.getEnabled()) {
+            return this.action;
+        }
+        return null;
+    }
+
+    draw(ctx) {
+        if (this.action.getEnabled()) {
+            if (this.hover) {
+                ctx.fillStyle = "#80BFFF";
+            } else {
+                ctx.fillStyle = "#0080FF";
+            }
+        } else {
+            if (this.hover) {
+                ctx.fillStyle = "#E6E6E6";
+            } else {
+                ctx.fillStyle = "#CCCCCC";
+            }
+        }
+        ctx.beginPath();
+        for (let k = 0; k < this.visiblePoints.length; k++) {
+            if (k == 0) {
+                ctx.moveTo(this.visiblePoints[k].getX(), this.visiblePoints[k].getY());
+            }
+            if (k == this.visiblePoints.length - 1) {
+                ctx.lineTo(this.visiblePoints[0].getX(), this.visiblePoints[0].getY());
+            } else {
+                ctx.lineTo(this.visiblePoints[k + 1].getX(), this.visiblePoints[k + 1].getY());
+            }
+        }
+        ctx.fill();
+        ctx.strokeStyle = "#000000";
+        ctx.beginPath();
+        for (let k = 0; k < this.visiblePoints.length; k++) {
+            if (k == 0) {
+                ctx.moveTo(this.visiblePoints[k].getX(), this.visiblePoints[k].getY());
+            }
+            if (k == this.visiblePoints.length - 1) {
+                ctx.lineTo(this.visiblePoints[0].getX(), this.visiblePoints[0].getY());
+            } else {
+                ctx.lineTo(this.visiblePoints[k + 1].getX(), this.visiblePoints[k + 1].getY());
+            }
+        }
+        ctx.stroke();
+        ctx.font = '32px serif';
+        ctx.fillStyle = '#000000';
+        ctx.fillText(this.action.getLabel(), this.visiblePoints[3].getX() + 10, this.visiblePoints[3].getY() - 18);
+    }
+
+}
+
+export { TileRenderObject, MenuFace };

@@ -28,11 +28,15 @@ class Viewport {
         };
         this.mx = null;
         this.my = null;
+        this.animation = null;
     }
 
-    projectPlane(points, n) {
+    projectFace(face) {
+        const points = face.getPoints();
+        const n = face.getNormal();
         const visiblePoints = [];
         const clippedPoints = [];
+        const mapping = [];
         let viewVector, pointVector, pz, li, lz, ri, rz, midpoint, projected;
         let threshold = this.d;
         let visible = null;
@@ -60,6 +64,7 @@ class Viewport {
                 }
                 projected = new Point(pointVector.dot(this.basis1), pointVector.dot(this.basis2), 0);
                 visiblePoints.push(projected);
+                mapping.push(i);
             } else {
                 li = i == 0 ? points.length - 1 : i - 1;
                 if (this.d !== -1) {
@@ -73,7 +78,7 @@ class Viewport {
                     pointVector = Vector.createFromPoints(this.p1, midpoint);
                     projected = new Point(pointVector.dot(this.basis1), pointVector.dot(this.basis2), 0);
                     visiblePoints.push(projected);
-                    clippedPoints.push(projected);
+                    mapping.push([li, i]);
                 }
                 ri = i == points.length - 1 ? 0 : i + 1;
                 if (this.d !== -1) {
@@ -87,14 +92,14 @@ class Viewport {
                     pointVector = Vector.createFromPoints(this.p1, midpoint);
                     projected = new Point(pointVector.dot(this.basis1), pointVector.dot(this.basis2), 0);
                     visiblePoints.push(projected);
-                    clippedPoints.push(projected);
+                    mapping.push([i, ri]);
                 }
             }
         }
         return {
-            visiblePoints: visiblePoints,
-            clippedPoints: clippedPoints,
-            visible: visible,
+            visiblePoints,
+            mapping,
+            visible
         };
     }
 
@@ -191,12 +196,38 @@ class Viewport {
         this.translate(xDist, yDist, zDist, true);
     }
 
+    animate(animation) {
+        return new Promise((resolve, reject) => {
+            animation.resolve = resolve;
+            this.animation = animation;
+        });
+    }
+
     updatePosition() {
-        if (this.rates.r1 || this.rates.r2) {
-            this.rotateByBasis(this.rates.r1, this.rates.r2, 0);
-        }
-        if (this.rates.t1 || this.rates.t2 || this.rates.t3) {
-            this.translateAlongBasis(this.rates.t1, this.rates.t2, this.rates.t3);
+        if (this.animation !== null) {
+            if (this.animation.rate === null) {
+                this.animation.rate = {
+                    x: (this.animation.endpoint.getX() - this.p1.getX()) / this.animation.frames,
+                    y: (this.animation.endpoint.getY() - this.p1.getY()) / this.animation.frames,
+                    z: (this.animation.endpoint.getZ() - this.p1.getZ()) / this.animation.frames
+                }
+            }
+            const dx = this.animation.rate.x;
+            const dy = this.animation.rate.y;
+            const dz = this.animation.rate.z;
+            this.translate(dx, dy, dz);
+            this.animation.frames -= 1;
+            if (this.animation.frames === 0) {
+                this.animation.resolve();
+                this.animation = null;
+            }
+        } else {
+            if (this.rates.r1 || this.rates.r2) {
+                this.rotateByBasis(this.rates.r1, this.rates.r2, 0);
+            }
+            if (this.rates.t1 || this.rates.t2 || this.rates.t3) {
+                this.translateAlongBasis(this.rates.t1, this.rates.t2, this.rates.t3);
+            }
         }
     }
 
@@ -255,6 +286,16 @@ class Viewport {
         } else {
             return this.unitNormal;
         }
+    }
+
+    getCenteredP1(point, dist) {
+        const px = point.getX() - dist * this.unitNormal.getX();
+        const py = point.getY() - dist * this.unitNormal.getY();
+        const pz = point.getZ() - dist * this.unitNormal.getZ();
+        const dx = px - this.midpoint.getX();
+        const dy = py - this.midpoint.getY();
+        const dz = pz - this.midpoint.getZ();
+        return new Point(this.p1.getX() + dx, this.p1.getY() + dy, this.p1.getZ() + dz);
     }
 }
 

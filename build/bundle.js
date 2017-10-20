@@ -63,7 +63,7 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 6);
+/******/ 	return __webpack_require__(__webpack_require__.s = 14);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -76,253 +76,27 @@
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
-exports.Knight = exports.MapScreen = exports.MapRenderer = exports.MapSerializer = exports.MapObject = exports.Map = undefined;
-
-var _get = function get(object, property, receiver) { if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { return get(parent, property, receiver); } } else if ("value" in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } };
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
-var _Tile = __webpack_require__(5);
-
-var _BSPTree = __webpack_require__(3);
-
-function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
-
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-var Map = function () {
-    function Map(tiles, mapObjects) {
-        _classCallCheck(this, Map);
+var Point = function () {
+    function Point(x, y, z) {
+        _classCallCheck(this, Point);
 
-        this.tiles = tiles;
-        this.mapObjects = mapObjects;
-        this.actors = mapObjects.filter(function (m) {
-            return m.isActor();
-        });
-
-        this.TICK_THRESHOLD = 100;
-
-        // Priority Queue of actors. Format is [[actor, ticks]]
-        this.turnQueue = [];
-
-        for (var i = 0; i < this.actors.length; i++) {
-            var ticks = this.actors[i].getTicks();
-            if (ticks > this.TICK_THRESHOLD) {
-                var idx = this.turnQueue.length;
-                for (var j = 0; j < this.turnQueue.length; j++) {
-                    if (this.turnQueue[j][1] > ticks) {
-                        idx = j;
-                        break;
-                    }
-                }
-                this.turnQueue.splice(idx, 0, [this.actors[i], ticks]);
-            }
-        }
-        if (this.turnQueue.length > 0) {
-            this.turnActor = this.turnQueue[this.turnQueue.length - 1][0];
-        } else {
-            this.turnActor = null;
-        };
+        this.x = x;
+        this.y = y;
+        this.z = z;
     }
 
-    _createClass(Map, [{
-        key: "getTilesFlattened",
-        value: function getTilesFlattened() {
-            var flattenedArray = [];
-            this.tiles.forEach(function (row) {
-                flattenedArray = flattenedArray.concat(row);
-            });
-            return flattenedArray;
-        }
-    }, {
-        key: "getTiles",
-        value: function getTiles() {
-            return this.tiles;
-        }
-    }, {
-        key: "getMapObjects",
-        value: function getMapObjects() {
-            return this.mapObjects;
-        }
-
-        //TODO: Implement Map Objective Functions
-
-    }, {
-        key: "isResolved",
-        value: function isResolved() {
-            return false;
-        }
-    }, {
-        key: "clicked",
-        value: function clicked(objs) {
-            var rerender = false;
-            for (var i = 0; i < objs.length; i++) {
-                var obj = objs[i];
-                if (obj instanceof MapObject) {
-                    //this.setSelection(obj);
-                    //rerender = true;
-                } else if (obj instanceof _Tile.Tile) {
-                    if (obj.isHighlighted()) {
-                        this.turnActor.moveTo(obj);
-                        rerender = true;
-                    }
-                }
-            }
-            return rerender;
-        }
-    }, {
-        key: "serialize",
-        value: function serialize() {
-            var serializer = new MapSerializer();
-            return serializer.serialize(this);
-        }
-    }, {
-        key: "nextTurn",
-        value: function nextTurn() {
-            if (this.turnActor !== null) {
-                this.turnQueue.pop();
-                this.turnActor.subtractTicks(this.TICK_THRESHOLD);
-            }
-            while (this.turnQueue.length === 0) {
-                for (var i = 0; i < this.actors.length; i++) {
-                    this.actors[i].tickForward();
-                    var ticks = this.actors[i].getTicks();
-                    if (ticks > this.TICK_THRESHOLD) {
-                        var idx = this.turnQueue.length;
-                        for (var j = 0; j < this.turnQueue.length; j++) {
-                            if (this.turnQueue[j][1] > ticks) {
-                                idx = j;
-                                break;
-                            }
-                        }
-                        this.turnQueue.splice(idx, 0, [this.actors[i], ticks]);
-                    }
-                }
-            }
-            this.turnActor = this.turnQueue[this.turnQueue.length - 1][0];
-            return this.turnActor;
-        }
-    }]);
-
-    return Map;
-}();
-
-var MapSerializer = function () {
-    function MapSerializer() {
-        _classCallCheck(this, MapSerializer);
-
-        this.classNameToString = {
-            'Plain': 'p',
-            'Empty': 'e',
-            'Knight': 'k'
-        };
-        this.stringToClass = {
-            'p': _Tile.PlainTile,
-            'e': _Tile.EmptyTile,
-            'k': Knight
-        };
-    }
-
-    _createClass(MapSerializer, [{
-        key: "serialize",
-        value: function serialize(map) {
-            var mapString = '';
-            var tiles = map.getTiles();
-            for (var i = 0; i < tiles.length; i++) {
-                var tileRow = tiles[i];
-                for (var j = 0; j < tileRow.length; j++) {
-                    var tile = tileRow[j];
-                    var tileString = this.classNameToString[tile.getClassName()] + "-" + tile.getH();
-                    mapString += tileString;
-                    if (j !== tileRow.length - 1) {
-                        mapString += ' ';
-                    }
-                }
-                mapString += '\n';
-            }
-            mapString += '===\n';
-            var mapObjects = map.getMapObjects();
-            for (var _i = 0; _i < mapObjects.length; _i++) {
-                var mapObject = mapObjects[_i];
-                var mapObjectString = this.classNameToString[mapObject.getClassName()] + "-" + mapObject.serialize();
-                mapString += mapObjectString;
-                if (_i !== mapObjects.length - 1) {
-                    mapString += '\n';
-                }
-            }
-            return mapString;
-        }
-    }, {
-        key: "deserialize",
-        value: function deserialize(mapString) {
-            var splitString = mapString.split('\n===\n');
-            var tileArrayString = splitString[0];
-            var mapObjectArrayString = splitString[1];
-            var tiles = [];
-            var tileRowStrings = tileArrayString.split('\n');
-            for (var y = 0; y < tileRowStrings.length; y++) {
-                var tileRow = [];
-                var tileStrings = tileRowStrings[y].split(' ');
-                for (var x = 0; x < tileStrings.length; x++) {
-                    var props = tileStrings[x].split('-');
-                    var tileClass = this.stringToClass[props[0]];
-                    var tile = new tileClass(x, y, props[1]);
-
-                    if (x > 0) {
-                        tile.link('left', tileRow[x - 1]);
-                        tileRow[x - 1].link('right', tile);
-                    }
-                    if (y > 0) {
-                        tile.link('top', tiles[y - 1][x]);
-                        tiles[y - 1][x].link('down', tile);
-                    }
-                    tileRow.push(tile);
-                }
-                tiles.push(tileRow);
-            }
-            var mapObjects = [];
-            var mapObjectStrings = mapObjectArrayString.split('\n');
-            for (var i = 0; i < mapObjectStrings.length; i++) {
-                var _props = mapObjectStrings[i].split('-');
-                var classString = _props[0];
-                var attrString = _props.slice(1, _props.length).join('-');
-                var mapObjectClass = this.stringToClass[_props[0]];
-                var mapObject = mapObjectClass.deserialize(attrString);
-                mapObjects.push(mapObject);
-            }
-            for (var _i2 = 0; _i2 < mapObjects.length; _i2++) {
-                mapObjects[_i2].setReferences(tiles, mapObjects);
-            }
-            return new Map(tiles, mapObjects);
-        }
-    }]);
-
-    return MapSerializer;
-}();
-
-var MapObject = function () {
-    _createClass(MapObject, [{
-        key: "getClassName",
-        value: function getClassName() {
-            return 'MapObject';
-        }
-    }]);
-
-    function MapObject(attributes) {
-        _classCallCheck(this, MapObject);
-
-        this.tile = null;
-        this.x = attributes.x;
-        this.y = attributes.y;
-        this.highlighted = false;
-    }
-
-    _createClass(MapObject, [{
-        key: "getTile",
-        value: function getTile() {
-            return this.tile;
+    _createClass(Point, [{
+        key: "midpoint",
+        value: function midpoint(p, perc) {
+            var x = (1 - perc) * this.x + perc * p.getX();
+            var y = (1 - perc) * this.y + perc * p.getY();
+            var z = (1 - perc) * this.z + perc * p.getZ();
+            return new Point(x, y, z);
         }
     }, {
         key: "getX",
@@ -335,179 +109,1115 @@ var MapObject = function () {
             return this.y;
         }
     }, {
-        key: "isHighlighted",
-        value: function isHighlighted() {
-            return this.highlighted;
+        key: "getZ",
+        value: function getZ() {
+            return this.z;
         }
     }, {
-        key: "setHighlight",
-        value: function setHighlight(h) {
-            this.highlighted = h;
+        key: "translate",
+        value: function translate(x, y, z) {
+            this.x += x;
+            this.y += y;
+            this.z += z;
         }
     }, {
-        key: "moveTo",
-        value: function moveTo(tile) {
-            this.tile.unsetMapObject(this);
-            tile.setMapObject(this);
-            this.tile = tile;
-            this.x = tile.getX();
-            this.y = tile.getY();
+        key: "rotate",
+        value: function rotate(v, rad) {
+            var cost = Math.cos(rad);
+            var sint = Math.sin(rad);
+            var mcost = 1 - cost;
+            var vx = v.getX();
+            var vy = v.getY();
+            var vz = v.getZ();
+            var dot = this.x * vx + this.y * vy + this.z * vz;
+            var newx = this.x * cost + (vy * this.z - vz * this.y) * sint + vx * dot * mcost;
+            var newy = this.y * cost + (vz * this.x - vx * this.z) * sint + vy * dot * mcost;
+            var newz = this.z * cost + (vx * this.y - vy * this.x) * sint + vz * dot * mcost;
+            this.x = newx;
+            this.y = newy;
+            this.z = newz;
         }
     }, {
-        key: "isActor",
-        value: function isActor() {
-            return false;
+        key: "dot",
+        value: function dot(p) {
+            return this.x * p.getX() + this.y * p.getY() + this.z * p.getZ();
         }
     }, {
-        key: "serialize",
+        key: "copy",
+        value: function copy() {
+            return new Point(this.x, this.y, this.z);
+        }
+    }, {
+        key: "equals",
+        value: function equals(p) {
+            return this.x === p.getX() && this.y === p.getY() && this.z === p.getZ();
+        }
+    }]);
+
+    return Point;
+}();
+
+var Vector = function () {
+    function Vector(x, y, z) {
+        _classCallCheck(this, Vector);
+
+        this.x = x;
+        this.y = y;
+        this.z = z;
+        this.mag = Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z);
+    }
+
+    _createClass(Vector, [{
+        key: "getX",
+        value: function getX() {
+            return this.x;
+        }
+    }, {
+        key: "getY",
+        value: function getY() {
+            return this.y;
+        }
+    }, {
+        key: "getZ",
+        value: function getZ() {
+            return this.z;
+        }
+    }, {
+        key: "getMag",
+        value: function getMag() {
+            return this.mag;
+        }
+    }, {
+        key: "normalize",
+        value: function normalize() {
+            this.x = this.x / this.mag;
+            this.y = this.y / this.mag;
+            this.z = this.z / this.mag;
+            this.mag = 1;
+        }
+    }, {
+        key: "cross",
+        value: function cross(v) {
+            var vx = v.getX();
+            var vy = v.getY();
+            var vz = v.getZ();
+            var x = this.y * vz - this.z * vy;
+            var y = this.z * vx - this.x * vz;
+            var z = this.x * vy - this.y * vx;
+            return new Vector(x, y, z);
+        }
+    }, {
+        key: "dot",
+        value: function dot(v) {
+            return this.x * v.getX() + this.y * v.getY() + this.z * v.getZ();
+        }
+    }, {
+        key: "equals",
+        value: function equals(v) {
+            return this.x === v.getX() && this.y === v.getY() && this.z === v.getZ();
+        }
+    }], [{
+        key: "createFromPoints",
+        value: function createFromPoints(p1, p2) {
+            return new Vector(p2.getX() - p1.getX(), p2.getY() - p1.getY(), p2.getZ() - p1.getZ());
+        }
+    }]);
+
+    return Vector;
+}();
+
+exports.Point = Point;
+exports.Vector = Vector;
+
+/***/ }),
+/* 1 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.deserialize = exports.serialize = undefined;
+
+var _Tile = __webpack_require__(12);
+
+var _MapObject = __webpack_require__(7);
+
+var _Map = __webpack_require__(6);
+
+var _Objective = __webpack_require__(9);
+
+function serialize(map) {
+    var mapString = '';
+    var tiles = map.getTiles();
+    for (var i = 0; i < tiles.length; i++) {
+        var tileRow = tiles[i];
+        for (var j = 0; j < tileRow.length; j++) {
+            var tile = tileRow[j];
+            var tileString = tile.serialize();
+            mapString += tileString;
+            if (j !== tileRow.length - 1) {
+                mapString += ' ';
+            }
+        }
+        mapString += '\n';
+    }
+    mapString += '===\n';
+    var mapObjects = map.getMapObjects();
+    for (var _i = 0; _i < mapObjects.length; _i++) {
+        var mapObject = mapObjects[_i];
+        var mapObjectString = mapObject.serialize();
+        mapString += mapObjectString;
+        mapString += '\n';
+    }
+    mapString += '===\n';
+    mapString += map.getObjective().serialize();
+    mapString += '\n';
+    mapString += map.serializeTurnPlayers();
+    mapString += '\n';
+    mapString += map.serializeActions();
+    return mapString;
+}
+
+function deserialize(mapString) {
+    var splitString = mapString.split('\n===\n');
+    var tileArrayString = splitString[0];
+    var mapObjectArrayString = splitString[1];
+    var settings = splitString[2].split('\n');
+
+    var tiles = [];
+    var tileRowStrings = tileArrayString.split('\n');
+    for (var y = 0; y < tileRowStrings.length; y++) {
+        var tileRow = [];
+        var tileStrings = tileRowStrings[y].split(' ');
+        for (var x = 0; x < tileStrings.length; x++) {
+            var props = tileStrings[x].split('-');
+            var tileClass = _Tile.Tile.getClass(props[0]);
+            var tile = new tileClass(x, y, props[1]);
+
+            if (x > 0) {
+                tile.link('left', tileRow[x - 1]);
+                tileRow[x - 1].link('right', tile);
+            }
+            if (y > 0) {
+                tile.link('top', tiles[y - 1][x]);
+                tiles[y - 1][x].link('down', tile);
+            }
+            tileRow.push(tile);
+        }
+        tiles.push(tileRow);
+    }
+
+    var mapObjectStrings = mapObjectArrayString.split('\n');
+    for (var i = 0; i < mapObjectStrings.length; i++) {
+        var mapObject = _MapObject.MapObject.deserialize(mapObjectStrings[i], tiles);
+    }
+
+    var objective = _Objective.Objective.deserialize(settings[0]);
+    var turnPlayers = _Map.Map.deserializeTurnPlayers(settings[1]);
+    var actions = _Map.Map.deserializeActions(settings[2]);
+    return new _Map.Map(tiles, objective, turnPlayers, actions);
+}
+
+exports.serialize = serialize;
+exports.deserialize = deserialize;
+
+/***/ }),
+/* 2 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _MapScreen = __webpack_require__(8);
+
+var _DefaultMap = __webpack_require__(5);
+
+var _DefaultMap2 = _interopRequireDefault(_DefaultMap);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var Game = function () {
+    function Game(width, height) {
+        _classCallCheck(this, Game);
+
+        this.canvas = document.createElement("canvas");
+        this.canvas.width = width;
+        this.canvas.height = height;
+    }
+
+    _createClass(Game, [{
+        key: "start",
+        value: function start() {
+            var _this = this;
+
+            document.body.appendChild(this.canvas);
+            this.screen = new _MapScreen.MapScreen(this.canvas, _DefaultMap2.default);
+            this.screen.start();
+            window.dmap = _DefaultMap2.default;
+
+            this.canvas.addEventListener("click", function (e) {
+                var rect = _this.canvas.getBoundingClientRect();
+                _this.screen.handleClick(e.clientX - rect.left, e.clientY - rect.top);
+            });
+
+            this.canvas.addEventListener("mousedown", function (e) {
+                var rect = _this.canvas.getBoundingClientRect();
+                _this.screen.handleMouseDown(e.clientX - rect.left, e.clientY - rect.top);
+            });
+
+            this.canvas.addEventListener("mousemove", function (e) {
+                var rect = _this.canvas.getBoundingClientRect();
+                _this.screen.handleMouseMove(e.clientX - rect.left, e.clientY - rect.top);
+            });
+
+            this.canvas.addEventListener("mouseup", function (e) {
+                var rect = _this.canvas.getBoundingClientRect();
+                _this.screen.handleMouseUp(e.clientX - rect.left, e.clientY - rect.top);
+            });
+
+            this.canvas.addEventListener("mouseleave", function (e) {
+                _this.screen.handleMouseLeave();
+            });
+
+            document.addEventListener("keydown", function (e) {
+                e.preventDefault();
+                _this.screen.handleKeyDown(e.code);
+            });
+
+            document.addEventListener("keyup", function (e) {
+                e.preventDefault();
+                _this.screen.handleKeyUp(e.code);
+            });
+
+            /*this.loadAssets().then(() => {
+                 this.canvas.addEventListener("click", (e) => {
+                    console.log(e);
+                });
+                 this.loadDemo();
+            });*/
+        }
+
+        /*loadAssets() {
+            let loadingPromise = new Promise((resolve, reject) => {
+                resolve();
+            });
+            return loadingPromise
+        }*/
+
+    }]);
+
+    return Game;
+}();
+
+exports.default = Game;
+
+/***/ }),
+/* 3 */
+/***/ (function(module, exports, __webpack_require__) {
+
+// style-loader: Adds some css to the DOM by adding a <style> tag
+
+// load the styles
+var content = __webpack_require__(17);
+if(typeof content === 'string') content = [[module.i, content, '']];
+// Prepare cssTransformation
+var transform;
+
+var options = {}
+options.transform = transform
+// add the styles to the DOM
+var update = __webpack_require__(18)(content, options);
+if(content.locals) module.exports = content.locals;
+// Hot Module Replacement
+if(false) {
+	// When the styles change, update the <style> tags
+	if(!content.locals) {
+		module.hot.accept("!!../node_modules/css-loader/index.js!./main.css", function() {
+			var newContent = require("!!../node_modules/css-loader/index.js!./main.css");
+			if(typeof newContent === 'string') newContent = [[module.id, newContent, '']];
+			update(newContent);
+		});
+	}
+	// When the module is disposed, remove the <style> tags
+	module.hot.dispose(function() { update(); });
+}
+
+/***/ }),
+/* 4 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.BSPTree = undefined;
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _Vector = __webpack_require__(0);
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var BSPTree = function () {
+    function BSPTree(faces) {
+        _classCallCheck(this, BSPTree);
+
+        this.nodes = [];
+        this.front = null;
+        this.back = null;
+        if (faces.length == 0) {
+            return;
+        }
+
+        this.nodes = [faces[0]];
+        var p0 = faces[0].getPoints()[0];
+        var n = faces[0].getNormal();
+        var frontFaces = [];
+        var backFaces = [];
+
+        for (var i = 1; i < faces.length; i++) {
+            var pos = void 0;
+            var cut = false;
+            var frontPoints = [];
+            var backPoints = [];
+            var points = faces[i].getPoints();
+
+            //Get initial pos
+            var lastD = _Vector.Vector.createFromPoints(p0, points[points.length - 1]).dot(n);
+            if (lastD === 0) {
+                pos = null;
+            } else if (lastD > 0) {
+                pos = 'front';
+            } else {
+                pos = 'back';
+            }
+
+            // Iterate over points
+            for (var j = 0; j < points.length; j++) {
+                var p = points[j];
+                var d = _Vector.Vector.createFromPoints(p0, p).dot(n);
+                if (d === 0) {
+                    pos = null;
+                    frontPoints.push(p);
+                    backPoints.push(p);
+                } else if (d > 0) {
+                    if (pos === 'back') {
+                        var prevP = j === 0 ? points[points.length - 1] : points[j - 1];
+                        var prevD = _Vector.Vector.createFromPoints(p0, prevP).dot(n);
+                        var mid = p.midpoint(prevP, d / (d - prevD));
+                        frontPoints.push(mid);
+                        backPoints.push(mid);
+                        cut = true;
+                    }
+                    frontPoints.push(p);
+                    pos = 'front';
+                } else {
+                    if (pos === 'front') {
+                        var _prevP = j === 0 ? points[points.length - 1] : points[j - 1];
+                        var _prevD = _Vector.Vector.createFromPoints(p0, _prevP).dot(n);
+                        var _mid = p.midpoint(_prevP, d / (d - _prevD));
+                        frontPoints.push(_mid);
+                        backPoints.push(_mid);
+                        cut = true;
+                    }
+                    backPoints.push(p);
+                    pos = 'back';
+                }
+            }
+
+            if (cut) {
+                // Split a face...
+                var _faces$i$getPolygon$s = faces[i].getPolygon().splitFace(faces[i], frontPoints, backPoints),
+                    face1 = _faces$i$getPolygon$s.face1,
+                    face2 = _faces$i$getPolygon$s.face2;
+
+                frontFaces.push(face1);
+                backFaces.push(face2);
+            } else {
+                if (frontPoints.length === points.length && backPoints.length === points.length) {
+                    this.nodes.push(faces[i]);
+                } else if (frontPoints.length === points.length) {
+                    frontFaces.push(faces[i]);
+                } else {
+                    backFaces.push(faces[i]);
+                }
+            }
+        }
+
+        if (frontFaces.length > 0) {
+            this.front = new BSPTree(frontFaces);
+        }
+        if (backFaces.length > 0) {
+            this.back = new BSPTree(backFaces);
+        }
+    }
+
+    _createClass(BSPTree, [{
+        key: 'traverse',
+        value: function traverse(fn, viewport) {
+            if (this.nodes.length > 0) {
+                var _n = this.nodes[0].getNormal();
+                var p = this.nodes[0].getPoints()[0];
+                var viewDir = viewport.getViewDir(p, _n);
+                if (viewDir === 'towards') {
+                    if (this.back !== null) {
+                        this.back.traverse(fn, viewport);
+                    }
+                    for (var i = 0; i < this.nodes.length; i++) {
+                        fn(this.nodes[i]);
+                    }
+                    if (this.front !== null) {
+                        this.front.traverse(fn, viewport);
+                    }
+                } else {
+                    if (this.front !== null) {
+                        this.front.traverse(fn, viewport);
+                    }
+                    for (var _i = 0; _i < this.nodes.length; _i++) {
+                        fn(this.nodes[_i]);
+                    }
+                    if (this.back !== null) {
+                        this.back.traverse(fn, viewport);
+                    }
+                }
+            }
+        }
+    }]);
+
+    return BSPTree;
+}();
+
+exports.BSPTree = BSPTree;
+
+/***/ }),
+/* 5 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _MapSerializer = __webpack_require__(1);
+
+var exampleMapString = "p-1 p-2 p-3\n===\nw-0-0-0\n===\n0\n0-1\n1-1-1";
+/*
+var exampleMapString = 
+`p-1
+p-3
+===
+k-0-0-0-20`;*/
+
+var defaultMap = (0, _MapSerializer.deserialize)(exampleMapString);
+
+exports.default = defaultMap;
+
+/***/ }),
+/* 6 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.Map = undefined;
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _MapSerializer = __webpack_require__(1);
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var Map = function () {
+    function Map(tiles, objective, turnPlayers, actions) {
+        _classCallCheck(this, Map);
+
+        this.tiles = tiles;
+        this.objective = objective;
+        this.turnPlayers = turnPlayers;
+        this.turnPlayer = turnPlayers[0];
+        this.turnPlayerIdx = 0;
+        this.actions = actions;
+    }
+
+    _createClass(Map, [{
+        key: 'getTiles',
+        value: function getTiles() {
+            return this.tiles;
+        }
+    }, {
+        key: 'getTilesFlattened',
+        value: function getTilesFlattened() {
+            var flattenedArray = [];
+            this.tiles.forEach(function (row) {
+                flattenedArray = flattenedArray.concat(row);
+            });
+            return flattenedArray;
+        }
+    }, {
+        key: 'getMapObjects',
+        value: function getMapObjects() {
+            return this.getTilesFlattened().map(function (t) {
+                return t.getMapObject();
+            }).filter(function (m) {
+                return m !== null;
+            });
+        }
+    }, {
+        key: 'getObjective',
+        value: function getObjective() {
+            return this.objective;
+        }
+    }, {
+        key: 'serializeTurnPlayers',
+        value: function serializeTurnPlayers() {
+            var ret = '';
+            var idx = this.turnPlayerIdx;
+            for (var i = 0; i < this.turnPlayers.length; i++) {
+                ret += this.turnPlayers[idx];
+                if (i !== this.turnPlayers.length - 1) {
+                    ret += '-';
+                }
+                idx = (idx + 1) % this.turnPlayers.length;
+            }
+            return ret;
+        }
+    }, {
+        key: 'getTurnPlayer',
+        value: function getTurnPlayer() {
+            return this.turnPlayer;
+        }
+    }, {
+        key: 'serializeActions',
+        value: function serializeActions() {
+            return this.actions.move + '-' + this.actions.transfer + '-' + this.actions.attack;
+        }
+    }, {
+        key: 'isResolved',
+        value: function isResolved() {
+            return this.objective.check(this);
+        }
+    }, {
+        key: 'serialize',
         value: function serialize() {
-            return this.x + "-" + this.getY();
+            return (0, _MapSerializer.serialize)(this);
+        }
+
+        /*
+           Actions:
+            move/attack
+            transfer
+        */
+
+    }, {
+        key: 'doAction',
+        value: function doAction(name, sx, sy, dx, dy) {
+            if (this.actions[name] > 0) {
+                var srcTile = this.tiles[sy][sx];
+                var obj = srcTile.getMapObject();
+                var dstTile = this.tiles[dy][dx];
+                obj[name](dstTile, this.turnPlayer);
+                this.actions[name] -= 1;
+            }
+            if (name === 'end' || Object.values(this.actions).reduce(function (a, b) {
+                return a + b;
+            }, 0) === 0) {
+                this.turnPlayerIdx = (this.turnPlayerIdx + 1) % this.turnPlayers.length;
+                this.turnPlayer = this.turnPlayers[this.turnPlayerIdx];
+                this.actions = {
+                    move: 1,
+                    transfer: 1,
+                    attack: 1
+                };
+            }
+        }
+        /*
+         applyAction(actor, action, receiver) {
+            if (action === 'move') {
+                actor.moveTo(receiver);
+            }
+        }
+         clicked(obj) {
+            if (obj instanceof MapObject) {
+                //this.setSelection(obj);
+                //rerender = true;
+            } else if (obj instanceof Tile) {
+                if (obj.isHighlighted()) {
+                    this.turnActor.moveTo(obj);
+                }
+            }
+        }
+         serialize() {
+            const serializer = new MapSerializer();
+            return serializer.serialize(this);
+        }
+         /*nextTurn() {
+            if (this.turnActor !== null) {
+                this.turnQueue.pop();
+                this.turnActor.subtractTicks(this.TICK_THRESHOLD);
+            }
+            while (this.turnQueue.length === 0) {
+                for (let i = 0; i < this.actors.length; i++) {
+                    this.actors[i].tickForward();
+                    const ticks = this.actors[i].getTicks();
+                    if (ticks > this.TICK_THRESHOLD) {
+                        let idx = this.turnQueue.length;
+                        for (let j = 0; j < this.turnQueue.length; j++) {
+                            if (this.turnQueue[j][1] > ticks) {
+                                idx = j;
+                                break;
+                            }
+                        }
+                        this.turnQueue.splice(idx, 0, [this.actors[i], ticks]);
+                    }
+                }
+            }
+            this.turnActor = this.turnQueue[this.turnQueue.length - 1][0];
+            return this.turnActor;
+        }*/
+
+        /*getTurnActor() {
+            return this.turnActor;
+        }
+         getPlayerOptions() {
+            return this.playerOptions;
+        }
+         setPlayerOptions(options) {
+            this.playerOptions = options;
+        }*/
+
+    }], [{
+        key: 'deserializeTurnPlayers',
+        value: function deserializeTurnPlayers(str) {
+            return str.split('-');
         }
     }, {
-        key: "setReferences",
+        key: 'deserializeActions',
+        value: function deserializeActions(str) {
+            var s = str.split('-');
+            return {
+                move: parseInt(s[0]),
+                transfer: parseInt(s[1]),
+                attack: parseInt(s[2])
+            };
+        }
+    }]);
+
+    return Map;
+}();
+
+exports.Map = Map;
+
+/***/ }),
+/* 7 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _get = function get(object, property, receiver) { if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { return get(parent, property, receiver); } } else if ("value" in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } };
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var MapObject = function () {
+    function MapObject(props) {
+        var tile = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
+
+        _classCallCheck(this, MapObject);
+
+        this.tile = tile;
+        if (tile !== null) {
+            tile.setMapObject(this);
+        }
+    }
+
+    _createClass(MapObject, [{
+        key: 'getTile',
+        value: function getTile() {
+            return this.tile;
+        }
+    }, {
+        key: 'getX',
+        value: function getX() {
+            return this.tile.getX();
+        }
+    }, {
+        key: 'getY',
+        value: function getY() {
+            return this.tile.getY();
+        }
+    }, {
+        key: 'serialize',
+        value: function serialize() {
+            return this.constructor.name() + '-' + this.getX() + '-' + this.getY();
+        }
+    }, {
+        key: 'setReferences',
         value: function setReferences(tiles, mapObjects) {
             this.tile = tiles[this.y][this.x];
             this.tile.setMapObject(this);
         }
-    }], [{
-        key: "parseAttributes",
-        value: function parseAttributes(attrString) {
-            var attrSplit = attrString.split('-');
-            var attr = {
-                x: parseInt(attrSplit[0]),
-                y: parseInt(attrSplit[1])
-            };
-            return attr;
+    }, {
+        key: 'getActions',
+        value: function getActions() {
+            return [];
         }
     }, {
-        key: "deserialize",
-        value: function deserialize(attrString) {
-            return new this(this.parseAttributes(attrString));
+        key: 'getPlayer',
+        value: function getPlayer() {
+            return null;
+        }
+    }], [{
+        key: 'deserialize',
+        value: function deserialize(props, tiles) {
+            var p = props.split('-');
+            var cls = NAME_MAP[p[0]];
+            var x = parseInt(p[1]);
+            var y = parseInt(p[2]);
+            return new cls(p.slice(3, p.length), tiles[y][x]);
         }
     }]);
 
     return MapObject;
 }();
 
-var Actor = function (_MapObject) {
-    _inherits(Actor, _MapObject);
+var Shard = function (_MapObject) {
+    _inherits(Shard, _MapObject);
 
-    function Actor(attributes) {
-        _classCallCheck(this, Actor);
+    function Shard() {
+        _classCallCheck(this, Shard);
 
-        var _this = _possibleConstructorReturn(this, (Actor.__proto__ || Object.getPrototypeOf(Actor)).call(this, attributes));
-
-        _this.ticks = attributes.ticks;
-        _this.tickAmount = attributes.tickAmount;
-        return _this;
+        return _possibleConstructorReturn(this, (Shard.__proto__ || Object.getPrototypeOf(Shard)).apply(this, arguments));
     }
 
-    _createClass(Actor, [{
-        key: "getTicks",
-        value: function getTicks() {
-            return this.ticks;
-        }
-    }, {
-        key: "getTickAmount",
-        value: function getTickAmount() {
-            return this.tickAmount;
-        }
-    }, {
-        key: "tickForward",
-        value: function tickForward() {
-            this.ticks += this.tickAmount;
-        }
-    }, {
-        key: "subtractTicks",
-        value: function subtractTicks(amt) {
-            this.ticks -= amt;
-        }
-    }, {
-        key: "isActor",
-        value: function isActor() {
-            return true;
-        }
-    }, {
-        key: "takeTurn",
-        value: function takeTurn() {
-            return new Promise(function (resolve, reject) {
-                resolve();
-            });
-        }
-    }, {
-        key: "serialize",
-        value: function serialize() {
-            return _get(Actor.prototype.__proto__ || Object.getPrototypeOf(Actor.prototype), "serialize", this).call(this) + "-" + this.ticks + "-" + this.tickAmount;
-        }
-    }], [{
-        key: "parseAttributes",
-        value: function parseAttributes(attrString) {
-            var attrSplit = attrString.split('-');
-            var parAttrString = attrSplit.slice(0, attrSplit.length - 2).join('-');
-            var attr = _get(Actor.__proto__ || Object.getPrototypeOf(Actor), "parseAttributes", this).call(this, parAttrString);
-            attr.ticks = parseInt(attrSplit[attrSplit.length - 2]);
-            attr.tickAmount = parseInt(attrSplit[attrSplit.length - 1]);
-            return attr;
+    _createClass(Shard, [{
+        key: 'attackedBy',
+        value: function attackedBy() {
+            this.tile.unsetMapObject();
         }
     }]);
 
-    return Actor;
+    return Shard;
 }(MapObject);
 
-var Knight = function (_Actor) {
-    _inherits(Knight, _Actor);
+var BlueShard = function (_Shard) {
+    _inherits(BlueShard, _Shard);
 
-    _createClass(Knight, [{
-        key: "getClassName",
-        value: function getClassName() {
-            return 'Knight';
-        }
-    }]);
+    function BlueShard() {
+        _classCallCheck(this, BlueShard);
 
-    function Knight(attributes) {
-        _classCallCheck(this, Knight);
-
-        //attributes
-        // HP
-        // MP
-        // Speed
-        // Skill Points
-        // Attack
-        // Defense
-        // 
-        var _this2 = _possibleConstructorReturn(this, (Knight.__proto__ || Object.getPrototypeOf(Knight)).call(this, attributes));
-
-        _this2.turnResolve = function () {
-            throw Error('Called turnResolve() before it was set');
-        };
-        return _this2;
+        return _possibleConstructorReturn(this, (BlueShard.__proto__ || Object.getPrototypeOf(BlueShard)).apply(this, arguments));
     }
 
-    _createClass(Knight, [{
-        key: "takeTurn",
-        value: function takeTurn() {
-            var _this3 = this;
-
-            this.setHighlight(true);
-            this.tile.changeNeighbors(2, true, function (tile) {
-                return tile.getMapObject() == null;
-            });
-            return new Promise(function (resolve, reject) {
-                _this3.turnResolve = resolve;
-            });
-        }
-    }, {
-        key: "moveTo",
-        value: function moveTo(tile) {
-            this.setHighlight(false);
-            this.tile.changeNeighbors(2, false);
-            _get(Knight.prototype.__proto__ || Object.getPrototypeOf(Knight.prototype), "moveTo", this).call(this, tile);
-            this.turnResolve();
+    _createClass(BlueShard, null, [{
+        key: 'name',
+        value: function name() {
+            return 'bs';
         }
     }]);
 
-    return Knight;
-}(Actor);
+    return BlueShard;
+}(Shard);
+
+var RedShard = function (_Shard2) {
+    _inherits(RedShard, _Shard2);
+
+    function RedShard() {
+        _classCallCheck(this, RedShard);
+
+        return _possibleConstructorReturn(this, (RedShard.__proto__ || Object.getPrototypeOf(RedShard)).apply(this, arguments));
+    }
+
+    _createClass(RedShard, null, [{
+        key: 'name',
+        value: function name() {
+            return 'rs';
+        }
+    }]);
+
+    return RedShard;
+}(Shard);
+
+var YellowShard = function (_Shard3) {
+    _inherits(YellowShard, _Shard3);
+
+    function YellowShard() {
+        _classCallCheck(this, YellowShard);
+
+        return _possibleConstructorReturn(this, (YellowShard.__proto__ || Object.getPrototypeOf(YellowShard)).apply(this, arguments));
+    }
+
+    _createClass(YellowShard, null, [{
+        key: 'name',
+        value: function name() {
+            return 'ys';
+        }
+    }]);
+
+    return YellowShard;
+}(Shard);
+
+var Vessel = function (_MapObject2) {
+    _inherits(Vessel, _MapObject2);
+
+    function Vessel(props, tile) {
+        _classCallCheck(this, Vessel);
+
+        var _this5 = _possibleConstructorReturn(this, (Vessel.__proto__ || Object.getPrototypeOf(Vessel)).apply(this, arguments));
+
+        _this5.player = props[0];
+        _this5.movement = 4;
+        _this5.range = 1;
+        return _this5;
+    }
+
+    _createClass(Vessel, [{
+        key: 'serialize',
+        value: function serialize() {
+            return _get(Vessel.prototype.__proto__ || Object.getPrototypeOf(Vessel.prototype), 'serialize', this).call(this) + '-' + this.player;
+        }
+    }, {
+        key: 'transfer',
+        value: function transfer(tile, player) {
+            if (player !== this.player) {
+                throw Error('Invalid action: wrong player');
+            }
+            var mO = tile.getMapObject();
+            if (mO !== null && mO.getPlayer() === this.player && this.getShard() !== null) {
+                var cls = mO.consumeShard(this.getShard());
+                new cls([mO.getPlayer()], tile);
+                new WhiteVessel([this.player], this.tile);
+            } else {
+                throw Error('Invalid transfer tile');
+            }
+        }
+    }, {
+        key: 'attack',
+        value: function attack(tile, player) {
+            if (player !== this.player) {
+                throw Error('Invalid action: wrong player');
+            }
+            if (!this.tile.getNeighbors(this.range).has(tile)) {
+                throw Error('Invalid action: cannot reach tile');
+            }
+
+            var mO = tile.getMapObject();
+            if (mO !== null) {
+                mO.attackedBy(this);
+            } else {
+                throw Error('Invalid attack tile');
+            }
+        }
+    }, {
+        key: 'move',
+        value: function move(tile, player) {
+            if (player !== this.player) {
+                throw Error('Invalid action: wrong player');
+            }
+            if (!this.tile.getNeighbors(this.movement).has(tile)) {
+                throw Error('Invalid action: cannot reach tile');
+            }
+
+            var mO = tile.getMapObject();
+            if (mO === null) {
+                this.tile.unsetMapObject();
+                tile.setMapObject(this);
+                this.tile = tile;
+            } else if (mO instanceof Shard) {
+                var cls = this.consumeShard(mO);
+                new cls([this.player], tile);
+                this.tile.unsetMapObject();
+            } else {
+                throw Error('Invalid move tile');
+            }
+        }
+    }, {
+        key: 'getPlayer',
+        value: function getPlayer() {
+            return this.player;
+        }
+    }, {
+        key: 'getShard',
+        value: function getShard() {
+            return null;
+        }
+    }, {
+        key: 'attackedBy',
+        value: function attackedBy() {
+            this.tile.unsetMapObject();
+        }
+    }]);
+
+    return Vessel;
+}(MapObject);
+
+var WhiteVessel = function (_Vessel) {
+    _inherits(WhiteVessel, _Vessel);
+
+    function WhiteVessel() {
+        _classCallCheck(this, WhiteVessel);
+
+        return _possibleConstructorReturn(this, (WhiteVessel.__proto__ || Object.getPrototypeOf(WhiteVessel)).apply(this, arguments));
+    }
+
+    _createClass(WhiteVessel, [{
+        key: 'consumeShard',
+        value: function consumeShard(shard) {
+            if (shard instanceof BlueShard) {
+                return BlueVessel;
+            } else if (shard instanceof RedShard) {
+                return RedVessel;
+            } else if (shard instanceof YellowShard) {
+                return YellowVessel;
+            }
+        }
+    }], [{
+        key: 'name',
+        value: function name() {
+            return 'w';
+        }
+    }]);
+
+    return WhiteVessel;
+}(Vessel);
+
+var BlueVessel = function (_Vessel2) {
+    _inherits(BlueVessel, _Vessel2);
+
+    function BlueVessel() {
+        _classCallCheck(this, BlueVessel);
+
+        return _possibleConstructorReturn(this, (BlueVessel.__proto__ || Object.getPrototypeOf(BlueVessel)).apply(this, arguments));
+    }
+
+    _createClass(BlueVessel, [{
+        key: 'getShard',
+        value: function getShard() {
+            return new BlueShard();
+        }
+    }], [{
+        key: 'name',
+        value: function name() {
+            return 'b';
+        }
+    }]);
+
+    return BlueVessel;
+}(Vessel);
+
+var RedVessel = function (_Vessel3) {
+    _inherits(RedVessel, _Vessel3);
+
+    function RedVessel() {
+        _classCallCheck(this, RedVessel);
+
+        return _possibleConstructorReturn(this, (RedVessel.__proto__ || Object.getPrototypeOf(RedVessel)).apply(this, arguments));
+    }
+
+    _createClass(RedVessel, [{
+        key: 'getShard',
+        value: function getShard() {
+            return new RedShard();
+        }
+    }], [{
+        key: 'name',
+        value: function name() {
+            return 'r';
+        }
+    }]);
+
+    return RedVessel;
+}(Vessel);
+
+var YellowVessel = function (_Vessel4) {
+    _inherits(YellowVessel, _Vessel4);
+
+    function YellowVessel() {
+        _classCallCheck(this, YellowVessel);
+
+        var _this9 = _possibleConstructorReturn(this, (YellowVessel.__proto__ || Object.getPrototypeOf(YellowVessel)).apply(this, arguments));
+
+        _this9.movement = 5;
+        return _this9;
+    }
+
+    _createClass(YellowVessel, [{
+        key: 'getShard',
+        value: function getShard() {
+            return new YellowShard();
+        }
+    }], [{
+        key: 'name',
+        value: function name() {
+            return 'y';
+        }
+    }]);
+
+    return YellowVessel;
+}(Vessel);
+
+var NAME_MAP = {
+    bs: BlueShard,
+    rs: RedShard,
+    ys: YellowShard,
+    w: WhiteVessel,
+    b: BlueVessel,
+    r: RedVessel,
+    y: YellowVessel
+};
+
+exports.MapObject = MapObject;
+
+/***/ }),
+/* 8 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.MapScreen = undefined;
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _Vector = __webpack_require__(0);
+
+var _Viewport = __webpack_require__(13);
+
+var _Polygon = __webpack_require__(10);
+
+var _PolygonRenderer = __webpack_require__(11);
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 var MapScreen = function () {
     function MapScreen(canvas, map) {
@@ -515,90 +1225,99 @@ var MapScreen = function () {
 
         this.canvas = canvas;
         this.map = map;
-        this.viewport = new Viewport({
-            x: 0,
-            y: 0,
-            z: 500
-        }, {
-            x: this.canvas.width,
-            y: 0,
-            z: 500
-        }, {
-            x: 0,
-            y: this.canvas.height,
-            z: 500
-        }, {
-            x: this.canvas.width,
-            y: this.canvas.height,
-            z: 500
-        }, 500);
-        this.startDragX = null;
-        this.startDragY = null;
+        this.viewport = new _Viewport.Viewport(new _Vector.Point(0, 0, 500), new _Vector.Point(this.canvas.width, 0, 500), new _Vector.Point(0, this.canvas.height, 500), new _Vector.Point(this.canvas.width, this.canvas.height, 500), 500);
         this.pressed = {};
-        this.mapRenderer = new MapRenderer(this.canvas, this.map, this.viewport);
+
+        var TLEN = 100;
+        var polygons = this.map.getTilesFlattened().map(function (t) {
+            return _Polygon.Polygon.createBox(t.getX() * TLEN, t.getY() * TLEN, 0, TLEN, TLEN, t.getH() * TLEN);
+        });
+        this.renderer = new _PolygonRenderer.PolygonRenderer(this.canvas, polygons);
     }
 
     _createClass(MapScreen, [{
         key: "start",
         value: function start() {
-            this.mapRenderer.renderMap();
-            //this.turnLoop();
+            this.renderLoop();
         }
     }, {
-        key: "turnLoop",
-        value: function turnLoop() {
-            var _this4 = this;
+        key: "renderLoop",
+        value: function renderLoop() {
+            var _this = this;
 
+            this.viewport.updatePosition();
+            this.renderer.render(this.viewport);
+            window.requestAnimationFrame(function (step) {
+                _this.renderLoop();
+            });
+        }
+
+        /*turnLoop() {
             if (this.map.isResolved()) {
                 // End
             } else {
-                var turnActor = this.map.nextTurn();
-                this.animateNextTurn(turnActor).then(function () {
-                    turnActor.takeTurn().then(function () {
-                        _this4.turnLoop();
+                const turnActor = this.map.nextTurn();
+                this.animateNextTurn(turnActor).then(() => {
+                    turnActor.takeTurn().then(() => {
+                        this.turnLoop();
                     });
                     //this.mapRenderer.renderMap(this.map, this.viewport);
                 });
             }
-        }
+        }*/
+
     }, {
         key: "animateNextTurn",
         value: function animateNextTurn(turnActor) {
-            return new Promise(function (resolve, reject) {
-                resolve();
-                //return this.mapRenderer.centerOn(turnActor);
-            });
+            return this.mapRenderer.centerOn(turnActor);
+            //return new Promise((resolve, reject) => {
+            //    resolve();
+            //return this.mapRenderer.centerOn(turnActor);
+            //});
         }
     }, {
         key: "handleMouseDown",
         value: function handleMouseDown(x, y) {
-            this.startDragX = x;
-            this.startDragY = y;
+            //this.startDragX = x;
+            //this.startDragY = y;
         }
     }, {
         key: "handleMouseMove",
         value: function handleMouseMove(x, y) {
-            if (this.startDragX !== null && this.startDragY !== null) {
-                var dx = this.startDragX - x;
-                var dy = this.startDragY - y;
+            this.viewport.setMouse(x, y);
+            /*if (this.startDragX !== null && this.startDragY !== null) {
+                const dx = this.startDragX - x;
+                const dy = this.startDragY - y;
                 this.viewport.translateAlongBasis(dx, dy);
                 this.startDragX = x;
                 this.startDragY = y;
-            }
+            }*/
             //this.mapRenderer.renderMap();
         }
     }, {
         key: "handleMouseUp",
         value: function handleMouseUp(x, y) {
-            this.startDragX = null;
-            this.startDragY = null;
+            //this.startDragX = null;
+            //this.startDragY = null;
         }
     }, {
         key: "handleClick",
         value: function handleClick(x, y) {
             //this.viewport.mx = this.viewport.x1 + x;
             //this.viewport.my = this.viewport.y1 + y;
-            //const clickedObjs = this.mapRenderer.getClickedObjects(this.viewport);
+            /*const clickedObj = this.mapRenderer.getClickedObject();
+            if (clickedObj instanceof Tile) {
+                const action = this.map.getSelectedAction(clickedObj);
+                if (action !== null && action.action === 'move') {
+                    this.mapRenderer.animateMove(action.actor, action.receiver).then(() => {
+                        this.map.applyAction(action.actor, action.action, action.receiver);
+                    });
+                }
+            } else if (clickedObj instanceof ActorAction) {
+                this.map.getTurnActor().handleAction(clickedObj);
+            }*/
+            //const clickedObjs = this.mapRenderer.getClickedObjects();
+
             //const rerender = this.map.clicked(clickedObjs);
             //if (rerender) {
             //this.mapRenderer.renderMap(this.map, this.viewport);
@@ -607,10 +1326,9 @@ var MapScreen = function () {
     }, {
         key: "handleMouseLeave",
         value: function handleMouseLeave() {
-            this.viewport.mx = null;
-            this.viewport.my = null;
-            this.startDragX = null;
-            this.startDragY = null;
+            this.viewport.setMouse(null, null);
+            //this.startDragX = null;
+            //this.startDragY = null;
             //this.mapRenderer.renderMap(this.map, this.viewport);
         }
     }, {
@@ -700,670 +1418,10 @@ var MapScreen = function () {
     return MapScreen;
 }();
 
-var Viewport = function () {
-
-    /*
-        p1 (origin)       p2
-        --------------------
-        |                  |
-        |                  |
-        |                  |
-        --------------------
-        p3                p4
-     */
-    function Viewport(p1, p2, p3, p4) {
-        var d = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : -1;
-
-        _classCallCheck(this, Viewport);
-
-        this.p1 = p1;
-        this.p2 = p2;
-        this.p3 = p3;
-        this.p4 = p4;
-        this.d = d;
-        this.p5 = null;
-        this.calcBasis1();
-        this.calcBasis2();
-        this.calcUnitNormal();
-        this.calcFocalPoint();
-        var wx = p2.x - p1.x;
-        var wy = p2.y - p1.y;
-        var wz = p2.z - p2.z;
-        this.width = Math.sqrt(wx * wx + wy * wy + wz * wz);
-        var hx = p3.x - p1.x;
-        var hy = p3.y - p1.y;
-        var hz = p3.z - p1.z;
-        this.height = Math.sqrt(hx * hx + hy * hy + hz * hz);
-        this.rates = {
-            r1: 0,
-            r2: 0,
-            t1: 0,
-            t2: 0,
-            t3: 0
-        };
-    }
-
-    _createClass(Viewport, [{
-        key: "dot",
-        value: function dot(p1, p2) {
-            return p1.x * p2.x + p1.y * p2.y + p1.z * p2.z;
-        }
-    }, {
-        key: "projectPlane",
-        value: function projectPlane(plane) {
-            var n = plane.n;
-            var points = plane.points;
-            var visiblePoints = [];
-            var clippedPoints = [];
-            var normalCheck = null;
-            var pz = void 0,
-                lpz = void 0,
-                rpz = void 0,
-                midpoint = void 0,
-                projected = void 0;
-            for (var i = 0; i < points.length; i++) {
-                pz = this.dot(points[i], this.unitNormal) - this.dot(this.p1, this.unitNormal);
-                if (pz >= 0) {
-                    if (normalCheck === null) {
-                        normalCheck = this.dot({
-                            x: points[i].x - this.p5.x,
-                            y: points[i].y - this.p5.y,
-                            z: points[i].z - this.p5.z
-                        }, n);
-                    }
-                    projected = this.projectPoint(points[i]);
-                    visiblePoints.push(projected);
-                } else {
-                    var li = i == 0 ? points.length - 1 : i - 1;
-                    lpz = this.dot(points[li], this.unitNormal) - this.dot(this.p1, this.unitNormal);
-                    if (lpz > 0) {
-                        midpoint = {
-                            x: lpz / (lpz - pz) * points[i].x - pz / (lpz - pz) * points[li].x,
-                            y: lpz / (lpz - pz) * points[i].y - pz / (lpz - pz) * points[li].y,
-                            z: lpz / (lpz - pz) * points[i].z - pz / (lpz - pz) * points[li].z
-                        };
-                        projected = this.projectPoint(midpoint);
-                        visiblePoints.push(projected);
-                        clippedPoints.push(projected);
-                    }
-                    var ri = i == points.length - 1 ? 0 : i + 1;
-                    rpz = this.dot(points[ri], this.unitNormal) - this.dot(this.p1, this.unitNormal);
-                    if (rpz > 0) {
-                        midpoint = {
-                            x: rpz / (rpz - pz) * points[i].x - pz / (rpz - pz) * points[ri].x,
-                            y: rpz / (rpz - pz) * points[i].y - pz / (rpz - pz) * points[ri].y,
-                            z: rpz / (rpz - pz) * points[i].z - pz / (rpz - pz) * points[ri].z
-                        };
-                        projected = this.projectPoint(midpoint);
-                        visiblePoints.push(projected);
-                        clippedPoints.push(projected);
-                    }
-                }
-            }
-            return {
-                n: n,
-                points: points,
-                visiblePoints: visiblePoints,
-                clippedPoints: clippedPoints,
-                visible: normalCheck !== null && normalCheck <= 0
-            };
-        }
-    }, {
-        key: "projectPoint",
-        value: function projectPoint(point) {
-            if (this.d == -1) {
-                return {
-                    x: this.dot(point, this.basis1) - this.dot(this.p1, this.basis1),
-                    y: this.dot(point, this.basis2) - this.dot(this.p1, this.basis2),
-                    z: this.dot(point, this.unitNormal) - this.dot(this.p1, this.unitNormal)
-                };
-            } else {
-                var px = this.dot(point, this.basis1) - this.dot(this.p1, this.basis1);
-                var py = this.dot(point, this.basis2) - this.dot(this.p1, this.basis2);
-                var pz = this.dot(point, this.unitNormal) - this.dot(this.p1, this.unitNormal);
-                return {
-                    x: (this.width / 2 - px) / (1 + this.d / pz) + px,
-                    y: (this.height / 2 - py) / (1 + this.d / pz) + py,
-                    z: pz
-                };
-            }
-        }
-    }, {
-        key: "calcFocalPoint",
-        value: function calcFocalPoint() {
-            if (this.d !== -1) {
-                var cx = (this.p1.x + this.p4.x) / 2;
-                var cy = (this.p1.y + this.p4.y) / 2;
-                var cz = (this.p1.z + this.p4.z) / 2;
-                this.p5 = {
-                    x: cx - this.d * this.unitNormal.x,
-                    y: cy - this.d * this.unitNormal.y,
-                    z: cz - this.d * this.unitNormal.z
-                };
-            }
-        }
-    }, {
-        key: "calcBasis1",
-        value: function calcBasis1() {
-            var bx = this.p2.x - this.p1.x;
-            var by = this.p2.y - this.p1.y;
-            var bz = this.p2.z - this.p1.z;
-            var mag = Math.sqrt(bx * bx + by * by + bz * bz);
-            this.basis1 = {
-                x: bx / mag,
-                y: by / mag,
-                z: bz / mag
-            };
-        }
-    }, {
-        key: "calcBasis2",
-        value: function calcBasis2() {
-            var bx = this.p3.x - this.p1.x;
-            var by = this.p3.y - this.p1.y;
-            var bz = this.p3.z - this.p1.z;
-            var mag = Math.sqrt(bx * bx + by * by + bz * bz);
-            this.basis2 = {
-                x: bx / mag,
-                y: by / mag,
-                z: bz / mag
-            };
-        }
-
-        // Basis 
-
-    }, {
-        key: "calcUnitNormal",
-        value: function calcUnitNormal() {
-            this.unitNormal = {
-                x: this.basis2.y * this.basis1.z - this.basis2.z * this.basis1.y,
-                y: this.basis2.z * this.basis1.x - this.basis2.x * this.basis1.z,
-                z: this.basis2.x * this.basis1.y - this.basis2.y * this.basis1.x
-            };
-        }
-    }, {
-        key: "translateAlongBasis",
-        value: function translateAlongBasis(scalar1, scalar2, scalar3) {
-            this.translate({
-                x: this.basis1.x * scalar1 + this.basis2.x * scalar2 + this.unitNormal.x * scalar3,
-                y: this.basis1.y * scalar1 + this.basis2.y * scalar2 + this.unitNormal.y * scalar3,
-                z: this.basis1.z * scalar1 + this.basis2.z * scalar2 + this.unitNormal.z * scalar3
-            });
-        }
-    }, {
-        key: "translate",
-        value: function translate(a) {
-            this.p1 = this.translatePoint(this.p1, a);
-            this.p2 = this.translatePoint(this.p2, a);
-            this.p3 = this.translatePoint(this.p3, a);
-            this.p4 = this.translatePoint(this.p4, a);
-            this.calcBasis1();
-            this.calcBasis2();
-            this.calcUnitNormal();
-            this.calcFocalPoint();
-        }
-    }, {
-        key: "translatePoint",
-        value: function translatePoint(p, a) {
-            return {
-                x: p.x + a.x,
-                y: p.y + a.y,
-                z: p.z + a.z
-            };
-        }
-    }, {
-        key: "rotateByBasis1",
-        value: function rotateByBasis1(theta) {
-            var mx = void 0,
-                my = void 0,
-                mz = void 0;
-            if (this.d !== -1) {
-                mx = this.p5.x;
-                my = this.p5.y;
-                mz = this.p5.z;
-            } else {
-                mx = (this.p1.x + this.p4.x) / 2;
-                my = (this.p1.y + this.p4.y) / 2;
-                mz = (this.p1.z + this.p4.z) / 2;
-            }
-            this.translate({
-                x: -mx,
-                y: -my,
-                z: -mz
-            });
-            this.rotate(this.basis1, theta);
-            this.translate({
-                x: mx,
-                y: my,
-                z: mz
-            });
-        }
-    }, {
-        key: "rotateByBasis2",
-        value: function rotateByBasis2(theta) {
-            var mx = void 0,
-                my = void 0,
-                mz = void 0;
-            if (this.d !== -1) {
-                mx = this.p5.x;
-                my = this.p5.y;
-                mz = this.p5.z;
-            } else {
-                mx = (this.p1.x + this.p4.x) / 2;
-                my = (this.p1.y + this.p4.y) / 2;
-                mz = (this.p1.z + this.p4.z) / 2;
-            }
-            this.translate({
-                x: -mx,
-                y: -my,
-                z: -mz
-            });
-            this.rotate(this.basis2, theta);
-            this.translate({
-                x: mx,
-                y: my,
-                z: mz
-            });
-        }
-    }, {
-        key: "rotate",
-        value: function rotate(axis, theta) {
-            var mag = Math.sqrt(this.dot(axis, axis));
-            var normAxis = {
-                x: axis.x / mag,
-                y: axis.y / mag,
-                z: axis.z / mag
-            };
-            var rad = theta / 360 * Math.PI;
-            this.p1 = this.rotatePoint(this.p1, normAxis, rad);
-            this.p2 = this.rotatePoint(this.p2, normAxis, rad);
-            this.p3 = this.rotatePoint(this.p3, normAxis, rad);
-            this.p4 = this.rotatePoint(this.p4, normAxis, rad);
-            this.calcBasis1();
-            this.calcBasis2();
-            this.calcUnitNormal();
-            this.calcFocalPoint();
-        }
-
-        // Axis must be unit, Theta must be radians.
-
-    }, {
-        key: "rotatePoint",
-        value: function rotatePoint(p, ax, rad) {
-            var cost = Math.cos(rad);
-            var sint = Math.sin(rad);
-            var mcost = 1 - cost;
-            var dot = this.dot(ax, p);
-            return {
-                x: p.x * cost + (ax.y * p.z - ax.z * p.y) * sint + ax.x * dot * mcost,
-                y: p.y * cost + (ax.z * p.x - ax.x * p.z) * sint + ax.y * dot * mcost,
-                z: p.z * cost + (ax.x * p.y - ax.y * p.x) * sint + ax.z * dot * mcost
-            };
-        }
-    }, {
-        key: "updatePosition",
-        value: function updatePosition() {
-            if (this.rates.r1 !== 0) {
-                this.rotateByBasis1(this.rates.r1);
-            }
-            if (this.rates.r2 !== 0) {
-                this.rotateByBasis2(this.rates.r2);
-            }
-            if (this.rates.t1 || this.rates.t2 || this.rates.t3) {
-                this.translateAlongBasis(this.rates.t1, this.rates.t2, this.rates.t3);
-            }
-        }
-    }, {
-        key: "updateRates",
-        value: function updateRates(rates) {
-            this.rates.r1 += rates.r1 || 0;
-            this.rates.r2 += rates.r2 || 0;
-            this.rates.t1 += rates.t1 || 0;
-            this.rates.t2 += rates.t2 || 0;
-            this.rates.t3 += rates.t3 || 0;
-        }
-    }]);
-
-    return Viewport;
-}();
-
-var MapRenderer = function () {
-    function MapRenderer(canvas, map, viewport) {
-        _classCallCheck(this, MapRenderer);
-
-        this.canvas = canvas;
-        this.boundingBoxes = [];
-        this.map = map;
-        this.viewport = viewport;
-
-        this.buildTileFaces();
-        this.buildBSP();
-    }
-
-    _createClass(MapRenderer, [{
-        key: "buildTileFaces",
-        value: function buildTileFaces() {
-            this.tileFaces = [];
-            var tiles = this.map.getTilesFlattened();
-            var tlen = 100;
-            for (var i = 0; i < tiles.length; i++) {
-                var tx = tiles[i].getX() * tlen;
-                var ty = tiles[i].getY() * tlen;
-                var tz = tiles[i].getH() * tlen;
-                var vertices = [{
-                    x: tx,
-                    y: ty,
-                    z: tz
-                }, {
-                    x: tx + 100,
-                    y: ty,
-                    z: tz
-                }, {
-                    x: tx + 100,
-                    y: ty + 100,
-                    z: tz
-                }, {
-                    x: tx,
-                    y: ty + 100,
-                    z: tz
-                }, {
-                    x: tx,
-                    y: ty,
-                    z: 0
-                }, {
-                    x: tx + 100,
-                    y: ty,
-                    z: 0
-                }, {
-                    x: tx + 100,
-                    y: ty + 100,
-                    z: 0
-                }, {
-                    x: tx,
-                    y: ty + 100,
-                    z: 0
-                }];
-                var cubeFaces = [{
-                    n: {
-                        x: 0,
-                        y: 0,
-                        z: 1
-                    },
-                    points: [vertices[0], vertices[1], vertices[2], vertices[3]]
-                }, {
-                    n: {
-                        x: 1,
-                        y: 0,
-                        z: 0
-                    },
-                    points: [vertices[1], vertices[2], vertices[6], vertices[5]]
-                }, {
-                    n: {
-                        x: 0,
-                        y: 0,
-                        z: -1
-                    },
-                    points: [vertices[4], vertices[5], vertices[6], vertices[7]]
-                }, {
-                    n: {
-                        x: 0,
-                        y: -1,
-                        z: 0
-                    },
-                    points: [vertices[0], vertices[1], vertices[5], vertices[4]]
-                }, {
-                    n: {
-                        x: -1,
-                        y: 0,
-                        z: 0
-                    },
-                    points: [vertices[0], vertices[3], vertices[7], vertices[4]]
-                }, {
-                    n: {
-                        x: 0,
-                        y: 1,
-                        z: 0
-                    },
-                    points: [vertices[2], vertices[3], vertices[7], vertices[6]]
-                }];
-                this.tileFaces.push(cubeFaces);
-            }
-        }
-    }, {
-        key: "buildBSP",
-        value: function buildBSP() {
-            var flattened = this.tileFaces.reduce(function (a, b) {
-                return a.concat(b);
-            }, []);
-            this.bsp = new _BSPTree.BSPTree(flattened);
-        }
-    }, {
-        key: "drawFace",
-        value: function drawFace(face) {
-            var ctx = this.canvas.getContext('2d');
-            ctx.strokeStyle = "#000000";
-            ctx.fillStyle = "#CCCCCC";
-            ctx.beginPath();
-            for (var k = 0; k < face.visiblePoints.length; k++) {
-                if (k == 0) {
-                    ctx.moveTo(face.visiblePoints[k].x, face.visiblePoints[k].y);
-                }
-                if (k == face.visiblePoints.length - 1) {
-                    ctx.lineTo(face.visiblePoints[0].x, face.visiblePoints[0].y);
-                } else {
-                    ctx.lineTo(face.visiblePoints[k + 1].x, face.visiblePoints[k + 1].y);
-                }
-            }
-            ctx.fill();
-            ctx.beginPath();
-            for (var _k = 0; _k < face.visiblePoints.length; _k++) {
-                if (_k == 0) {
-                    ctx.moveTo(face.visiblePoints[_k].x, face.visiblePoints[_k].y);
-                }
-                if (_k == face.visiblePoints.length - 1) {
-                    ctx.lineTo(face.visiblePoints[0].x, face.visiblePoints[0].y);
-                } else {
-                    ctx.lineTo(face.visiblePoints[_k + 1].x, face.visiblePoints[_k + 1].y);
-                }
-            }
-            ctx.stroke();
-        }
-    }, {
-        key: "renderMap",
-        value: function renderMap() {
-            var _this5 = this;
-
-            var ctx = this.canvas.getContext('2d');
-            ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-            this.boundingBoxes = [];
-
-            this.viewport.updatePosition();
-
-            this.bsp.traverse(function (face) {
-                var projected = _this5.viewport.projectPlane(face);
-                face.visible = projected.visible;
-                face.clippedPoints = projected.clippedPoints;
-                face.visiblePoints = projected.visiblePoints;
-                if (face.visible) {
-                    _this5.drawFace(face);
-                }
-            }, this.viewport.p5);
-
-            /*const clippedFace = {
-                visiblePoints: [],
-            }
-            for (let j = 0; j < cubeFaces.length; j++) {
-                let projectedCubeFace = this.viewport.projectPlane(cubeFaces[j]);
-                if (projectedCubeFace !== null) {
-                    if (projectedCubeFace.visible) {
-                        visibleFaces.push(projectedCubeFace);
-                    }
-                    // Construct clipped face from clippsed points
-                    if (projectedCubeFace.clippedPoints.length == 2) {
-                        if (clippedFace.visiblePoints.length == 0) {
-                            clippedFace.visiblePoints = [].concat(projectedCubeFace.clippedPoints);
-                        } else {
-                            let c1Match = null;
-                            let c2Match = null;
-                            for (let l = 0; l < clippedFace.visiblePoints.length; l++) {
-                                if (clippedFace.visiblePoints[l].x == projectedCubeFace.clippedPoints[0].x &&
-                                    clippedFace.visiblePoints[l].y == projectedCubeFace.clippedPoints[0].y &&
-                                    clippedFace.visiblePoints[l].z == projectedCubeFace.clippedPoints[0].z) {
-                                    c1Match = l;
-                                }
-                                if (clippedFace.visiblePoints[l].x == projectedCubeFace.clippedPoints[1].x &&
-                                    clippedFace.visiblePoints[l].y == projectedCubeFace.clippedPoints[1].y &&
-                                    clippedFace.visiblePoints[l].z == projectedCubeFace.clippedPoints[1].z) {
-                                    c2Match = l;
-                                }
-                            }
-                            if (c1Match !== null && c2Match === null) {
-                                clippedFace.visiblePoints.splice(c1Match, 0, projectedCubeFace.clippedPoints[1]);
-                            }
-                            if (c2Match !== null && c1Match === null) {
-                                clippedFace.visiblePoints.splice(c2Match + 1, 0, projectedCubeFace.clippedPoints[0]);
-                            }
-                        }
-                    }
-                }
-            }
-             if (clippedFace.visiblePoints.length > 0) {
-                clippedFaces.push(clippedFace);
-            }
-            }
-            const BSP = new BSPTree(visibleFaces);*/
-
-            //BSP.traverse(draw);
-            //clippedFaces.forEach(draw);
-
-            window.requestAnimationFrame(function (step) {
-                _this5.renderMap();
-            });
-        }
-    }, {
-        key: "renderTiles",
-        value: function renderTiles(tiles, viewport) {
-            var _this6 = this;
-
-            var ctx = this.canvas.getContext("2d");
-            tiles.forEach(function (tile) {
-                var tx = tile.getX();
-                var ty = tile.getY();
-
-                //map tx and ty into screen x and y (sx & sy) 
-                var sx1 = tx * 100;
-                var sx2 = tx * 100 + 100;
-                var sy1 = ty * 100;
-                var sy2 = ty * 100 + 100;
-
-                if (sx2 >= viewport.x1 && sx1 <= viewport.x2 && sy2 >= viewport.y1 && sy1 <= viewport.y2) {
-
-                    var hover = false;
-                    if (viewport.mx !== null && viewport.my !== null) {
-                        if (viewport.mx > sx1 && viewport.mx < sx2 && viewport.my > sy1 && viewport.my < sy2) {
-                            hover = true;
-                        }
-                    }
-                    if (tile instanceof _Tile.PlainTile) {
-                        ctx.strokeStyle = "#000000";
-                        if (tile.isHighlighted()) {
-                            if (hover) {
-                                ctx.fillStyle = "#0066FF";
-                            } else {
-                                ctx.fillStyle = "#0000FF";
-                            }
-                        } else {
-                            if (hover) {
-                                ctx.fillStyle = "#D9D9D9";
-                            } else {
-                                ctx.fillStyle = "#CCCCCC";
-                            }
-                        }
-                        ctx.fillRect(sx1 - viewport.x1, sy1 - viewport.y1, 100, 100);
-                        ctx.strokeRect(sx1 - viewport.x1, sy1 - viewport.y1, 100, 100);
-                        _this6.boundingBoxes.push({
-                            obj: tile,
-                            x1: sx1,
-                            x2: sx2,
-                            y1: sy1,
-                            y2: sy2
-                        });
-                    }
-                }
-            });
-        }
-    }, {
-        key: "renderMapObjects",
-        value: function renderMapObjects(mapObjects, viewport) {
-            var _this7 = this;
-
-            var ctx = this.canvas.getContext("2d");
-            ctx.fillStyle = "#0000FF";
-            ctx.strokeStyle = "#000000";
-            var counter = 0;
-            mapObjects.forEach(function (mapObject) {
-                var mx = mapObject.getX();
-                var my = mapObject.getY();
-
-                //map tx and ty into screen x and y (sx & sy) 
-                var sx1 = mx * 100;
-                var sx2 = mx * 100 + 100;
-                var sy1 = my * 100;
-                var sy2 = my * 100 + 100;
-
-                if (sx2 >= viewport.x1 && sx1 <= viewport.x2 && sy2 >= viewport.y1 && sy1 <= viewport.y2) {
-
-                    if (mapObject.isHighlighted()) {
-                        ctx.fillStyle = "#00FF00";
-                    } else {
-                        ctx.fillStyle = "#0000FF";
-                    }
-                    ctx.fillRect(sx1 + 15 - viewport.x1, sy1 + 15 - viewport.y1, 70, 70);
-                    ctx.strokeRect(sx1 + 15 - viewport.x1, sy1 + 15 - viewport.y1, 70, 70);
-                    ctx.fillStyle = "#000000";
-                    ctx.font = "48px serif";
-                    ctx.fillText("" + counter, sx1 + 40 - viewport.x1, sy1 + 60 - viewport.y1);
-                    counter += 1;
-                    _this7.boundingBoxes.push({
-                        obj: mapObject,
-                        x1: sx1,
-                        x2: sx2,
-                        y1: sy1,
-                        y2: sy2
-                    });
-                }
-            });
-        }
-    }, {
-        key: "getClickedObjects",
-        value: function getClickedObjects(viewport) {
-            var clickedObjects = [];
-            var mx = viewport.mx;
-            var my = viewport.my;
-            for (var i = 0; i < this.boundingBoxes.length; i++) {
-                var boundingBox = this.boundingBoxes[i];
-                if (mx > boundingBox.x1 && mx < boundingBox.x2 && my > boundingBox.y1 && my < boundingBox.y2) {
-                    clickedObjects.push(boundingBox.obj);
-                }
-            }
-            return clickedObjects;
-        }
-    }, {
-        key: "getCenteredViewport",
-        value: function getCenteredViewport(mapObject) {}
-    }]);
-
-    return MapRenderer;
-}();
-
-exports.Map = Map;
-exports.MapObject = MapObject;
-exports.MapSerializer = MapSerializer;
-exports.MapRenderer = MapRenderer;
 exports.MapScreen = MapScreen;
-exports.Knight = Knight;
 
 /***/ }),
-/* 1 */
+/* 9 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1375,259 +1433,483 @@ Object.defineProperty(exports, "__esModule", {
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
-var _Map = __webpack_require__(0);
-
-var _DefaultMap = __webpack_require__(4);
-
-var _DefaultMap2 = _interopRequireDefault(_DefaultMap);
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-var Game = function () {
-    function Game(width, height) {
-        _classCallCheck(this, Game);
+var Objective = function () {
+    function Objective(fn, num) {
+        _classCallCheck(this, Objective);
 
-        this.canvas = document.createElement("canvas");
-        this.canvas.width = width;
-        this.canvas.height = height;
+        this.fn = fn;
+        this.num = num;
     }
 
-    _createClass(Game, [{
-        key: "start",
-        value: function start() {
-            var _this = this;
-
-            document.body.appendChild(this.canvas);
-            this.screen = new _Map.MapScreen(this.canvas, _DefaultMap2.default);
-            window.screen = this.screen;
-            this.screen.start();
-
-            this.canvas.addEventListener("click", function (e) {
-                var rect = _this.canvas.getBoundingClientRect();
-                _this.screen.handleClick(e.clientX - rect.left, e.clientY - rect.top);
-            });
-
-            this.canvas.addEventListener("mousedown", function (e) {
-                var rect = _this.canvas.getBoundingClientRect();
-                _this.screen.handleMouseDown(e.clientX - rect.left, e.clientY - rect.top);
-            });
-
-            this.canvas.addEventListener("mousemove", function (e) {
-                var rect = _this.canvas.getBoundingClientRect();
-                _this.screen.handleMouseMove(e.clientX - rect.left, e.clientY - rect.top);
-            });
-
-            this.canvas.addEventListener("mouseup", function (e) {
-                var rect = _this.canvas.getBoundingClientRect();
-                _this.screen.handleMouseUp(e.clientX - rect.left, e.clientY - rect.top);
-            });
-
-            this.canvas.addEventListener("mouseleave", function (e) {
-                _this.screen.handleMouseLeave();
-            });
-
-            document.addEventListener("keydown", function (e) {
-                e.preventDefault();
-                _this.screen.handleKeyDown(e.code);
-            });
-
-            document.addEventListener("keyup", function (e) {
-                e.preventDefault();
-                _this.screen.handleKeyUp(e.code);
-            });
-
-            /*this.loadAssets().then(() => {
-                 this.canvas.addEventListener("click", (e) => {
-                    console.log(e);
-                });
-                 this.loadDemo();
-            });*/
+    _createClass(Objective, [{
+        key: 'serialize',
+        value: function serialize() {
+            return this.num;
         }
     }, {
-        key: "loadAssets",
-        value: function loadAssets() {
-            var loadingPromise = new Promise(function (resolve, reject) {
-                resolve();
-            });
-            return loadingPromise;
+        key: 'check',
+        value: function check(map) {
+            return this.fn.check(map);
+        }
+    }, {
+        key: 'success',
+        value: function success(map) {
+            return this.fn.success(map);
+        }
+    }], [{
+        key: 'deserialize',
+        value: function deserialize(num) {
+            return new Objective(OBJECT_FNS[num], num);
         }
     }]);
 
-    return Game;
+    return Objective;
 }();
 
-exports.default = Game;
+var OBJECT_FNS = {
+    0: {
+        check: function check(map) {
+            var players = map.getMapObjects().map(function (m) {
+                return m.getPlayer();
+            }).filter(function (p) {
+                return p !== null;
+            });
+            var player = players.filter(function (p) {
+                return p === '0';
+            });
+            var enemies = players.filter(function (p) {
+                return p !== '0';
+            });
+            return player.length === 0 || enemies.length === 0;
+        },
+        success: function success(map) {
+            var players = map.getMapObjects().map(function (m) {
+                return m.getPlayer();
+            });
+            var enemies = players.filter(function (p) {
+                return p !== '0' && p !== null;
+            });
+            return enemies.length === 0;
+        }
+    }
+};
+
+exports.Objective = Objective;
 
 /***/ }),
-/* 2 */
-/***/ (function(module, exports, __webpack_require__) {
-
-// style-loader: Adds some css to the DOM by adding a <style> tag
-
-// load the styles
-var content = __webpack_require__(9);
-if(typeof content === 'string') content = [[module.i, content, '']];
-// Prepare cssTransformation
-var transform;
-
-var options = {}
-options.transform = transform
-// add the styles to the DOM
-var update = __webpack_require__(10)(content, options);
-if(content.locals) module.exports = content.locals;
-// Hot Module Replacement
-if(false) {
-	// When the styles change, update the <style> tags
-	if(!content.locals) {
-		module.hot.accept("!!../node_modules/css-loader/index.js!./main.css", function() {
-			var newContent = require("!!../node_modules/css-loader/index.js!./main.css");
-			if(typeof newContent === 'string') newContent = [[module.id, newContent, '']];
-			update(newContent);
-		});
-	}
-	// When the module is disposed, remove the <style> tags
-	module.hot.dispose(function() { update(); });
-}
-
-/***/ }),
-/* 3 */
+/* 10 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
 Object.defineProperty(exports, "__esModule", {
-	value: true
+    value: true
 });
+exports.PolygonFace = exports.Polygon = undefined;
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
+var _Vector = __webpack_require__(0);
+
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-var BSPTree = function () {
-	function BSPTree(planes) {
-		_classCallCheck(this, BSPTree);
+var Polygon = function () {
+    function Polygon(faces, type) {
+        var _this = this;
 
-		this.nodes = [];
-		this.frontnodes = null;
-		this.backnodes = null;
-		if (planes.length == 0) {
-			return;
-		}
+        _classCallCheck(this, Polygon);
 
-		var i = 0;
-		for (var j = 0; j < planes.length; j++) {
-			if (planes[j].n.z === 0) {
-				i = j;
-				break;
-			}
-		}
-		if (i === planes.length) {
-			i = 0;
-		}
+        this.faces = faces;
+        faces.forEach(function (face) {
+            return face.setPolygon(_this);
+        });
+        this.type = type;
+        this.clippedFace = null;
+        this.hover = false;
+    }
 
-		this.nodes = [planes[i]];
+    _createClass(Polygon, [{
+        key: 'getHover',
+        value: function getHover() {
+            return this.hover;
+        }
+    }, {
+        key: 'toggleHover',
+        value: function toggleHover() {
+            this.hover = !this.hover;
+        }
+    }, {
+        key: 'getFaces',
+        value: function getFaces() {
+            return this.faces;
+        }
+    }, {
+        key: 'getClippedFace',
+        value: function getClippedFace() {
+            return this.clippedFace;
+        }
+    }, {
+        key: 'calcClippedFace',
+        value: function calcClippedFace() {
+            var newFacePoints = null;
+            this.faces.forEach(function (face) {
+                var clippedPoints = face.getClippedPoints();
+                if (clippedPoints.length > 0) {
+                    if (newFacePoints === null) {
+                        newFacePoints = clippedPoints.slice();
+                    } else {
+                        for (var i = 0; i < clippedPoints.length; i++) {
+                            var c = clippedPoints[i];
+                            var minDist = null;
+                            var minDistIdx = null;
+                            var match = false;
+                            for (var j = 0; j < newFacePoints.length; j++) {
+                                var cp = newFacePoints[j];
+                                var nextcp = j == newFacePoints.length - 1 ? newFacePoints[0] : newFacePoints[j + 1];
+                                var currDist = _Vector.Vector.createFromPoints(cp, nextcp).getMag();
+                                var cDist1 = _Vector.Vector.createFromPoints(cp, c).getMag();
+                                var cDist2 = _Vector.Vector.createFromPoints(nextcp, c).getMag();
+                                var distInc = cDist1 + cDist2 - currDist;
+                                if (distInc === 0) {
+                                    match = true;
+                                    break;
+                                }
+                                if (minDist == null || distInc < minDist) {
+                                    minDist = distInc;
+                                    minDistIdx = j;
+                                }
+                            }
+                            if (!match) {
+                                if (minDistIdx == newFacePoints.length - 1) {
+                                    newFacePoints.splice(0, 0, c);
+                                } else {
+                                    newFacePoints.splice(minDistIdx + 1, 0, c);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            if (newFacePoints !== null) {
+                this.clippedFace = new PolygonFace();
+                this.clippedFace.setVisiblePoints(newFacePoints, []);
+                this.clippedFace.setPolygon(this);
+            } else {
+                this.clippedFace = null;
+            }
+        }
+    }, {
+        key: 'splitFace',
+        value: function splitFace(face, points1, points2) {
+            this.faces.splice(this.faces.indexOf(face), 1);
+            var face1 = new PolygonFace(points1, face.getNormal());
+            var face2 = new PolygonFace(points2, face.getNormal());
+            face1.setPolygon(this);
+            face2.setPolygon(this);
 
-		var p0 = planes[i].points[0];
-		var n = planes[i].n;
-		var frontnodes = [];
-		var backnodes = [];
-		for (var _j = 0; _j < planes.length; _j++) {
-			if (_j !== i) {
-				var p = planes[_j];
-				var p1 = p.points[0];
-				var p2 = p.points[2];
-				var p1d = (p1.x - p0.x) * n.x + (p1.y - p0.y) * n.y + (p1.z - p0.z) * n.z;
-				var p2d = (p2.x - p0.x) * n.x + (p2.y - p0.y) * n.y + (p2.z - p0.z) * n.z;
-				if (p1d === 0 && p2d === 0) {
-					if (n.x == p.n.x && n.y == p.n.y && n.z == p.n.z) {
-						this.nodes.push(planes[_j]);
-					} else {
-						backnodes.push(planes[_j]);
-					}
-				} else if (p1d <= 0 && p2d <= 0) {
-					backnodes.push(planes[_j]);
-				} else if (p1d >= 0 && p2d >= 0) {
-					frontnodes.push(planes[_j]);
-				}
-			}
-		}
+            var blacklist = face.getEdgeBlacklist();
+            var sharedPoints = points1.filter(function (p) {
+                return points2.indexOf(p) !== -1;
+            });
+            var face1Blacklist = [sharedPoints];
+            var face2Blacklist = [sharedPoints];
+            for (var i = 0; i < blacklist.length; i++) {
+                debugger;
+                var b = blacklist[i];
+                var idx1 = points1.indexOf(b[0]);
+                var idx2 = points1.indexOf(b[1]);
+                if (idx1 !== -1 && idx2 !== -1) {
+                    face1Blacklist.push(b);
+                } else if (idx1 !== -1 && idx2 === -1) {
+                    var nidx = idx1 === points1.length - 1 ? 0 : idx1 + 1;
+                    var pidx = idx1 === 0 ? points1.length - 1 : idx1 - 1;
+                    if (sharedPoints.indexOf(points1[nidx]) !== -1) {
+                        face1Blacklist.push([b[0], points1[nidx]]);
+                    } else {
+                        face1Blacklist.push([b[0], points1[pidx]]);
+                    }
+                } else if (idx1 === -1 && idx2 !== -1) {
+                    var _nidx = idx2 === points1.length - 1 ? 0 : idx2 + 1;
+                    var _pidx = idx2 === 0 ? points1.length - 1 : idx2 - 1;
+                    if (sharedPoints.indexOf(points1[_nidx]) !== -1) {
+                        face1Blacklist.push([b[1], points1[_nidx]]);
+                    } else {
+                        face1Blacklist.push([b[1], points1[_pidx]]);
+                    }
+                }
 
-		if (frontnodes.length > 0) {
-			this.frontnodes = new BSPTree(frontnodes);
-		}
-		if (backnodes.length > 0) {
-			this.backnodes = new BSPTree(backnodes);
-		}
-	}
+                idx1 = points2.indexOf(b[0]);
+                idx2 = points2.indexOf(b[1]);
+                if (idx1 !== -1 && idx2 !== -1) {
+                    face2Blacklist.push(b);
+                } else if (idx1 !== -1 && idx2 === -1) {
+                    var _nidx2 = idx1 === points2.length - 1 ? 0 : idx1 + 1;
+                    var _pidx2 = idx1 === 0 ? points2.length - 1 : idx1 - 1;
+                    if (sharedPoints.indexOf(points2[_nidx2]) !== -1) {
+                        face2Blacklist.push([b[0], points2[_nidx2]]);
+                    } else {
+                        face2Blacklist.push([b[0], points2[_pidx2]]);
+                    }
+                } else if (idx1 === -1 && idx2 !== -1) {
+                    var _nidx3 = idx2 === points2.length - 1 ? 0 : idx2 + 1;
+                    var _pidx3 = idx2 === 0 ? points2.length - 1 : idx2 - 1;
+                    if (sharedPoints.indexOf(points2[_nidx3]) !== -1) {
+                        face2Blacklist.push([b[1], points2[_nidx3]]);
+                    } else {
+                        face2Blacklist.push([b[1], points2[_pidx3]]);
+                    }
+                }
+            }
 
-	_createClass(BSPTree, [{
-		key: "traverse",
-		value: function traverse(fn, v) {
-			if (this.nodes.length > 0) {
-				var _n = this.nodes[0].n;
-				var p = this.nodes[0].points[0];
-				var ndir = (p.x - v.x) * _n.x + (p.y - v.y) * _n.y + (p.z - v.z) * _n.z;
-				if (ndir <= 0) {
-					if (this.backnodes !== null) {
-						this.backnodes.traverse(fn, v);
-					}
-					for (var _i = 0; _i < this.nodes.length; _i++) {
-						fn(this.nodes[_i]);
-					}
-					if (this.frontnodes !== null) {
-						this.frontnodes.traverse(fn, v);
-					}
-				} else {
-					if (this.frontnodes !== null) {
-						this.frontnodes.traverse(fn, v);
-					}
-					for (var _i2 = 0; _i2 < this.nodes.length; _i2++) {
-						fn(this.nodes[_i2]);
-					}
-					if (this.backnodes !== null) {
-						this.backnodes.traverse(fn, v);
-					}
-				}
-			}
-		}
-	}]);
+            face1.setEdgeBlacklist(face1Blacklist);
+            face2.setEdgeBlacklist(face2Blacklist);
+            this.faces.push(face1);
+            this.faces.push(face2);
+            return {
+                face1: face1,
+                face2: face2
+            };
+        }
+    }], [{
+        key: 'createBox',
+        value: function createBox(x, y, z, w, l, h) {
+            var v = [new _Vector.Point(x, y, z + h), new _Vector.Point(x + w, y, z + h), new _Vector.Point(x + w, y + l, z + h), new _Vector.Point(x, y + l, z + h), new _Vector.Point(x, y, z), new _Vector.Point(x + w, y, z), new _Vector.Point(x + w, y + l, z), new _Vector.Point(x, y + l, z)];
+            var faces = [new PolygonFace([v[0], v[1], v[2], v[3]], new _Vector.Vector(0, 0, 1)), new PolygonFace([v[1], v[2], v[6], v[5]], new _Vector.Vector(1, 0, 0)), new PolygonFace([v[4], v[5], v[6], v[7]], new _Vector.Vector(0, 0, -1)), new PolygonFace([v[0], v[1], v[5], v[4]], new _Vector.Vector(0, -1, 0)), new PolygonFace([v[0], v[3], v[7], v[4]], new _Vector.Vector(-1, 0, 0)), new PolygonFace([v[2], v[3], v[7], v[6]], new _Vector.Vector(0, 1, 0))];
 
-	return BSPTree;
+            return new Polygon(faces, 'box');
+        }
+    }]);
+
+    return Polygon;
 }();
 
-exports.BSPTree = BSPTree;
+var PolygonFace = function () {
+    function PolygonFace(points, unitNormal) {
+        _classCallCheck(this, PolygonFace);
+
+        this.points = points;
+        this.normal = unitNormal;
+        this.polygon = null;
+        this.visiblePoints = [];
+        this.mapping = [];
+        this.edgeBlacklist = [];
+    }
+
+    _createClass(PolygonFace, [{
+        key: 'getPoints',
+        value: function getPoints() {
+            return this.points;
+        }
+    }, {
+        key: 'getNormal',
+        value: function getNormal() {
+            return this.normal;
+        }
+    }, {
+        key: 'getPolygon',
+        value: function getPolygon() {
+            return this.polygon;
+        }
+    }, {
+        key: 'setPolygon',
+        value: function setPolygon(polygon) {
+            this.polygon = polygon;
+        }
+    }, {
+        key: 'getClippedPoints',
+        value: function getClippedPoints() {
+            var clippedPoints = [];
+            for (var i = 0; i < this.mapping.length; i++) {
+                if (typeof this.mapping[i] !== 'number') {
+                    clippedPoints.push(this.visiblePoints[i]);
+                }
+            }
+            return clippedPoints;
+        }
+    }, {
+        key: 'getVisiblePoints',
+        value: function getVisiblePoints() {
+            return this.visiblePoints;
+        }
+    }, {
+        key: 'setVisiblePoints',
+        value: function setVisiblePoints(points, mapping) {
+            this.visiblePoints = points;
+            this.mapping = mapping;
+        }
+    }, {
+        key: 'getEdgeBlacklist',
+        value: function getEdgeBlacklist() {
+            return this.edgeBlacklist;
+        }
+    }, {
+        key: 'setEdgeBlacklist',
+        value: function setEdgeBlacklist(blacklist) {
+            this.edgeBlacklist = blacklist;
+        }
+    }, {
+        key: 'draw',
+        value: function draw(ctx) {
+            var fillColor = void 0;
+            if (this.polygon.getHover()) {
+                fillColor = "#E6E6E6";
+            } else {
+                fillColor = "#CCCCCC";
+            }
+            ctx.fillStyle = fillColor;
+            ctx.beginPath();
+            var k = void 0;
+            for (k = 0; k < this.visiblePoints.length; k++) {
+                if (k == 0) {
+                    ctx.moveTo(this.visiblePoints[k].getX(), this.visiblePoints[k].getY());
+                }
+                if (k == this.visiblePoints.length - 1) {
+                    ctx.lineTo(this.visiblePoints[0].getX(), this.visiblePoints[0].getY());
+                } else {
+                    ctx.lineTo(this.visiblePoints[k + 1].getX(), this.visiblePoints[k + 1].getY());
+                }
+            }
+            ctx.fill();
+
+            var nextK = void 0;
+            var edge = void 0;
+            var blacklist = void 0;
+            ctx.strokeStyle = "#000000";
+            //Draw outline
+            for (k = 0; k < this.visiblePoints.length; k++) {
+                nextK = k === this.visiblePoints.length - 1 ? 0 : k + 1;
+                edge = null;
+                blacklist = false;
+                if (typeof this.mapping[k] === 'number') {
+                    if (typeof this.mapping[nextK] === 'number') {
+                        edge = [this.points[this.mapping[k]], this.points[this.mapping[nextK]]];
+                    } else {
+                        if (this.points[this.mapping[k]] === this.points[this.mapping[nextK][0]]) {
+                            edge = [this.points[this.mapping[k]], this.points[this.mapping[nextK][1]]];
+                        } else {
+                            edge = [this.points[this.mapping[k]], this.points[this.mapping[nextK][0]]];
+                        }
+                    }
+                } else if (typeof this.mapping[nextK] === 'number') {
+                    if (this.points[this.mapping[k][0]] === this.points[this.mapping[nextK]]) {
+                        edge = [this.points[this.mapping[k][1]], this.points[this.mapping[nextK]]];
+                    } else {
+                        edge = [this.points[this.mapping[k][0]], this.points[this.mapping[nextK]]];
+                    }
+                }
+
+                if (edge !== null) {
+                    blacklist = this.edgeBlacklist.filter(function (b) {
+                        return b.indexOf(edge[0]) !== -1 && b.indexOf(edge[1]) !== -1;
+                    }).length > 0;
+                }
+
+                if (!blacklist) {
+                    ctx.beginPath();
+                    ctx.moveTo(this.visiblePoints[k].getX(), this.visiblePoints[k].getY());
+                    ctx.lineTo(this.visiblePoints[nextK].getX(), this.visiblePoints[nextK].getY());
+                    ctx.stroke();
+                }
+            }
+        }
+    }]);
+
+    return PolygonFace;
+}();
+
+exports.Polygon = Polygon;
+exports.PolygonFace = PolygonFace;
 
 /***/ }),
-/* 4 */
+/* 11 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
 Object.defineProperty(exports, "__esModule", {
-  value: true
+    value: true
 });
+exports.PolygonRenderer = undefined;
 
-var _Map = __webpack_require__(0);
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
-var exampleMapString = "p-2 p-1 p-1 p-1 p-2 p-1 p-1 p-1\np-1 e-3 p-1 p-1 p-1 e-3 p-1 p-1\np-1 p-1 p-1 e-1 p-1 p-1 p-1 e-1\np-2 p-2 p-2 p-1 p-2 p-2 p-2 p-1\ne-1 e-2 e-1 p-1 e-1 e-2 e-1 p-1\np-1 p-2 e-1 p-1 p-1 p-2 e-1 p-1\np-1 p-1 p-1 p-1 p-1 p-1 p-1 p-1\n===\nk-0-0-0-20\nk-2-1-0-30";
-/*
-var exampleMapString = 
-`p-1
-p-3
-===
-k-0-0-0-20`;*/
+var _BSPTree = __webpack_require__(4);
 
-var serializer = new _Map.MapSerializer();
-var defaultMap = serializer.deserialize(exampleMapString);
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-exports.default = defaultMap;
+var PolygonRenderer = function () {
+    function PolygonRenderer(canvas, staticPolygons) {
+        _classCallCheck(this, PolygonRenderer);
+
+        this.canvas = canvas;
+        this.bsp = new _BSPTree.BSPTree(staticPolygons.reduce(function (a, b) {
+            return a.concat(b.getFaces());
+        }, []));
+        this.staticPolygons = staticPolygons;
+        this.hoveredPolygon = null;
+    }
+
+    _createClass(PolygonRenderer, [{
+        key: "render",
+        value: function render(viewport) {
+            var ctx = this.canvas.getContext('2d');
+            ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+            var facesToDraw = [];
+            var hoveredFace = null;
+            this.bsp.traverse(function (face) {
+                var _viewport$projectFace = viewport.projectFace(face),
+                    visiblePoints = _viewport$projectFace.visiblePoints,
+                    mapping = _viewport$projectFace.mapping,
+                    visible = _viewport$projectFace.visible;
+
+                face.setVisiblePoints(visiblePoints, mapping);
+                if (visible) {
+                    if (viewport.mouseInside(visiblePoints)) {
+                        hoveredFace = face;
+                    }
+                    facesToDraw.push(face);
+                }
+            }, viewport);
+
+            this.staticPolygons.forEach(function (polygon) {
+                polygon.calcClippedFace();
+                var clippedFace = polygon.getClippedFace();
+                if (clippedFace !== null) {
+                    if (viewport.mouseInside(clippedFace.getVisiblePoints())) {
+                        hoveredFace = clippedFace;
+                    }
+                    facesToDraw.push(clippedFace);
+                }
+            });
+
+            if (this.hoveredPolygon !== null) {
+                this.hoveredPolygon.toggleHover();
+            }
+            if (hoveredFace !== null) {
+                this.hoveredPolygon = hoveredFace.getPolygon();
+                this.hoveredPolygon.toggleHover();
+            } else {
+                this.hoveredPolygon = null;
+            }
+
+            facesToDraw.forEach(function (face) {
+                return face.draw(ctx);
+            });
+        }
+    }]);
+
+    return PolygonRenderer;
+}();
+
+exports.PolygonRenderer = PolygonRenderer;
 
 /***/ }),
-/* 5 */
+/* 12 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1646,13 +1928,6 @@ function _inherits(subClass, superClass) { if (typeof superClass !== "function" 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 var Tile = function () {
-    _createClass(Tile, [{
-        key: 'getClassName',
-        value: function getClassName() {
-            throw Error('Unimplemented');
-        }
-    }]);
-
     function Tile(x, y, h) {
         _classCallCheck(this, Tile);
 
@@ -1663,7 +1938,6 @@ var Tile = function () {
         this.right = null;
         this.top = null;
         this.down = null;
-        this.highlighted = false;
         this.mapObject = null;
     }
 
@@ -1688,58 +1962,59 @@ var Tile = function () {
             return this.h;
         }
     }, {
-        key: 'changeNeighbors',
-        value: function changeNeighbors(steps, highlight) {
-            var filter = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : function () {
-                return true;
-            };
-
-            if (steps === 0) {
-                return;
-            }
-            var neighbors = [this.left, this.right, this.top, this.down];
-            neighbors.forEach(function (tile) {
-                if (tile !== null && filter(tile)) {
-                    if (highlight && !tile.isHighlighted()) {
-                        tile.highlight();
-                        tile.changeNeighbors(steps - 1, highlight, filter);
-                    }
-                    if (!highlight && tile.isHighlighted()) {
-                        tile.unhighlight();
-                        tile.changeNeighbors(steps - 1, highlight, filter);
-                    }
-                }
-            });
-        }
-    }, {
-        key: 'isHighlighted',
-        value: function isHighlighted() {
-            return this.highlighted;
-        }
-    }, {
-        key: 'highlight',
-        value: function highlight() {
-            this.highlighted = true;
-        }
-    }, {
-        key: 'unhighlight',
-        value: function unhighlight() {
-            this.highlighted = false;
-        }
-    }, {
         key: 'setMapObject',
         value: function setMapObject(mapObject) {
             this.mapObject = mapObject;
         }
     }, {
         key: 'unsetMapObject',
-        value: function unsetMapObject(mapObject) {
+        value: function unsetMapObject() {
             this.mapObject = null;
         }
     }, {
         key: 'getMapObject',
         value: function getMapObject() {
             return this.mapObject;
+        }
+    }, {
+        key: 'getNeighbors',
+        value: function getNeighbors(dist) {
+            var _this = this;
+
+            var dirs = ['left', 'right', 'top', 'down'];
+            var queue = new Set([this]);
+            var nextQueue = void 0;
+            var results = new Set();
+            for (var i = 0; i < dist; i++) {
+                nextQueue = new Set();
+                queue.forEach(function (tile) {
+                    dirs.forEach(function (dir) {
+                        if (tile[dir] !== null && tile[dir] !== _this && tile[dir].movable()) {
+                            if (!results.has(tile[dir])) {
+                                results.add(tile[dir]);
+                                nextQueue.add(tile[dir]);
+                            }
+                        }
+                    });
+                });
+                queue = nextQueue;
+            }
+            return results;
+        }
+    }, {
+        key: 'movable',
+        value: function movable() {
+            return true;
+        }
+    }, {
+        key: 'serialize',
+        value: function serialize() {
+            return this.constructor.name() + '-' + this.h;
+        }
+    }], [{
+        key: 'getClass',
+        value: function getClass(name) {
+            return TILE_MAP[name];
         }
     }]);
 
@@ -1755,10 +2030,10 @@ var PlainTile = function (_Tile) {
         return _possibleConstructorReturn(this, (PlainTile.__proto__ || Object.getPrototypeOf(PlainTile)).apply(this, arguments));
     }
 
-    _createClass(PlainTile, [{
-        key: 'getClassName',
-        value: function getClassName() {
-            return 'Plain';
+    _createClass(PlainTile, null, [{
+        key: 'name',
+        value: function name() {
+            return 'p';
         }
     }]);
 
@@ -1775,46 +2050,402 @@ var EmptyTile = function (_Tile2) {
     }
 
     _createClass(EmptyTile, [{
-        key: 'getClassName',
-        value: function getClassName() {
-            return 'Empty';
+        key: 'movable',
+        value: function movable() {
+            return false;
         }
     }, {
-        key: 'changeNeighbors',
-        value: function changeNeighbors(steps, highlight) {
-            return;
+        key: 'getNeighbors',
+        value: function getNeighbors() {
+            return new Set();
         }
-    }, {
-        key: 'highlight',
-        value: function highlight() {
-            return;
-        }
-    }, {
-        key: 'unhighlight',
-        value: function unhighlight() {
-            return;
+    }], [{
+        key: 'name',
+        value: function name() {
+            return 'e';
         }
     }]);
 
     return EmptyTile;
 }(Tile);
 
+var TILE_MAP = {
+    p: PlainTile,
+    e: EmptyTile
+};
+
 exports.Tile = Tile;
 exports.EmptyTile = EmptyTile;
 exports.PlainTile = PlainTile;
 
 /***/ }),
-/* 6 */
+/* 13 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var _Game = __webpack_require__(1);
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.Viewport = undefined;
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _Vector = __webpack_require__(0);
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var Viewport = function () {
+
+    /*
+        p1 (origin)       p2
+        --------------------
+        |                  |
+        |                  |
+        |                  |
+        --------------------
+        p3                p4
+     */
+    function Viewport(p1, p2, p3, p4) {
+        var d = arguments.length > 4 && arguments[4] !== undefined ? arguments[4] : -1;
+
+        _classCallCheck(this, Viewport);
+
+        this.p1 = p1;
+        this.p2 = p2;
+        this.p3 = p3;
+        this.p4 = p4;
+        this.d = d;
+        this.calcVectors();
+
+        this.rates = {
+            r1: 0,
+            r2: 0,
+            t1: 0,
+            t2: 0,
+            t3: 0
+        };
+        this.mx = null;
+        this.my = null;
+        this.animation = null;
+    }
+
+    _createClass(Viewport, [{
+        key: 'projectFace',
+        value: function projectFace(face) {
+            var points = face.getPoints();
+            var n = face.getNormal();
+            var visiblePoints = [];
+            var clippedPoints = [];
+            var mapping = [];
+            var viewVector = void 0,
+                pointVector = void 0,
+                pz = void 0,
+                li = void 0,
+                lz = void 0,
+                ri = void 0,
+                rz = void 0,
+                midpoint = void 0,
+                projected = void 0;
+            var threshold = this.d;
+            var visible = null;
+            if (this.d === -1) {
+                threshold = 0;
+                visible = this.unitNormal.dot(n) < 0;
+            }
+
+            for (var i = 0; i < points.length; i++) {
+                if (this.d !== -1) {
+                    viewVector = _Vector.Vector.createFromPoints(this.p5, points[i]);
+                } else {
+                    viewVector = _Vector.Vector.createFromPoints(this.midpoint, points[i]);
+                }
+                pz = viewVector.dot(this.unitNormal);
+                if (pz >= threshold) {
+                    if (visible === null) {
+                        visible = viewVector.dot(n) < 0;
+                    }
+                    if (this.d === -1) {
+                        pointVector = _Vector.Vector.createFromPoints(this.p1, points[i]);
+                    } else {
+                        midpoint = this.p5.midpoint(points[i], this.d / pz);
+                        pointVector = _Vector.Vector.createFromPoints(this.p1, midpoint);
+                    }
+                    projected = new _Vector.Point(pointVector.dot(this.basis1), pointVector.dot(this.basis2), 0);
+                    visiblePoints.push(projected);
+                    mapping.push(i);
+                } else {
+                    li = i == 0 ? points.length - 1 : i - 1;
+                    if (this.d !== -1) {
+                        viewVector = _Vector.Vector.createFromPoints(this.p5, points[li]);
+                    } else {
+                        viewVector = _Vector.Vector.createFromPoints(this.midpoint, points[li]);
+                    }
+                    lz = viewVector.dot(this.unitNormal);
+                    if (lz >= threshold) {
+                        midpoint = points[i].midpoint(points[li], (threshold - pz) / (lz - pz));
+                        pointVector = _Vector.Vector.createFromPoints(this.p1, midpoint);
+                        projected = new _Vector.Point(pointVector.dot(this.basis1), pointVector.dot(this.basis2), 0);
+                        visiblePoints.push(projected);
+                        mapping.push([li, i]);
+                    }
+                    ri = i == points.length - 1 ? 0 : i + 1;
+                    if (this.d !== -1) {
+                        viewVector = _Vector.Vector.createFromPoints(this.p5, points[ri]);
+                    } else {
+                        viewVector = _Vector.Vector.createFromPoints(this.midpoint, points[ri]);
+                    }
+                    rz = viewVector.dot(this.unitNormal);
+                    if (rz >= threshold) {
+                        midpoint = points[i].midpoint(points[ri], (threshold - pz) / (rz - pz));
+                        pointVector = _Vector.Vector.createFromPoints(this.p1, midpoint);
+                        projected = new _Vector.Point(pointVector.dot(this.basis1), pointVector.dot(this.basis2), 0);
+                        visiblePoints.push(projected);
+                        mapping.push([i, ri]);
+                    }
+                }
+            }
+            return {
+                visiblePoints: visiblePoints,
+                mapping: mapping,
+                visible: visible
+            };
+        }
+    }, {
+        key: 'projectPoint',
+        value: function projectPoint(point) {
+            var viewVector = void 0,
+                pointVector = void 0,
+                threshold = void 0;
+            if (this.d !== -1) {
+                viewVector = _Vector.Vector.createFromPoints(this.p5, point);
+                threshold = this.d;
+            } else {
+                viewVector = _Vector.Vector.createFromPoints(this.midpoint, point);
+                threshhold = 0;
+            }
+
+            var pz = viewVector.dot(this.unitNormal);
+            if (pz >= threshold) {
+                if (this.d !== -1) {
+                    var midpoint = this.p5.midpoint(point, this.d / pz);
+                    pointVector = _Vector.Vector.createFromPoints(this.p1, midpoint);
+                } else {
+                    pointVector = _Vector.Vector.createFromPoints(this.p1, point);
+                }
+                return new _Vector.Point(pointVector.dot(this.basis1), pointVector.dot(this.basis2), 0);
+            }
+            return null;
+        }
+    }, {
+        key: 'calcViewAngle',
+        value: function calcViewAngle(point, vector) {
+            var viewVector = void 0;
+            if (this.d !== -1) {
+                viewVector = _Vector.Vector.createFromPoints(this.p5, point);
+            } else {
+                viewVector = this.unitNormal;
+            }
+            var cosTheta = viewVector.dot(vector) / viewVector.getMag();
+            return Math.acos(cosTheta);
+        }
+    }, {
+        key: 'calcVectors',
+        value: function calcVectors() {
+            this.basis1 = _Vector.Vector.createFromPoints(this.p1, this.p2);
+            this.width = this.basis1.mag;
+            this.basis1.normalize();
+            this.basis2 = _Vector.Vector.createFromPoints(this.p1, this.p3);
+            this.height = this.basis2.mag;
+            this.basis2.normalize();
+            this.unitNormal = this.basis2.cross(this.basis1);
+            this.midpoint = this.p1.midpoint(this.p4, 0.5);
+            if (this.d !== -1) {
+                var xDist = this.unitNormal.x * this.d;
+                var yDist = this.unitNormal.y * this.d;
+                var zDist = this.unitNormal.z * this.d;
+                this.p5 = this.midpoint.copy();
+                this.p5.translate(-xDist, -yDist, -zDist);
+            }
+        }
+    }, {
+        key: 'translateAlongBasis',
+        value: function translateAlongBasis(s1, s2, s3) {
+            var xDist = this.basis1.x * s1 + this.basis2.x * s2 + this.unitNormal.x * s3;
+            var yDist = this.basis1.y * s1 + this.basis2.y * s2 + this.unitNormal.y * s3;
+            var zDist = this.basis1.z * s1 + this.basis2.z * s2 + this.unitNormal.z * s3;
+            this.translate(xDist, yDist, zDist);
+        }
+    }, {
+        key: 'translate',
+        value: function translate(x, y, z) {
+            var calc = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : true;
+
+            this.p1.translate(x, y, z);
+            this.p2.translate(x, y, z);
+            this.p3.translate(x, y, z);
+            this.p4.translate(x, y, z);
+            if (calc) {
+                this.calcVectors();
+            }
+        }
+    }, {
+        key: 'rotateByBasis',
+        value: function rotateByBasis(theta1, theta2, theta3) {
+            var xDist = this.midpoint.getX();
+            var yDist = this.midpoint.getY();
+            var zDist = this.midpoint.getZ();
+            var rad1 = theta1 / 360 * Math.PI;
+            var rad2 = theta2 / 360 * Math.PI;
+            var rad3 = theta3 / 360 * Math.PI;
+
+            this.translate(-xDist, -yDist, -zDist, false);
+            this.p1.rotate(this.basis1, rad1);
+            this.p1.rotate(this.basis2, rad2);
+            this.p1.rotate(this.unitNormal, rad3);
+            this.p2.rotate(this.basis1, rad1);
+            this.p2.rotate(this.basis2, rad2);
+            this.p2.rotate(this.unitNormal, rad3);
+            this.p3.rotate(this.basis1, rad1);
+            this.p3.rotate(this.basis2, rad2);
+            this.p3.rotate(this.unitNormal, rad3);
+            this.p4.rotate(this.basis1, rad1);
+            this.p4.rotate(this.basis2, rad2);
+            this.p4.rotate(this.unitNormal, rad3);
+            this.translate(xDist, yDist, zDist, true);
+        }
+    }, {
+        key: 'animate',
+        value: function animate(animation) {
+            var _this = this;
+
+            return new Promise(function (resolve, reject) {
+                animation.resolve = resolve;
+                _this.animation = animation;
+            });
+        }
+    }, {
+        key: 'updatePosition',
+        value: function updatePosition() {
+            if (this.animation !== null) {
+                if (this.animation.rate === null) {
+                    this.animation.rate = {
+                        x: (this.animation.endpoint.getX() - this.p1.getX()) / this.animation.frames,
+                        y: (this.animation.endpoint.getY() - this.p1.getY()) / this.animation.frames,
+                        z: (this.animation.endpoint.getZ() - this.p1.getZ()) / this.animation.frames
+                    };
+                }
+                var dx = this.animation.rate.x;
+                var dy = this.animation.rate.y;
+                var dz = this.animation.rate.z;
+                this.translate(dx, dy, dz);
+                this.animation.frames -= 1;
+                if (this.animation.frames === 0) {
+                    this.animation.resolve();
+                    this.animation = null;
+                }
+            } else {
+                if (this.rates.r1 || this.rates.r2) {
+                    this.rotateByBasis(this.rates.r1, this.rates.r2, 0);
+                }
+                if (this.rates.t1 || this.rates.t2 || this.rates.t3) {
+                    this.translateAlongBasis(this.rates.t1, this.rates.t2, this.rates.t3);
+                }
+            }
+        }
+    }, {
+        key: 'updateRates',
+        value: function updateRates(rates) {
+            this.rates.r1 += rates.r1 || 0;
+            this.rates.r2 += rates.r2 || 0;
+            this.rates.t1 += rates.t1 || 0;
+            this.rates.t2 += rates.t2 || 0;
+            this.rates.t3 += rates.t3 || 0;
+        }
+    }, {
+        key: 'setMouse',
+        value: function setMouse(x, y) {
+            this.mx = x;
+            this.my = y;
+        }
+    }, {
+        key: 'mouseInside',
+        value: function mouseInside(points) {
+            if (this.mx === null && this.my === null) {
+                return false;
+            }
+            var zPos = null;
+            for (var i = 0; i < points.length; i++) {
+                var p = points[i];
+                var np = i === points.length - 1 ? points[0] : points[i + 1];
+                var v1 = {
+                    x: np.getX() - p.getX(),
+                    y: np.getY() - p.getY()
+                };
+                var v2 = {
+                    x: this.mx - p.getX(),
+                    y: this.my - p.getY()
+                };
+                var cross = v1.x * v2.y - v1.y * v2.x;
+                if (zPos === null) {
+                    zPos = cross > 0;
+                } else if (cross > 0 !== zPos) {
+                    return false;
+                }
+            }
+            return true;
+        }
+    }, {
+        key: 'getViewDir',
+        value: function getViewDir(point, n) {
+            var dot = void 0;
+            if (this.d === -1) {
+                dot = n.dot(this.unitNormal);
+            } else {
+                dot = n.dot(_Vector.Vector.createFromPoints(this.p5, point));
+            }
+            return dot <= 0 ? 'towards' : 'away';
+        }
+    }, {
+        key: 'getViewVector',
+        value: function getViewVector(point) {
+            if (this.d !== -1) {
+                return new _Vector.Vector.createFromPoints(this.p5, point);
+            } else {
+                return this.unitNormal;
+            }
+        }
+    }, {
+        key: 'getCenteredP1',
+        value: function getCenteredP1(point, dist) {
+            var px = point.getX() - dist * this.unitNormal.getX();
+            var py = point.getY() - dist * this.unitNormal.getY();
+            var pz = point.getZ() - dist * this.unitNormal.getZ();
+            var dx = px - this.midpoint.getX();
+            var dy = py - this.midpoint.getY();
+            var dz = pz - this.midpoint.getZ();
+            return new _Vector.Point(this.p1.getX() + dx, this.p1.getY() + dy, this.p1.getZ() + dz);
+        }
+    }]);
+
+    return Viewport;
+}();
+
+exports.Viewport = Viewport;
+
+/***/ }),
+/* 14 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+var _Game = __webpack_require__(2);
 
 var _Game2 = _interopRequireDefault(_Game);
 
-__webpack_require__(2);
+__webpack_require__(3);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -1822,7 +2453,7 @@ var g = new _Game2.default(window.innerWidth - 16, window.innerHeight - 16);
 g.start();
 
 /***/ }),
-/* 7 */
+/* 15 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1904,7 +2535,7 @@ function toComment(sourceMap) {
 }
 
 /***/ }),
-/* 8 */
+/* 16 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1999,10 +2630,10 @@ module.exports = function (css) {
 };
 
 /***/ }),
-/* 9 */
+/* 17 */
 /***/ (function(module, exports, __webpack_require__) {
 
-exports = module.exports = __webpack_require__(7)(undefined);
+exports = module.exports = __webpack_require__(15)(undefined);
 // imports
 
 
@@ -2013,7 +2644,7 @@ exports.push([module.i, "canvas {\n\tborder: 1px solid black;\n}", ""]);
 
 
 /***/ }),
-/* 10 */
+/* 18 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /*
@@ -2059,7 +2690,7 @@ var singleton = null;
 var	singletonCounter = 0;
 var	stylesInsertedAtTop = [];
 
-var	fixUrls = __webpack_require__(8);
+var	fixUrls = __webpack_require__(16);
 
 module.exports = function(list, options) {
 	if (typeof DEBUG !== "undefined" && DEBUG) {

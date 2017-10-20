@@ -1,9 +1,5 @@
 class Tile {
 
-    getClassName() {
-        throw Error('Unimplemented');
-    }
-
     constructor(x, y, h) {
         this.x = x;
         this.y = y;
@@ -12,7 +8,6 @@ class Tile {
         this.right = null;
         this.top = null;
         this.down = null;
-        this.highlighted = false;
         this.mapObject = null;
     }
 
@@ -32,42 +27,11 @@ class Tile {
         return this.h;
     }
 
-    changeNeighbors(steps, highlight, filter=()=>true) {
-        if (steps === 0) {
-            return;
-        }
-        const neighbors = [this.left, this.right, this.top, this.down];
-        neighbors.forEach((tile) => {
-            if (tile !== null && filter(tile)) {
-                if (highlight && !tile.isHighlighted()) {
-                    tile.highlight();
-                    tile.changeNeighbors(steps - 1, highlight, filter);
-                }
-                if (!highlight && tile.isHighlighted()) {
-                    tile.unhighlight();
-                    tile.changeNeighbors(steps - 1, highlight, filter);
-                }
-            }
-        });
-    }
-
-    isHighlighted() {
-        return this.highlighted;
-    }
-
-    highlight() {
-        this.highlighted = true;
-    }
-
-    unhighlight() {
-        this.highlighted = false;
-    }
-
     setMapObject(mapObject) {
         this.mapObject = mapObject;
     }
 
-    unsetMapObject(mapObject) {
+    unsetMapObject() {
         this.mapObject = null;
     }
 
@@ -75,32 +39,67 @@ class Tile {
         return this.mapObject;
     }
 
+    getNeighbors(dist) {
+        const dirs = ['left', 'right', 'top', 'down'];
+        let queue = new Set([this]);
+        let nextQueue;
+        const results = new Set();
+        for (let i = 0; i < dist; i++) {
+            nextQueue = new Set();
+            queue.forEach(tile => {
+                dirs.forEach((dir) => {
+                    if (tile[dir] !== null && tile[dir] !== this && tile[dir].movable()) {
+                        if (!results.has(tile[dir])) {
+                            results.add(tile[dir]);
+                            nextQueue.add(tile[dir]);
+                        }
+                    }
+                })
+            });
+            queue = nextQueue;
+        }
+        return results;
+    }
+
+    movable() {
+        return true;
+    }
+
+    serialize() {
+        return `${this.constructor.name()}-${this.h}`
+    }
+
+    static getClass(name) {
+        return TILE_MAP[name];
+    }
+
 }
 
 class PlainTile extends Tile {
 
-    getClassName() {
-        return 'Plain';
+    static name() {
+        return 'p';
     }
 }
 
 class EmptyTile extends Tile {
 
-    getClassName() {
-        return 'Empty';
+    movable() {
+        return false;
     }
 
-    changeNeighbors(steps, highlight) {
-        return;
+    getNeighbors() {
+        return new Set();
     }
 
-    highlight() {
-        return;
-    }
-
-    unhighlight() {
-        return;
+    static name() {
+        return 'e';
     }
 }
 
-export {Tile, EmptyTile, PlainTile};
+const TILE_MAP = {
+    p: PlainTile,
+    e: EmptyTile,
+};
+
+export { Tile, EmptyTile, PlainTile };

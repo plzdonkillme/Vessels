@@ -1,4 +1,4 @@
-import { MapScreen } from "./Map";
+import { MapScreen } from "./MapScreen";
 import DefaultMap from "./DefaultMap";
 
 export default class Game {
@@ -11,8 +11,8 @@ export default class Game {
     start() {
         document.body.appendChild(this.canvas);
         this.screen = new MapScreen(this.canvas, DefaultMap);
-        window.screen = this.screen;
         this.screen.start();
+        window.dmap = DefaultMap;
     
         this.canvas.addEventListener("click", (e) => {
             const rect = this.canvas.getBoundingClientRect();
@@ -58,10 +58,10 @@ export default class Game {
         });*/
     }
 
-    loadAssets() {
+    /*loadAssets() {
         let loadingPromise = new Promise((resolve, reject) => {
             resolve();
         });
         return loadingPromise
-    }
+    }*/
 }
