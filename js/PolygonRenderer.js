@@ -2,19 +2,24 @@ import { BSPTree } from "./BSPTree";
 
 class PolygonRenderer {
     
-    constructor(canvas, staticPolygons) {
+    constructor(canvas, staticPolygons, faceSort = () => {}) {
         this.canvas = canvas;
-        this.bsp = new BSPTree(staticPolygons.reduce((a, b) => a.concat(b.getFaces()), []));
+        const staticFaces = staticPolygons.reduce((a, b) => a.concat(b.getFaces()), []);
+        staticFaces.sort(faceSort);
+        this.bsp = new BSPTree(staticFaces);
         this.staticPolygons = staticPolygons;
         this.hoveredPolygon = null;
     }
 
-    render(viewport) {
+    render(viewport, polygons) {
         const ctx = this.canvas.getContext('2d');
         ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
         const facesToDraw = [];
         let hoveredFace = null;
+
+        this.bsp.addFaces(polygons.reduce((a, b) => a.concat(b.getFaces()), []));
+
         this.bsp.traverse((face) => {
             const { visiblePoints, mapping, visible} = viewport.projectFace(face);
             face.setVisiblePoints(visiblePoints, mapping);
@@ -26,7 +31,9 @@ class PolygonRenderer {
             }
         }, viewport);
 
-        this.staticPolygons.forEach(polygon => {
+        this.bsp.removeFaces(polygons.reduce((a, b) => a.concat(b.getFaces()), []));
+
+        this.staticPolygons.concat(polygons).forEach(polygon => {
             polygon.calcClippedFace();
             const clippedFace = polygon.getClippedFace();
             if (clippedFace !== null) {
@@ -48,6 +55,8 @@ class PolygonRenderer {
         }
 
         facesToDraw.forEach(face => face.draw(ctx));
+
+        polygons.forEach(polygon => polygon.restoreFaces());
     }
 }
 

@@ -223,6 +223,23 @@ var Vector = function () {
         value: function equals(v) {
             return this.x === v.getX() && this.y === v.getY() && this.z === v.getZ();
         }
+    }, {
+        key: "rotate",
+        value: function rotate(v, rad) {
+            var cost = Math.cos(rad);
+            var sint = Math.sin(rad);
+            var mcost = 1 - cost;
+            var vx = v.getX();
+            var vy = v.getY();
+            var vz = v.getZ();
+            var dot = this.x * vx + this.y * vy + this.z * vz;
+            var newx = this.x * cost + (vy * this.z - vz * this.y) * sint + vx * dot * mcost;
+            var newy = this.y * cost + (vz * this.x - vx * this.z) * sint + vy * dot * mcost;
+            var newz = this.z * cost + (vx * this.y - vy * this.x) * sint + vz * dot * mcost;
+            this.x = newx;
+            this.y = newy;
+            this.z = newz;
+        }
     }], [{
         key: "createFromPoints",
         value: function createFromPoints(p1, p2) {
@@ -504,7 +521,7 @@ var BSPTree = function () {
 
             //Get initial pos
             var lastD = _Vector.Vector.createFromPoints(p0, points[points.length - 1]).dot(n);
-            if (lastD === 0) {
+            if (Math.abs(lastD) < 0.001) {
                 pos = null;
             } else if (lastD > 0) {
                 pos = 'front';
@@ -516,7 +533,7 @@ var BSPTree = function () {
             for (var j = 0; j < points.length; j++) {
                 var p = points[j];
                 var d = _Vector.Vector.createFromPoints(p0, p).dot(n);
-                if (d === 0) {
+                if (Math.abs(d) < 0.001) {
                     pos = null;
                     frontPoints.push(p);
                     backPoints.push(p);
@@ -573,6 +590,131 @@ var BSPTree = function () {
     }
 
     _createClass(BSPTree, [{
+        key: 'addFace',
+        value: function addFace(face) {
+            if (this.nodes.length === 0) {
+                this.nodes = [face];
+                return;
+            }
+            var p0 = this.nodes[0].getPoints()[0];
+            var n = this.nodes[0].getNormal();
+            var pos = void 0;
+            var cut = false;
+            var frontPoints = [];
+            var backPoints = [];
+            var points = face.getPoints();
+
+            //Get initial pos
+            var lastD = _Vector.Vector.createFromPoints(p0, points[points.length - 1]).dot(n);
+            if (Math.abs(lastD) < 0.001) {
+                pos = null;
+            } else if (lastD > 0) {
+                pos = 'front';
+            } else {
+                pos = 'back';
+            }
+
+            // Iterate over points
+            for (var j = 0; j < points.length; j++) {
+                var p = points[j];
+                var d = _Vector.Vector.createFromPoints(p0, p).dot(n);
+                if (Math.abs(d) < 0.001) {
+                    pos = null;
+                    frontPoints.push(p);
+                    backPoints.push(p);
+                } else if (d > 0) {
+                    if (pos === 'back') {
+                        var prevP = j === 0 ? points[points.length - 1] : points[j - 1];
+                        var prevD = _Vector.Vector.createFromPoints(p0, prevP).dot(n);
+                        var mid = p.midpoint(prevP, d / (d - prevD));
+                        frontPoints.push(mid);
+                        backPoints.push(mid);
+                        cut = true;
+                    }
+                    frontPoints.push(p);
+                    pos = 'front';
+                } else {
+                    if (pos === 'front') {
+                        var _prevP2 = j === 0 ? points[points.length - 1] : points[j - 1];
+                        var _prevD2 = _Vector.Vector.createFromPoints(p0, _prevP2).dot(n);
+                        var _mid2 = p.midpoint(_prevP2, d / (d - _prevD2));
+                        frontPoints.push(_mid2);
+                        backPoints.push(_mid2);
+                        cut = true;
+                    }
+                    backPoints.push(p);
+                    pos = 'back';
+                }
+            }
+
+            if (cut) {
+                // Split a face...
+                var _face$getPolygon$spli = face.getPolygon().splitFace(face, frontPoints, backPoints),
+                    face1 = _face$getPolygon$spli.face1,
+                    face2 = _face$getPolygon$spli.face2;
+
+                if (this.front !== null) {
+                    this.front.addFace(face1);
+                } else {
+                    this.front = new BSPTree([face1]);
+                }
+                if (this.back !== null) {
+                    this.back.addFace(face2);
+                } else {
+                    this.back = new BSPTree([face2]);
+                }
+            } else {
+                if (frontPoints.length === points.length && backPoints.length === points.length) {
+                    this.nodes.push(face);
+                } else if (frontPoints.length === points.length) {
+                    if (this.front !== null) {
+                        this.front.addFace(face);
+                    } else {
+                        this.front = new BSPTree([face]);
+                    }
+                } else {
+                    if (this.back !== null) {
+                        this.back.addFace(face);
+                    } else {
+                        this.back = new BSPTree([face]);
+                    }
+                }
+            }
+        }
+    }, {
+        key: 'addFaces',
+        value: function addFaces(faces) {
+            var _this = this;
+
+            faces.forEach(function (face) {
+                return _this.addFace(face);
+            });
+        }
+    }, {
+        key: 'removeFace',
+        value: function removeFace(face) {
+            var idx = this.nodes.indexOf(face);
+            if (idx !== -1) {
+                this.nodes.splice(idx, 1);
+                return;
+            }
+            if (this.front !== null) {
+                this.front.removeFace(face);
+            }
+            if (this.back !== null) {
+                this.back.removeFace(face);
+            }
+        }
+    }, {
+        key: 'removeFaces',
+        value: function removeFaces(faces) {
+            var _this2 = this;
+
+            faces.forEach(function (face) {
+                return _this2.removeFace(face);
+            });
+        }
+    }, {
         key: 'traverse',
         value: function traverse(fn, viewport) {
             if (this.nodes.length > 0) {
@@ -622,7 +764,7 @@ Object.defineProperty(exports, "__esModule", {
 
 var _MapSerializer = __webpack_require__(1);
 
-var exampleMapString = "p-1 p-2 p-3\n===\nw-0-0-0\n===\n0\n0-1\n1-1-1";
+var exampleMapString = "p-1 p-2 p-3\np-2 p-3 p-2\np-3 p-1 p-1\n===\nw-0-0-0\nw-1-0-0\nw-2-0-0\n===\n0\n0-1\n1-1-1";
 /*
 var exampleMapString = 
 `p-1
@@ -879,6 +1021,11 @@ var MapObject = function () {
         key: 'getY',
         value: function getY() {
             return this.tile.getY();
+        }
+    }, {
+        key: 'getH',
+        value: function getH() {
+            return this.tile.getH();
         }
     }, {
         key: 'serialize',
@@ -1236,12 +1383,16 @@ var MapScreen = function () {
         this.pressed = {};
 
         var TLEN = 100;
-        var polygons = this.map.getTilesFlattened().map(function (t) {
+        var tilePolygons = this.map.getTilesFlattened().map(function (t) {
             return _Polygon.Polygon.createBox(t.getX() * TLEN, t.getY() * TLEN, 0, TLEN, TLEN, t.getH() * TLEN);
         });
-        polygons.push(_Polygon.Polygon.createIcosahedron(50, 50, 200, 20));
+        this.objPolygons = this.map.getMapObjects().map(function (m) {
+            return _Polygon.Polygon.createIcosahedron(m.getX() * TLEN + TLEN / 2, m.getY() * TLEN + TLEN / 2, m.getH() * TLEN + TLEN / 2, 20);
+        });
 
-        this.renderer = new _PolygonRenderer.PolygonRenderer(this.canvas, polygons);
+        this.renderer = new _PolygonRenderer.PolygonRenderer(this.canvas, tilePolygons, function (a, b) {
+            return a.getNormal().getZ() - b.getNormal().getZ();
+        });
     }
 
     _createClass(MapScreen, [{
@@ -1255,7 +1406,11 @@ var MapScreen = function () {
             var _this = this;
 
             this.viewport.updatePosition();
-            this.renderer.render(this.viewport);
+            this.objPolygons.forEach(function (obj) {
+                obj.translate(1, 0, 0);
+                obj.rotate(new _Vector.Vector(0, 0, 1), 1 * Math.PI / 180);
+            });
+            this.renderer.render(this.viewport, this.objPolygons);
             window.requestAnimationFrame(function (step) {
                 _this.renderLoop();
             });
@@ -1519,6 +1674,8 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.PolygonFace = exports.Polygon = undefined;
 
+var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
+
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
 var _Vector = __webpack_require__(0);
@@ -1538,9 +1695,44 @@ var Polygon = function () {
         this.type = type;
         this.clippedFace = null;
         this.hover = false;
+        this.originalFaces = faces.slice();
     }
 
     _createClass(Polygon, [{
+        key: 'translate',
+        value: function translate(x, y, z) {
+            var points = Array.from(new Set(this.faces.reduce(function (a, b) {
+                return a.concat(b.getPoints());
+            }, [])));
+            points.forEach(function (point) {
+                return point.translate(x, y, z);
+            });
+        }
+    }, {
+        key: 'rotate',
+        value: function rotate(v, rad) {
+            var points = Array.from(new Set(this.faces.reduce(function (a, b) {
+                return a.concat(b.getPoints());
+            }, [])));
+            var x = points.reduce(function (a, b) {
+                return a + b.getX();
+            }, 0) / points.length;
+            var y = points.reduce(function (a, b) {
+                return a + b.getY();
+            }, 0) / points.length;
+            var z = points.reduce(function (a, b) {
+                return a + b.getZ();
+            }, 0) / points.length;
+            points.forEach(function (point) {
+                point.translate(-x, -y, -z);
+                point.rotate(v, rad);
+                point.translate(x, y, z);
+            });
+            this.faces.forEach(function (face) {
+                face.getNormal().rotate(v, rad);
+            });
+        }
+    }, {
         key: 'getHover',
         value: function getHover() {
             return this.hover;
@@ -1554,6 +1746,11 @@ var Polygon = function () {
         key: 'getFaces',
         value: function getFaces() {
             return this.faces;
+        }
+    }, {
+        key: 'restoreFaces',
+        value: function restoreFaces() {
+            this.faces = this.originalFaces.slice();
         }
     }, {
         key: 'getClippedFace',
@@ -1613,69 +1810,57 @@ var Polygon = function () {
     }, {
         key: 'splitFace',
         value: function splitFace(face, points1, points2) {
-            this.faces.splice(this.faces.indexOf(face), 1);
-            var face1 = new PolygonFace(points1, face.getNormal());
-            var face2 = new PolygonFace(points2, face.getNormal());
-            face1.setPolygon(this);
-            face2.setPolygon(this);
+            var _this2 = this;
 
+            this.faces.splice(this.faces.indexOf(face), 1);
             var blacklist = face.getEdgeBlacklist();
             var sharedPoints = points1.filter(function (p) {
                 return points2.indexOf(p) !== -1;
             });
-            var face1Blacklist = [sharedPoints];
-            var face2Blacklist = [sharedPoints];
-            for (var i = 0; i < blacklist.length; i++) {
-                var b = blacklist[i];
-                var idx1 = points1.indexOf(b[0]);
-                var idx2 = points1.indexOf(b[1]);
-                if (idx1 !== -1 && idx2 !== -1) {
-                    face1Blacklist.push(b);
-                } else if (idx1 !== -1 && idx2 === -1) {
-                    var nidx = idx1 === points1.length - 1 ? 0 : idx1 + 1;
-                    var pidx = idx1 === 0 ? points1.length - 1 : idx1 - 1;
-                    if (sharedPoints.indexOf(points1[nidx]) !== -1) {
-                        face1Blacklist.push([b[0], points1[nidx]]);
-                    } else {
-                        face1Blacklist.push([b[0], points1[pidx]]);
-                    }
-                } else if (idx1 === -1 && idx2 !== -1) {
-                    var _nidx = idx2 === points1.length - 1 ? 0 : idx2 + 1;
-                    var _pidx = idx2 === 0 ? points1.length - 1 : idx2 - 1;
-                    if (sharedPoints.indexOf(points1[_nidx]) !== -1) {
-                        face1Blacklist.push([b[1], points1[_nidx]]);
-                    } else {
-                        face1Blacklist.push([b[1], points1[_pidx]]);
-                    }
-                }
+            var n = face.getNormal();
 
-                idx1 = points2.indexOf(b[0]);
-                idx2 = points2.indexOf(b[1]);
-                if (idx1 !== -1 && idx2 !== -1) {
-                    face2Blacklist.push(b);
-                } else if (idx1 !== -1 && idx2 === -1) {
-                    var _nidx2 = idx1 === points2.length - 1 ? 0 : idx1 + 1;
-                    var _pidx2 = idx1 === 0 ? points2.length - 1 : idx1 - 1;
-                    if (sharedPoints.indexOf(points2[_nidx2]) !== -1) {
-                        face2Blacklist.push([b[0], points2[_nidx2]]);
-                    } else {
-                        face2Blacklist.push([b[0], points2[_pidx2]]);
+            var _map = [points1, points2].map(function (points) {
+                var f = new PolygonFace(points, n);
+                f.setPolygon(_this2);
+                var newBlacklist = [sharedPoints];
+                blacklist.forEach(function (b) {
+                    var idx1 = points.indexOf(b[0]);
+                    var idx2 = points.indexOf(b[1]);
+                    if (idx1 !== -1 && idx2 !== -1) {
+                        newBlacklist.push(b);
+                    } else if (idx1 !== -1 || idx2 !== -1) {
+                        var idx = idx1 !== -1 ? idx1 : idx2;
+                        var nidx = idx === points.length - 1 ? 0 : idx + 1;
+                        var pidx = idx === 0 ? points.length - 1 : idx - 1;
+                        var p = points[idx];
+                        var np = points[nidx];
+                        var pp = points[pidx];
+                        if (sharedPoints.indexOf(np) === -1) {
+                            newBlacklist.push([p, pp]);
+                        } else if (sharedPoints.indexOf(pp) === -1) {
+                            newBlacklist.push([p, np]);
+                        } else {
+                            // You've got a triangle
+                            var v1 = _Vector.Vector.createFromPoints(b[0], b[1]);
+                            v1.normalize();
+                            var v2 = _Vector.Vector.createFromPoints(p, np);
+                            v2.normalize();
+                            if (Math.abs(Math.abs(v1.dot(v2)) - 1) < 0.001) {
+                                newBlacklist.push([p, np]);
+                            } else {
+                                newBlacklist.push([p, pp]);
+                            }
+                        }
                     }
-                } else if (idx1 === -1 && idx2 !== -1) {
-                    var _nidx3 = idx2 === points2.length - 1 ? 0 : idx2 + 1;
-                    var _pidx3 = idx2 === 0 ? points2.length - 1 : idx2 - 1;
-                    if (sharedPoints.indexOf(points2[_nidx3]) !== -1) {
-                        face2Blacklist.push([b[1], points2[_nidx3]]);
-                    } else {
-                        face2Blacklist.push([b[1], points2[_pidx3]]);
-                    }
-                }
-            }
+                });
+                f.setEdgeBlacklist(newBlacklist);
+                _this2.faces.push(f);
+                return f;
+            }),
+                _map2 = _slicedToArray(_map, 2),
+                face1 = _map2[0],
+                face2 = _map2[1];
 
-            face1.setEdgeBlacklist(face1Blacklist);
-            face2.setEdgeBlacklist(face2Blacklist);
-            this.faces.push(face1);
-            this.faces.push(face2);
             return {
                 face1: face1,
                 face2: face2
@@ -1731,6 +1916,21 @@ var PolygonFace = function () {
     }
 
     _createClass(PolygonFace, [{
+        key: 'translate',
+        value: function translate(x, y, z) {
+            this.points.forEach(function (p) {
+                return p.translate(x, y, z);
+            });
+        }
+    }, {
+        key: 'rotate',
+        value: function rotate(v, rad) {
+            this.points.forEach(function (p) {
+                return p.rotate(v, rad);
+            });
+            this.normal.rotate(v, rad);
+        }
+    }, {
         key: 'getPoints',
         value: function getPoints() {
             return this.points;
@@ -1769,6 +1969,9 @@ var PolygonFace = function () {
     }, {
         key: 'setVisiblePoints',
         value: function setVisiblePoints(points, mapping) {
+            if (this.normal !== undefined && this.normal.getY() === 0 && this.normal.getX() < 0 && this.normal.getZ() > 0) {
+                var a = 1;
+            }
             this.visiblePoints = points;
             this.mapping = mapping;
         }
@@ -1875,24 +2078,33 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 var PolygonRenderer = function () {
     function PolygonRenderer(canvas, staticPolygons) {
+        var faceSort = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : function () {};
+
         _classCallCheck(this, PolygonRenderer);
 
         this.canvas = canvas;
-        this.bsp = new _BSPTree.BSPTree(staticPolygons.reduce(function (a, b) {
+        var staticFaces = staticPolygons.reduce(function (a, b) {
             return a.concat(b.getFaces());
-        }, []));
+        }, []);
+        staticFaces.sort(faceSort);
+        this.bsp = new _BSPTree.BSPTree(staticFaces);
         this.staticPolygons = staticPolygons;
         this.hoveredPolygon = null;
     }
 
     _createClass(PolygonRenderer, [{
         key: "render",
-        value: function render(viewport) {
+        value: function render(viewport, polygons) {
             var ctx = this.canvas.getContext('2d');
             ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
             var facesToDraw = [];
             var hoveredFace = null;
+
+            this.bsp.addFaces(polygons.reduce(function (a, b) {
+                return a.concat(b.getFaces());
+            }, []));
+
             this.bsp.traverse(function (face) {
                 var _viewport$projectFace = viewport.projectFace(face),
                     visiblePoints = _viewport$projectFace.visiblePoints,
@@ -1908,7 +2120,11 @@ var PolygonRenderer = function () {
                 }
             }, viewport);
 
-            this.staticPolygons.forEach(function (polygon) {
+            this.bsp.removeFaces(polygons.reduce(function (a, b) {
+                return a.concat(b.getFaces());
+            }, []));
+
+            this.staticPolygons.concat(polygons).forEach(function (polygon) {
                 polygon.calcClippedFace();
                 var clippedFace = polygon.getClippedFace();
                 if (clippedFace !== null) {
@@ -1931,6 +2147,10 @@ var PolygonRenderer = function () {
 
             facesToDraw.forEach(function (face) {
                 return face.draw(ctx);
+            });
+
+            polygons.forEach(function (polygon) {
+                return polygon.restoreFaces();
             });
         }
     }]);

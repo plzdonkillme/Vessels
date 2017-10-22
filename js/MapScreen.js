@@ -1,4 +1,4 @@
-import { Point } from "./Vector";
+import { Point, Vector } from "./Vector";
 import { Viewport } from "./Viewport";
 import { Polygon } from "./Polygon";
 import { PolygonRenderer} from "./PolygonRenderer";
@@ -18,10 +18,10 @@ class MapScreen {
         this.pressed = {};
 
         const TLEN = 100;
-        const polygons = this.map.getTilesFlattened().map(t => Polygon.createBox(t.getX() * TLEN, t.getY() * TLEN, 0, TLEN, TLEN, t.getH() *TLEN));
-        polygons.push(Polygon.createIcosahedron(50, 50, 200, 20));
+        const tilePolygons = this.map.getTilesFlattened().map(t => Polygon.createBox(t.getX() * TLEN, t.getY() * TLEN, 0, TLEN, TLEN, t.getH() *TLEN));
+        this.objPolygons = this.map.getMapObjects().map(m => Polygon.createIcosahedron(m.getX() * TLEN + TLEN / 2, m.getY() * TLEN + TLEN / 2, m.getH() * TLEN + TLEN / 2, 20));
 
-        this.renderer = new PolygonRenderer(this.canvas, polygons);
+        this.renderer = new PolygonRenderer(this.canvas, tilePolygons, (a,b) => a.getNormal().getZ() - b.getNormal().getZ());
     }
 
     start() {
@@ -30,7 +30,11 @@ class MapScreen {
 
     renderLoop() {
         this.viewport.updatePosition();
-        this.renderer.render(this.viewport);
+        this.objPolygons.forEach(obj => {
+            obj.translate(1, 0, 0);
+            obj.rotate(new Vector(0, 0, 1), 1 * Math.PI / 180);
+        });
+        this.renderer.render(this.viewport, this.objPolygons);
         window.requestAnimationFrame((step) => {
             this.renderLoop();
         });

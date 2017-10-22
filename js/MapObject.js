@@ -19,6 +19,10 @@ class MapObject {
         return this.tile.getY();
     }
 
+    getH() {
+        return this.tile.getH();
+    }
+
     serialize() {
         return `${this.constructor.name()}-${this.getX()}-${this.getY()}`;
     }

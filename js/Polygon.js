@@ -7,6 +7,27 @@ class Polygon {
         this.type = type;
         this.clippedFace = null;
         this.hover = false;
+        this.originalFaces = faces.slice();
+    }
+
+    translate(x, y, z) {
+        const points = Array.from(new Set(this.faces.reduce((a,b) => a.concat(b.getPoints()), [])));
+        points.forEach(point => point.translate(x, y, z));
+    }
+
+    rotate(v, rad) {
+        const points = Array.from(new Set(this.faces.reduce((a,b) => a.concat(b.getPoints()), [])));
+        const x = points.reduce((a,b) => a + b.getX(), 0) / points.length;
+        const y = points.reduce((a,b) => a + b.getY(), 0) / points.length;
+        const z = points.reduce((a,b) => a + b.getZ(), 0) / points.length;
+        points.forEach(point => {
+            point.translate(-x, -y, -z);
+            point.rotate(v, rad);
+            point.translate(x, y, z);
+        });
+        this.faces.forEach(face => {
+            face.getNormal().rotate(v, rad);
+        });
     }
 
     getHover() {
@@ -19,6 +40,10 @@ class Polygon {
 
     getFaces() {
         return this.faces;
+    }
+
+    restoreFaces() {
+        this.faces = this.originalFaces.slice();
     }
 
     getClippedFace() {
@@ -77,66 +102,49 @@ class Polygon {
 
     splitFace(face, points1, points2) {
         this.faces.splice(this.faces.indexOf(face), 1);
-        const face1 = new PolygonFace(points1, face.getNormal());
-        const face2 = new PolygonFace(points2, face.getNormal());
-        face1.setPolygon(this);
-        face2.setPolygon(this);
-
         const blacklist = face.getEdgeBlacklist();
         const sharedPoints = points1.filter(p => points2.indexOf(p) !== -1);
-        const face1Blacklist = [sharedPoints];
-        const face2Blacklist = [sharedPoints];
-        for (let i = 0; i < blacklist.length; i++) {
-            const b = blacklist[i];
-            let idx1 = points1.indexOf(b[0]);
-            let idx2 = points1.indexOf(b[1]);
-            if (idx1 !== -1 && idx2 !== -1) {
-                face1Blacklist.push(b);
-            } else if (idx1 !== -1 && idx2 === -1) {
-                const nidx = idx1 === points1.length - 1 ? 0 : idx1 + 1;
-                const pidx = idx1 === 0 ? points1.length - 1 : idx1 - 1;
-                if (sharedPoints.indexOf(points1[nidx]) !== -1) {
-                    face1Blacklist.push([b[0], points1[nidx]]);
-                } else {
-                    face1Blacklist.push([b[0], points1[pidx]]);
-                }
-            } else if (idx1 === -1 && idx2 !== -1) {
-                const nidx = idx2 === points1.length - 1 ? 0 : idx2 + 1;
-                const pidx = idx2 === 0 ? points1.length - 1 : idx2 - 1;
-                if (sharedPoints.indexOf(points1[nidx]) !== -1) {
-                    face1Blacklist.push([b[1], points1[nidx]]);
-                } else {
-                    face1Blacklist.push([b[1], points1[pidx]]);
-                }
-            }
+        const n = face.getNormal();
 
-            idx1 = points2.indexOf(b[0]);
-            idx2 = points2.indexOf(b[1]);
-            if (idx1 !== -1 && idx2 !== -1) {
-                face2Blacklist.push(b);
-            } else if (idx1 !== -1 && idx2 === -1) {
-                const nidx = idx1 === points2.length - 1 ? 0 : idx1 + 1;
-                const pidx = idx1 === 0 ? points2.length - 1 : idx1 - 1;
-                if (sharedPoints.indexOf(points2[nidx]) !== -1) {
-                    face2Blacklist.push([b[0], points2[nidx]]);
-                } else {
-                    face2Blacklist.push([b[0], points2[pidx]]);
+        const [face1, face2] = [points1, points2].map(points => {
+            const f = new PolygonFace(points, n);
+            f.setPolygon(this);
+            const newBlacklist = [sharedPoints];
+            blacklist.forEach(b => {
+                const idx1 = points.indexOf(b[0]);
+                const idx2 = points.indexOf(b[1]);
+                if (idx1 !== -1 && idx2 !== -1) {
+                    newBlacklist.push(b);
+                } else if (idx1 !== -1 || idx2 !== -1) {
+                    const idx = idx1 !== -1 ? idx1 : idx2;
+                    const nidx = idx === points.length - 1 ? 0 : idx + 1;
+                    const pidx = idx === 0 ? points.length - 1 : idx - 1;
+                    const p = points[idx];
+                    const np = points[nidx];
+                    const pp = points[pidx];
+                    if (sharedPoints.indexOf(np) === -1) {
+                        newBlacklist.push([p, pp]);
+                    } else if (sharedPoints.indexOf(pp) === -1) {
+                        newBlacklist.push([p, np]);
+                    } else {
+                        // You've got a triangle
+                        const v1 = Vector.createFromPoints(b[0], b[1]);
+                        v1.normalize();
+                        const v2 = Vector.createFromPoints(p, np);
+                        v2.normalize();
+                        if (Math.abs(Math.abs(v1.dot(v2)) - 1) < 0.001) {
+                            newBlacklist.push([p, np]);
+                        } else {
+                            newBlacklist.push([p, pp]);
+                        }
+                    }
                 }
-            } else if (idx1 === -1 && idx2 !== -1) {
-                const nidx = idx2 === points2.length - 1 ? 0 : idx2 + 1;
-                const pidx = idx2 === 0 ? points2.length - 1 : idx2 - 1;
-                if (sharedPoints.indexOf(points2[nidx]) !== -1) {
-                    face2Blacklist.push([b[1], points2[nidx]]);
-                } else {
-                    face2Blacklist.push([b[1], points2[pidx]]);
-                }
-            }
-        }
+            });
+            f.setEdgeBlacklist(newBlacklist);
+            this.faces.push(f);
+            return f;
+        });
 
-        face1.setEdgeBlacklist(face1Blacklist);
-        face2.setEdgeBlacklist(face2Blacklist);
-        this.faces.push(face1);
-        this.faces.push(face2);
         return {
             face1,
             face2
@@ -237,6 +245,15 @@ class PolygonFace {
         this.edgeBlacklist = [];
     }
 
+    translate(x, y, z) {
+        this.points.forEach(p => p.translate(x, y, z));
+    }
+
+    rotate(v, rad) {
+        this.points.forEach(p => p.rotate(v, rad));
+        this.normal.rotate(v, rad);
+    }
+
     getPoints() {
         return this.points;
     }
@@ -268,6 +285,9 @@ class PolygonFace {
     }
 
     setVisiblePoints(points, mapping) {
+        if (this.normal !== undefined && this.normal.getY() === 0 && this.normal.getX() < 0 && this.normal.getZ() > 0) {
+            var a = 1;
+        }
         this.visiblePoints = points;
         this.mapping = mapping;
     }

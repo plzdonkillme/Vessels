@@ -119,6 +119,22 @@ class Vector {
     equals(v) {
         return this.x === v.getX() && this.y === v.getY() && this.z === v.getZ();
     }
+
+    rotate(v, rad) {
+        const cost = Math.cos(rad);
+        const sint = Math.sin(rad);
+        const mcost = 1 - cost;
+        const vx = v.getX();
+        const vy = v.getY();
+        const vz = v.getZ();
+        const dot = this.x * vx + this.y * vy + this.z * vz;
+        const newx = this.x * cost + (vy * this.z - vz * this.y) * sint + vx * dot * mcost;
+        const newy = this.y * cost + (vz * this.x - vx * this.z) * sint + vy * dot * mcost;
+        const newz = this.z * cost + (vx * this.y - vy * this.x) * sint + vz * dot * mcost;
+        this.x = newx;
+        this.y = newy;
+        this.z = newz;
+    }
 }
 
 export { Point, Vector };
