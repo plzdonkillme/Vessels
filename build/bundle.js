@@ -764,7 +764,7 @@ Object.defineProperty(exports, "__esModule", {
 
 var _MapSerializer = __webpack_require__(1);
 
-var exampleMapString = "p-1 p-2 p-3\np-2 p-3 p-2\np-3 p-1 p-1\n===\nw-0-0-0\nw-1-0-0\nw-2-0-0\n===\n0\n0-1\n1-1-1";
+var exampleMapString = "p-1 p-2 p-3\np-2 p-3 p-2\np-3 p-1 p-1\np-1 e-1 p-1\np-1 p-1 p-1\n===\nw-0-0-0\nw-1-0-0\nw-2-0-1\n===\n0\n0-1\n1-1-1";
 /*
 var exampleMapString = 
 `p-1
@@ -804,6 +804,7 @@ var Map = function () {
         this.turnPlayer = turnPlayers[0];
         this.turnPlayerIdx = 0;
         this.actions = actions;
+        this.listeners = [];
     }
 
     _createClass(Map, [{
@@ -882,8 +883,14 @@ var Map = function () {
                 var srcTile = this.tiles[sy][sx];
                 var obj = srcTile.getMapObject();
                 var dstTile = this.tiles[dy][dx];
-                obj[name](dstTile, this.turnPlayer);
+                var e = obj[name](dstTile, this.turnPlayer);
                 this.actions[name] -= 1;
+
+                this.listeners.forEach(function (l) {
+                    return l.trigger(e);
+                });
+            } else if (name !== 'end') {
+                throw Error('Invalid action');
             }
             if (name === 'end' || Object.values(this.actions).reduce(function (a, b) {
                 return a + b;
@@ -896,6 +903,11 @@ var Map = function () {
                     attack: 1
                 };
             }
+        }
+    }, {
+        key: 'addListener',
+        value: function addListener(l) {
+            this.listeners.push(l);
         }
         /*
          applyAction(actor, action, receiver) {
@@ -1048,6 +1060,11 @@ var MapObject = function () {
         value: function getPlayer() {
             return null;
         }
+    }, {
+        key: 'moveable',
+        value: function moveable() {
+            return false;
+        }
     }], [{
         key: 'deserialize',
         value: function deserialize(props, tiles) {
@@ -1072,6 +1089,11 @@ var Shard = function (_MapObject) {
     }
 
     _createClass(Shard, [{
+        key: 'moveable',
+        value: function moveable() {
+            return true;
+        }
+    }, {
         key: 'attackedBy',
         value: function attackedBy() {
             this.tile.unsetMapObject();
@@ -1195,7 +1217,10 @@ var Vessel = function (_MapObject2) {
             if (player !== this.player) {
                 throw Error('Invalid action: wrong player');
             }
-            if (!this.tile.getNeighbors(this.movement).has(tile)) {
+
+            var paths = this.tile.getPaths(this.movement);
+            var key = tile.getX() + '-' + tile.getY();
+            if (paths[key] === undefined) {
                 throw Error('Invalid action: cannot reach tile');
             }
 
@@ -1204,13 +1229,19 @@ var Vessel = function (_MapObject2) {
                 this.tile.unsetMapObject();
                 tile.setMapObject(this);
                 this.tile = tile;
+                return {
+                    name: 'move',
+                    path: paths[key]
+                };
             } else if (mO instanceof Shard) {
                 var cls = this.consumeShard(mO);
                 new cls([this.player], tile);
                 this.tile.unsetMapObject();
-            } else {
-                throw Error('Invalid move tile');
+                return {
+                    name: 'move'
+                };
             }
+            throw Error('Invalid move tile');
         }
     }, {
         key: 'getPlayer',
@@ -1373,6 +1404,8 @@ var _PolygonRenderer = __webpack_require__(11);
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
+var TLEN = 100;
+
 var MapScreen = function () {
     function MapScreen(canvas, map) {
         _classCallCheck(this, MapScreen);
@@ -1382,17 +1415,23 @@ var MapScreen = function () {
         this.viewport = new _Viewport.Viewport(new _Vector.Point(0, 0, 500), new _Vector.Point(this.canvas.width, 0, 500), new _Vector.Point(0, this.canvas.height, 500), new _Vector.Point(this.canvas.width, this.canvas.height, 500), 500);
         this.pressed = {};
 
-        var TLEN = 100;
-        var tilePolygons = this.map.getTilesFlattened().map(function (t) {
+        this.r = new _Vector.Vector(0, 0, 1);
+        var tilePolygons = this.map.getTilesFlattened().filter(function (t) {
+            return t.constructor.name() !== 'e';
+        }).map(function (t) {
             return _Polygon.Polygon.createBox(t.getX() * TLEN, t.getY() * TLEN, 0, TLEN, TLEN, t.getH() * TLEN);
         });
-        this.objPolygons = this.map.getMapObjects().map(function (m) {
-            return _Polygon.Polygon.createIcosahedron(m.getX() * TLEN + TLEN / 2, m.getY() * TLEN + TLEN / 2, m.getH() * TLEN + TLEN / 2, 20);
-        });
+        this.objPolygons = this.map.getMapObjects().reduce(function (a, m) {
+            var p = _Polygon.Polygon.createIcosahedron(m.getX() * TLEN + TLEN / 2, m.getY() * TLEN + TLEN / 2, m.getH() * TLEN + TLEN / 2, 20);
+            m.getPlayer() === '0' ? p.setColor('#FFFFFF', '#E6E6E6') : p.setColor('#e6e6e6', '#ffffff');
+            a[m.getX() + "-" + m.getY()] = p;
+            return a;
+        }, {});
 
         this.renderer = new _PolygonRenderer.PolygonRenderer(this.canvas, tilePolygons, function (a, b) {
             return a.getNormal().getZ() - b.getNormal().getZ();
         });
+        map.addListener(this);
     }
 
     _createClass(MapScreen, [{
@@ -1406,14 +1445,37 @@ var MapScreen = function () {
             var _this = this;
 
             this.viewport.updatePosition();
-            this.objPolygons.forEach(function (obj) {
-                obj.translate(1, 0, 0);
-                obj.rotate(new _Vector.Vector(0, 0, 1), 1 * Math.PI / 180);
+            this.r.rotate(new _Vector.Vector(1, 0, 0), 1 * Math.PI / 180);
+            var objs = Object.values(this.objPolygons);
+            objs.forEach(function (obj) {
+                obj.rotate(_this.r, 1 * Math.PI / 180);
+                obj.updatePosition();
             });
-            this.renderer.render(this.viewport, this.objPolygons);
+            this.renderer.render(this.viewport, objs);
             window.requestAnimationFrame(function (step) {
                 _this.renderLoop();
             });
+        }
+    }, {
+        key: "trigger",
+        value: function trigger(e) {
+            if (e.name === 'move') {
+                var obj = this.objPolygons[e.path[0]];
+                var tiles = this.map.getTiles();
+                var animations = e.path.slice(1, e.path.length).map(function (p) {
+                    var x = parseInt(p.split('-')[0]);
+                    var y = parseInt(p.split('-')[1]);
+                    var t = tiles[y][x];
+                    return {
+                        rate: null,
+                        dx: t.getX() * TLEN + TLEN / 2,
+                        dy: t.getY() * TLEN + TLEN / 2,
+                        dz: t.getH() * TLEN + TLEN / 2,
+                        frames: 30
+                    };
+                });
+                obj.queueAnimations(animations);
+            }
         }
 
         /*turnLoop() {
@@ -1696,10 +1758,13 @@ var Polygon = function () {
         this.clippedFace = null;
         this.hover = false;
         this.originalFaces = faces.slice();
+        this.color = "#CCCCCC";
+        this.highlightColor = "#E6E6E6";
+        this.animations = [];
     }
 
     _createClass(Polygon, [{
-        key: 'translate',
+        key: "translate",
         value: function translate(x, y, z) {
             var points = Array.from(new Set(this.faces.reduce(function (a, b) {
                 return a.concat(b.getPoints());
@@ -1709,7 +1774,7 @@ var Polygon = function () {
             });
         }
     }, {
-        key: 'rotate',
+        key: "rotate",
         value: function rotate(v, rad) {
             var points = Array.from(new Set(this.faces.reduce(function (a, b) {
                 return a.concat(b.getPoints());
@@ -1733,32 +1798,74 @@ var Polygon = function () {
             });
         }
     }, {
-        key: 'getHover',
-        value: function getHover() {
-            return this.hover;
+        key: "getColor",
+        value: function getColor(face) {
+            return this.hover ? this.highlightColor : this.color;
         }
     }, {
-        key: 'toggleHover',
+        key: "setColor",
+        value: function setColor(color, highlightColor) {
+            this.color = color;
+            this.highlightColor = highlightColor;
+        }
+    }, {
+        key: "queueAnimations",
+        value: function queueAnimations(animations) {
+            this.animations = this.animations.concat(animations);
+        }
+    }, {
+        key: "updatePosition",
+        value: function updatePosition() {
+            if (this.animations.length > 0) {
+                var animation = this.animations[0];
+                if (animation.rate === null) {
+                    var points = Array.from(new Set(this.faces.reduce(function (a, b) {
+                        return a.concat(b.getPoints());
+                    }, [])));
+                    var sx = points.reduce(function (a, b) {
+                        return a + b.getX();
+                    }, 0) / points.length;
+                    var sy = points.reduce(function (a, b) {
+                        return a + b.getY();
+                    }, 0) / points.length;
+                    var sz = points.reduce(function (a, b) {
+                        return a + b.getZ();
+                    }, 0) / points.length;
+                    animation.rate = {
+                        x: (animation.dx - sx) / animation.frames,
+                        y: (animation.dy - sy) / animation.frames,
+                        z: (animation.dz - sz) / animation.frames
+                    };
+                }
+                this.translate(animation.rate.x, animation.rate.y, animation.rate.z);
+                animation.frames -= 1;
+                if (animation.frames === 0) {
+                    this.animations.splice(0, 1);
+                }
+            }
+        }
+    }, {
+        key: "toggleHover",
         value: function toggleHover() {
             this.hover = !this.hover;
         }
     }, {
-        key: 'getFaces',
+        key: "getFaces",
         value: function getFaces() {
             return this.faces;
         }
     }, {
-        key: 'restoreFaces',
+        key: "restoreFaces",
         value: function restoreFaces() {
             this.faces = this.originalFaces.slice();
         }
     }, {
-        key: 'getClippedFace',
+        key: "getClippedFace",
         value: function getClippedFace() {
             return this.clippedFace;
         }
     }, {
-        key: 'calcClippedFace',
+        key: "calcClippedFace",
         value: function calcClippedFace() {
             var newFacePoints = null;
             this.faces.forEach(function (face) {
@@ -1808,7 +1915,7 @@ var Polygon = function () {
             }
         }
     }, {
-        key: 'splitFace',
+        key: "splitFace",
         value: function splitFace(face, points1, points2) {
             var _this2 = this;
 
@@ -1867,7 +1974,7 @@ var Polygon = function () {
             };
         }
     }], [{
-        key: 'createBox',
+        key: "createBox",
         value: function createBox(x, y, z, w, l, h) {
             var v = [new _Vector.Point(x, y, z + h), new _Vector.Point(x + w, y, z + h), new _Vector.Point(x + w, y + l, z + h), new _Vector.Point(x, y + l, z + h), new _Vector.Point(x, y, z), new _Vector.Point(x + w, y, z), new _Vector.Point(x + w, y + l, z), new _Vector.Point(x, y + l, z)];
             var faces = [new PolygonFace([v[0], v[1], v[2], v[3]], new _Vector.Vector(0, 0, 1)), new PolygonFace([v[1], v[2], v[6], v[5]], new _Vector.Vector(1, 0, 0)), new PolygonFace([v[4], v[5], v[6], v[7]], new _Vector.Vector(0, 0, -1)), new PolygonFace([v[0], v[1], v[5], v[4]], new _Vector.Vector(0, -1, 0)), new PolygonFace([v[0], v[3], v[7], v[4]], new _Vector.Vector(-1, 0, 0)), new PolygonFace([v[2], v[3], v[7], v[6]], new _Vector.Vector(0, 1, 0))];
@@ -1875,7 +1982,7 @@ var Polygon = function () {
             return new Polygon(faces, 'box');
         }
     }, {
-        key: 'createIcosahedron',
+        key: "createIcosahedron",
         value: function createIcosahedron(x, y, z, scale) {
             var t = (1 + Math.sqrt(5)) / 2;
             var v = [new _Vector.Point(-1, t, 0), new _Vector.Point(1, t, 0), new _Vector.Point(-1, -t, 0), new _Vector.Point(1, -t, 0), new _Vector.Point(0, -1, t), new _Vector.Point(0, 1, t), new _Vector.Point(0, -1, -t), new _Vector.Point(0, 1, -t), new _Vector.Point(t, 0, -1), new _Vector.Point(t, 0, 1), new _Vector.Point(-t, 0, -1), new _Vector.Point(-t, 0, 1)];
@@ -1916,14 +2023,14 @@ var PolygonFace = function () {
     }
 
     _createClass(PolygonFace, [{
-        key: 'translate',
+        key: "translate",
         value: function translate(x, y, z) {
             this.points.forEach(function (p) {
                 return p.translate(x, y, z);
             });
         }
     }, {
-        key: 'rotate',
+        key: "rotate",
         value: function rotate(v, rad) {
             this.points.forEach(function (p) {
                 return p.rotate(v, rad);
@@ -1931,27 +2038,27 @@ var PolygonFace = function () {
             this.normal.rotate(v, rad);
         }
     }, {
-        key: 'getPoints',
+        key: "getPoints",
         value: function getPoints() {
             return this.points;
         }
     }, {
-        key: 'getNormal',
+        key: "getNormal",
         value: function getNormal() {
             return this.normal;
         }
     }, {
-        key: 'getPolygon',
+        key: "getPolygon",
         value: function getPolygon() {
             return this.polygon;
         }
     }, {
-        key: 'setPolygon',
+        key: "setPolygon",
         value: function setPolygon(polygon) {
             this.polygon = polygon;
         }
     }, {
-        key: 'getClippedPoints',
+        key: "getClippedPoints",
         value: function getClippedPoints() {
             var clippedPoints = [];
             for (var i = 0; i < this.mapping.length; i++) {
@@ -1962,39 +2069,30 @@ var PolygonFace = function () {
             return clippedPoints;
         }
     }, {
-        key: 'getVisiblePoints',
+        key: "getVisiblePoints",
         value: function getVisiblePoints() {
             return this.visiblePoints;
         }
     }, {
-        key: 'setVisiblePoints',
+        key: "setVisiblePoints",
         value: function setVisiblePoints(points, mapping) {
-            if (this.normal !== undefined && this.normal.getY() === 0 && this.normal.getX() < 0 && this.normal.getZ() > 0) {
-                var a = 1;
-            }
             this.visiblePoints = points;
             this.mapping = mapping;
         }
     }, {
-        key: 'getEdgeBlacklist',
+        key: "getEdgeBlacklist",
         value: function getEdgeBlacklist() {
             return this.edgeBlacklist;
         }
     }, {
-        key: 'setEdgeBlacklist',
+        key: "setEdgeBlacklist",
         value: function setEdgeBlacklist(blacklist) {
             this.edgeBlacklist = blacklist;
         }
     }, {
-        key: 'draw',
+        key: "draw",
         value: function draw(ctx) {
-            var fillColor = void 0;
-            if (this.polygon.getHover()) {
-                fillColor = "#E6E6E6";
-            } else {
-                fillColor = "#CCCCCC";
-            }
-            ctx.fillStyle = fillColor;
+            ctx.fillStyle = this.polygon.getColor(this);
             ctx.beginPath();
             var k = void 0;
             for (k = 0; k < this.visiblePoints.length; k++) {
@@ -2229,33 +2327,42 @@ var Tile = function () {
             return this.mapObject;
         }
     }, {
-        key: 'getNeighbors',
-        value: function getNeighbors(dist) {
+        key: 'getPaths',
+        value: function getPaths(dist) {
             var _this = this;
 
             var dirs = ['left', 'right', 'top', 'down'];
             var queue = new Set([this]);
             var nextQueue = void 0;
-            var results = new Set();
+            var paths = {};
+            var thisKey = this.getX() + '-' + this.getY();
+            paths[thisKey] = [thisKey];
             for (var i = 0; i < dist; i++) {
                 nextQueue = new Set();
                 queue.forEach(function (tile) {
+                    var key = tile.getX() + '-' + tile.getY();
                     dirs.forEach(function (dir) {
-                        if (tile[dir] !== null && tile[dir] !== _this && tile[dir].movable()) {
-                            if (!results.has(tile[dir])) {
-                                results.add(tile[dir]);
-                                nextQueue.add(tile[dir]);
+                        var t = tile[dir];
+                        if (t !== null && t !== _this && t.movable() && Math.abs(t.getH() - tile.getH()) < 2) {
+                            var tkey = t.getX() + '-' + t.getY();
+                            if (paths[tkey] === undefined) {
+                                nextQueue.add(t);
+                                paths[tkey] = paths[key].concat(tkey);
                             }
                         }
                     });
                 });
                 queue = nextQueue;
             }
-            return results;
+            delete paths[thisKey];
+            return paths;
         }
     }, {
         key: 'movable',
         value: function movable() {
+            if (this.mapObject !== null) {
+                return this.mapObject.moveable();
+            }
             return true;
         }
     }, {

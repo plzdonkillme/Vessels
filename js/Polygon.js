@@ -8,6 +8,9 @@ class Polygon {
         this.clippedFace = null;
         this.hover = false;
         this.originalFaces = faces.slice();
+        this.color = "#CCCCCC";
+        this.highlightColor = "#E6E6E6";
+        this.animations = [];
     }
 
     translate(x, y, z) {
@@ -30,8 +33,39 @@ class Polygon {
         });
     }
 
-    getHover() {
-        return this.hover;
+    getColor(face) {
+        return this.hover ? this.highlightColor : this.color;
+    }
+
+    setColor(color, highlightColor) {
+        this.color = color;
+        this.highlightColor = highlightColor;
+    }
+
+    queueAnimations(animations) {
+        this.animations = this.animations.concat(animations);
+    }
+
+    updatePosition() {
+        if (this.animations.length > 0) {
+            const animation = this.animations[0];
+            if (animation.rate === null){
+                const points = Array.from(new Set(this.faces.reduce((a,b) => a.concat(b.getPoints()), [])));
+                const sx = points.reduce((a,b) => a + b.getX(), 0) / points.length;
+                const sy = points.reduce((a,b) => a + b.getY(), 0) / points.length;
+                const sz = points.reduce((a,b) => a + b.getZ(), 0) / points.length;
+                animation.rate = {
+                    x: (animation.dx - sx) / animation.frames,
+                    y: (animation.dy - sy) / animation.frames,
+                    z: (animation.dz - sz) / animation.frames,
+                };
+            }
+            this.translate(animation.rate.x, animation.rate.y, animation.rate.z);
+            animation.frames -= 1;
+            if (animation.frames === 0) {
+                this.animations.splice(0, 1);
+            }
+        }
     }
 
     toggleHover() {
@@ -285,9 +319,6 @@ class PolygonFace {
     }
 
     setVisiblePoints(points, mapping) {
-        if (this.normal !== undefined && this.normal.getY() === 0 && this.normal.getX() < 0 && this.normal.getZ() > 0) {
-            var a = 1;
-        }
         this.visiblePoints = points;
         this.mapping = mapping;
     }
@@ -301,13 +332,7 @@ class PolygonFace {
     }
 
     draw(ctx) {
-        let fillColor;
-        if (this.polygon.getHover()) {
-            fillColor = "#E6E6E6";
-        } else {
-            fillColor = "#CCCCCC";
-        }
-        ctx.fillStyle = fillColor;
+        ctx.fillStyle = this.polygon.getColor(this);
         ctx.beginPath();
         let k;
         for (k = 0; k < this.visiblePoints.length; k++) {

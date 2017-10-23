@@ -47,9 +47,17 @@ class MapObject {
     getPlayer() {
         return null;
     }
+
+    moveable() {
+        return false;
+    }
 }
 
 class Shard extends MapObject {
+
+    moveable() {
+        return true;
+    }
 
     attackedBy() {
         this.tile.unsetMapObject();
@@ -124,7 +132,10 @@ class Vessel extends MapObject {
         if (player !== this.player) {
             throw Error('Invalid action: wrong player');
         }
-        if (!this.tile.getNeighbors(this.movement).has(tile)) {
+
+        const paths = this.tile.getPaths(this.movement);
+        const key = `${tile.getX()}-${tile.getY()}`;
+        if (paths[key] === undefined) {
             throw Error('Invalid action: cannot reach tile');
         }
 
@@ -133,13 +144,19 @@ class Vessel extends MapObject {
             this.tile.unsetMapObject();
             tile.setMapObject(this);
             this.tile = tile;
+            return {
+                name: 'move',
+                path: paths[key],
+            };
         } else if (mO instanceof Shard) {
             const cls = this.consumeShard(mO);
             new cls([this.player], tile);
             this.tile.unsetMapObject();
-        } else {
-            throw Error('Invalid move tile');
+            return {
+                name: 'move',
+            };
         }
+        throw Error('Invalid move tile');
     }
 
     getPlayer() {

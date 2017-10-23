@@ -3,6 +3,8 @@ import { Viewport } from "./Viewport";
 import { Polygon } from "./Polygon";
 import { PolygonRenderer} from "./PolygonRenderer";
 
+const TLEN = 100;
+
 class MapScreen {
 
     constructor(canvas, map) {
@@ -17,11 +19,17 @@ class MapScreen {
         );
         this.pressed = {};
 
-        const TLEN = 100;
-        const tilePolygons = this.map.getTilesFlattened().map(t => Polygon.createBox(t.getX() * TLEN, t.getY() * TLEN, 0, TLEN, TLEN, t.getH() *TLEN));
-        this.objPolygons = this.map.getMapObjects().map(m => Polygon.createIcosahedron(m.getX() * TLEN + TLEN / 2, m.getY() * TLEN + TLEN / 2, m.getH() * TLEN + TLEN / 2, 20));
+        this.r = new Vector(0, 0, 1);
+        const tilePolygons = this.map.getTilesFlattened().filter(t => t.constructor.name() !== 'e').map(t => Polygon.createBox(t.getX() * TLEN, t.getY() * TLEN, 0, TLEN, TLEN, t.getH() *TLEN));
+        this.objPolygons = this.map.getMapObjects().reduce((a, m) => {
+            const p = Polygon.createIcosahedron(m.getX() * TLEN + TLEN / 2, m.getY() * TLEN + TLEN / 2, m.getH() * TLEN + TLEN / 2, 20);
+            m.getPlayer() === '0' ? p.setColor('#FFFFFF', '#E6E6E6') : p.setColor('#e6e6e6', '#ffffff');
+            a[`${m.getX()}-${m.getY()}`] = p;
+            return a;
+        }, {});
 
         this.renderer = new PolygonRenderer(this.canvas, tilePolygons, (a,b) => a.getNormal().getZ() - b.getNormal().getZ());
+        map.addListener(this);
     }
 
     start() {
@@ -30,14 +38,36 @@ class MapScreen {
 
     renderLoop() {
         this.viewport.updatePosition();
-        this.objPolygons.forEach(obj => {
-            obj.translate(1, 0, 0);
-            obj.rotate(new Vector(0, 0, 1), 1 * Math.PI / 180);
+        this.r.rotate(new Vector(1, 0, 0), 1 * Math.PI / 180);
+        const objs = Object.values(this.objPolygons);
+        objs.forEach(obj => {
+            obj.rotate(this.r, 1 * Math.PI / 180);
+            obj.updatePosition();
         });
-        this.renderer.render(this.viewport, this.objPolygons);
+        this.renderer.render(this.viewport, objs);
         window.requestAnimationFrame((step) => {
             this.renderLoop();
         });
+    }
+
+    trigger(e) {
+        if (e.name === 'move') {
+            const obj = this.objPolygons[e.path[0]];
+            const tiles = this.map.getTiles();
+            const animations = e.path.slice(1, e.path.length).map(p => {
+                const x = parseInt(p.split('-')[0]);
+                const y = parseInt(p.split('-')[1]);
+                const t = tiles[y][x];
+                return {
+                    rate: null,
+                    dx: t.getX() * TLEN + TLEN / 2,
+                    dy: t.getY() * TLEN + TLEN / 2,
+                    dz: t.getH() * TLEN + TLEN / 2,
+                    frames: 30,
+                };
+            });
+            obj.queueAnimations(animations);
+        }
     }
 
     /*turnLoop() {

@@ -9,6 +9,7 @@ class Map {
         this.turnPlayer = turnPlayers[0];
         this.turnPlayerIdx = 0;
         this.actions = actions;
+        this.listeners = [];
     }
 
     getTiles() {
@@ -83,9 +84,13 @@ class Map {
             const srcTile = this.tiles[sy][sx];
             const obj = srcTile.getMapObject();
             const dstTile = this.tiles[dy][dx]; 
-            obj[name](dstTile, this.turnPlayer);
+            const e = obj[name](dstTile, this.turnPlayer);
             this.actions[name] -= 1;
-        } 
+
+            this.listeners.forEach(l => l.trigger(e));
+        } else if (name !== 'end') {
+            throw Error('Invalid action');
+        }
         if (name === 'end' || Object.values(this.actions).reduce((a,b) => a + b, 0) === 0) {
             this.turnPlayerIdx = (this.turnPlayerIdx + 1) % this.turnPlayers.length;
             this.turnPlayer = this.turnPlayers[this.turnPlayerIdx];
@@ -95,6 +100,10 @@ class Map {
                 attack: 1,
             };
         }
+    }
+
+    addListener(l) {
+        this.listeners.push(l);
     }
     /*
 

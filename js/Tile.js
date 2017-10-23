@@ -39,29 +39,38 @@ class Tile {
         return this.mapObject;
     }
 
-    getNeighbors(dist) {
+    getPaths(dist) {
         const dirs = ['left', 'right', 'top', 'down'];
         let queue = new Set([this]);
         let nextQueue;
-        const results = new Set();
+        const paths = {};
+        const thisKey = `${this.getX()}-${this.getY()}`;
+        paths[thisKey] = [thisKey];
         for (let i = 0; i < dist; i++) {
             nextQueue = new Set();
             queue.forEach(tile => {
+                const key = `${tile.getX()}-${tile.getY()}`;
                 dirs.forEach((dir) => {
-                    if (tile[dir] !== null && tile[dir] !== this && tile[dir].movable()) {
-                        if (!results.has(tile[dir])) {
-                            results.add(tile[dir]);
-                            nextQueue.add(tile[dir]);
+                    const t = tile[dir];
+                    if (t !== null && t !== this && t.movable() && Math.abs(t.getH() - tile.getH()) < 2) {
+                        const tkey = `${t.getX()}-${t.getY()}`;
+                        if (paths[tkey] === undefined) {
+                            nextQueue.add(t);
+                            paths[tkey] = paths[key].concat(tkey);
                         }
                     }
                 })
             });
             queue = nextQueue;
         }
-        return results;
+        delete paths[thisKey];
+        return paths;
     }
 
     movable() {
+        if (this.mapObject !== null) {
+            return this.mapObject.moveable();
+        }
         return true;
     }
 
