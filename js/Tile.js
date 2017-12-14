@@ -39,47 +39,16 @@ class Tile {
         return this.mapObject;
     }
 
-    getPaths(dist) {
-        const dirs = ['left', 'right', 'top', 'down'];
-        let queue = new Set([this]);
-        let nextQueue;
-        const paths = {};
-        const thisKey = `${this.getX()}-${this.getY()}`;
-        paths[thisKey] = [thisKey];
-        for (let i = 0; i < dist; i++) {
-            nextQueue = new Set();
-            queue.forEach(tile => {
-                const key = `${tile.getX()}-${tile.getY()}`;
-                dirs.forEach((dir) => {
-                    const t = tile[dir];
-                    if (t !== null && t !== this && t.movable() && Math.abs(t.getH() - tile.getH()) < 2) {
-                        const tkey = `${t.getX()}-${t.getY()}`;
-                        if (paths[tkey] === undefined) {
-                            nextQueue.add(t);
-                            paths[tkey] = paths[key].concat(tkey);
-                        }
-                    }
-                })
-            });
-            queue = nextQueue;
-        }
-        delete paths[thisKey];
-        return paths;
-    }
-
-    movable() {
-        if (this.mapObject !== null) {
-            return this.mapObject.moveable();
-        }
-        return true;
-    }
-
     serialize() {
         return `${this.constructor.name()}-${this.h}`
     }
 
     static getClass(name) {
         return TILE_MAP[name];
+    }
+
+    getKey() {
+        return `${this.constructor.name()}-${this.x}-${this.y}`
     }
 
 }
@@ -92,14 +61,6 @@ class PlainTile extends Tile {
 }
 
 class EmptyTile extends Tile {
-
-    movable() {
-        return false;
-    }
-
-    getNeighbors() {
-        return new Set();
-    }
 
     static name() {
         return 'e';

@@ -56,6 +56,14 @@ export default class Game {
 
             this.loadDemo();
         });*/
+        dmap.doAction('move', 0, 0, 0, 1);
+        dmap.doAction('transfer', 0, 1, 1, 0);
+        dmap.doAction('end');
+        dmap.doAction('move', 2, 1, 1, 4);
+        dmap.doAction('end');
+        dmap.doAction('move', 0, 1, 0, 2);
+        dmap.doAction('end');
+        dmap.doAction('move', 1, 4, 0, 3);
     }
 
     /*loadAssets() {

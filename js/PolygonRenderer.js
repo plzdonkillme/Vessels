@@ -8,15 +8,15 @@ class PolygonRenderer {
         staticFaces.sort(faceSort);
         this.bsp = new BSPTree(staticFaces);
         this.staticPolygons = staticPolygons;
-        this.hoveredPolygon = null;
+        this.hoveredObj = null;
     }
 
-    render(viewport, polygons) {
+    render(viewport, polygons, overlays) {
         const ctx = this.canvas.getContext('2d');
         ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
         const facesToDraw = [];
-        let hoveredFace = null;
+        let hoveredObj = null;
 
         this.bsp.addFaces(polygons.reduce((a, b) => a.concat(b.getFaces()), []));
 
@@ -25,7 +25,7 @@ class PolygonRenderer {
             face.setVisiblePoints(visiblePoints, mapping);
             if (visible) {
                 if (viewport.mouseInside(visiblePoints)) {
-                    hoveredFace = face;
+                    hoveredObj = face.getPolygon();
                 }
                 facesToDraw.push(face);
             }
@@ -38,20 +38,27 @@ class PolygonRenderer {
             const clippedFace = polygon.getClippedFace();
             if (clippedFace !== null) {
                 if (viewport.mouseInside(clippedFace.getVisiblePoints())) {
-                    hoveredFace = clippedFace;
+                    hoveredObj = polygon;
                 }
                 facesToDraw.push(clippedFace);
             }
         });
 
-        if (this.hoveredPolygon !== null) {
-            this.hoveredPolygon.toggleHover();
+        overlays.forEach(overlay => {
+            if (viewport.mouseInside(overlay.getVisiblePoints())) {
+                hoveredObj = overlay;
+            }
+            facesToDraw.push(overlay);
+        });
+
+        if (this.hoveredObj !== null) {
+            this.hoveredObj.toggleHover();
         }
-        if (hoveredFace !== null) {
-            this.hoveredPolygon = hoveredFace.getPolygon();
-            this.hoveredPolygon.toggleHover();
+        if (hoveredObj !== null) {
+            this.hoveredObj = hoveredObj;
+            this.hoveredObj.toggleHover();
         } else {
-            this.hoveredPolygon = null;
+            this.hoveredObj = null;
         }
 
         facesToDraw.forEach(face => face.draw(ctx));

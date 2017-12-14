@@ -1,4 +1,5 @@
 import { Point, Vector } from "./Vector";
+import { Color } from "./Color";
 
 class Polygon {
     constructor(faces, type) {
@@ -8,64 +9,38 @@ class Polygon {
         this.clippedFace = null;
         this.hover = false;
         this.originalFaces = faces.slice();
-        this.color = "#CCCCCC";
-        this.highlightColor = "#E6E6E6";
-        this.animations = [];
+        this.color = new Color(204, 204, 204, 1);
+        this.hoverColor = new Color(230, 230, 230, 1);
+        this.stroke = new Color(0, 0, 0, 1);
     }
 
     translate(x, y, z) {
-        const points = Array.from(new Set(this.faces.reduce((a,b) => a.concat(b.getPoints()), [])));
-        points.forEach(point => point.translate(x, y, z));
+        this.getPoints().forEach(point => point.translate(x, y, z));
     }
 
     rotate(v, rad) {
-        const points = Array.from(new Set(this.faces.reduce((a,b) => a.concat(b.getPoints()), [])));
-        const x = points.reduce((a,b) => a + b.getX(), 0) / points.length;
-        const y = points.reduce((a,b) => a + b.getY(), 0) / points.length;
-        const z = points.reduce((a,b) => a + b.getZ(), 0) / points.length;
-        points.forEach(point => {
-            point.translate(-x, -y, -z);
+        const c = this.getCenter();
+        this.getPoints().forEach(point => {
+            point.translate(-c.getX(), -c.getY(), -c.getZ());
             point.rotate(v, rad);
-            point.translate(x, y, z);
+            point.translate(c.getX(), c.getY(), c.getZ());
         });
         this.faces.forEach(face => {
             face.getNormal().rotate(v, rad);
         });
     }
 
-    getColor(face) {
-        return this.hover ? this.highlightColor : this.color;
+    getColor() {
+        return this.hover ? this.hoverColor : this.color;
     }
 
-    setColor(color, highlightColor) {
+    setColor(color, hoverColor) {
         this.color = color;
-        this.highlightColor = highlightColor;
+        this.hoverColor = hoverColor;
     }
 
-    queueAnimations(animations) {
-        this.animations = this.animations.concat(animations);
-    }
-
-    updatePosition() {
-        if (this.animations.length > 0) {
-            const animation = this.animations[0];
-            if (animation.rate === null){
-                const points = Array.from(new Set(this.faces.reduce((a,b) => a.concat(b.getPoints()), [])));
-                const sx = points.reduce((a,b) => a + b.getX(), 0) / points.length;
-                const sy = points.reduce((a,b) => a + b.getY(), 0) / points.length;
-                const sz = points.reduce((a,b) => a + b.getZ(), 0) / points.length;
-                animation.rate = {
-                    x: (animation.dx - sx) / animation.frames,
-                    y: (animation.dy - sy) / animation.frames,
-                    z: (animation.dz - sz) / animation.frames,
-                };
-            }
-            this.translate(animation.rate.x, animation.rate.y, animation.rate.z);
-            animation.frames -= 1;
-            if (animation.frames === 0) {
-                this.animations.splice(0, 1);
-            }
-        }
+    getStroke() {
+        return this.stroke
     }
 
     toggleHover() {
@@ -74,6 +49,76 @@ class Polygon {
 
     getFaces() {
         return this.faces;
+    }
+
+    getPoints() {
+        return Array.from(new Set(this.faces.reduce((a,b) => a.concat(b.getPoints()), [])));
+    }
+
+    getCenter() {
+        const points = this.getPoints();
+        const x = points.reduce((a,b) => a + b.getX(), 0) / points.length;
+        const y = points.reduce((a,b) => a + b.getY(), 0) / points.length;
+        const z = points.reduce((a,b) => a + b.getZ(), 0) / points.length;
+        return new Point(x, y, z);
+    }
+
+    calcRate(end, frames) {
+        const currentState = {
+            x: this.getCenter().getX(),
+            y: this.getCenter().getY(),
+            z: this.getCenter().getZ(),
+            r: this.color.getR(),
+            g: this.color.getG(),
+            b: this.color.getB(),
+            a: this.color.getA(),
+            hr: this.hoverColor.getR(),
+            hg: this.hoverColor.getG(),
+            hb: this.hoverColor.getB(),
+            ha: this.hoverColor.getA(),
+            sr: this.stroke.getR(),
+            sg: this.stroke.getG(),
+            sb: this.stroke.getB(),
+            sa: this.stroke.getA(),
+        };
+        const rate = {};
+        for (let key in end) {
+            rate[key] = (end[key] - currentState[key]) / frames;
+        }
+        for (let key in currentState) {
+            if (rate[key] === undefined) {
+                rate[key] = 0;
+            }
+        }
+        return rate;
+    }
+
+    getState() {
+        return {
+            x: this.getCenter().getX(),
+            y: this.getCenter().getY(),
+            z: this.getCenter().getZ(),
+            r: this.color.getR(),
+            g: this.color.getG(),
+            b: this.color.getB(),
+            a: this.color.getA(),
+            hr: this.hoverColor.getR(),
+            hg: this.hoverColor.getG(),
+            hb: this.hoverColor.getB(),
+            ha: this.hoverColor.getA(),
+            sr: this.stroke.getR(),
+            sg: this.stroke.getG(),
+            sb: this.stroke.getB(),
+            sa: this.stroke.getA(),
+        };
+    }
+
+    applyState({x, y, z, r, g, b, a, hr, hg, hb, ha, sr, sg, sb, sa}) {
+        const currentState = this.getState();
+        this.translate(x - currentState.x, y - currentState.y, z - currentState.z);
+        this.color.translate(r - currentState.r, g - currentState.g, b - currentState.b, a - currentState.a);
+        this.hoverColor.translate(hr - currentState.hr, hg - currentState.hg, hb - currentState.hb, ha - currentState.ha);
+        this.stroke.translate(sr - currentState.sr, sg - currentState.sg, sb - currentState.sb, sa - currentState.sa);
     }
 
     restoreFaces() {
@@ -267,6 +312,39 @@ class Polygon {
 
         return new Polygon(faces, 'icosahedron');
     }
+
+    static createTetrahedron(x, y, z, scale) {
+        const t = 1 / Math.sqrt(2);
+        const v = [
+            new Point(1, 0, -t),
+            new Point(-1, 0 , -t),
+            new Point(0, 1, t),
+            new Point(0, -1, t)
+        ];
+
+        const faces = [
+            [0, 2, 3],
+            [1, 3, 2],
+            [2, 0, 1],
+            [3, 1, 0]
+        ].map(idx => {
+            const p1 = v[idx[0]];
+            const p2 = v[idx[1]];
+            const p3 = v[idx[2]];
+            const v1 = Vector.createFromPoints(p1, p2);
+            const v2 = Vector.createFromPoints(p1, p3);
+            const n = v1.cross(v2);
+            n.normalize();
+            return new PolygonFace([p1, p2, p3], n);
+        });
+
+        v.forEach(v => {
+            v.scale(scale);
+            v.translate(x, y, z);
+        });
+
+        return new Polygon(faces, 'tetrahedron');
+    }
 }
 
 class PolygonFace {
@@ -332,7 +410,7 @@ class PolygonFace {
     }
 
     draw(ctx) {
-        ctx.fillStyle = this.polygon.getColor(this);
+        ctx.fillStyle = this.polygon.getColor().getString();
         ctx.beginPath();
         let k;
         for (k = 0; k < this.visiblePoints.length; k++) {
@@ -350,7 +428,7 @@ class PolygonFace {
         let nextK;
         let edge;
         let blacklist;
-        ctx.strokeStyle = "#000000";
+        ctx.strokeStyle = this.polygon.getStroke().getString();
         //Draw outline
         for (k = 0; k < this.visiblePoints.length; k++) {
             nextK = k === this.visiblePoints.length - 1 ? 0 : k + 1;
@@ -388,4 +466,47 @@ class PolygonFace {
     }
 }
 
-export { Polygon, PolygonFace };
+class Overlay {
+    constructor(x, y, w, h, text) {
+        this.color = new Color(230, 230, 230, 1);
+        this.hoverColor = new Color(242, 242, 242, 1);
+        this.stroke = new Color(0, 0, 0, 1);
+        this.x = x;
+        this.y = y;
+        this.w = w;
+        this.h = h;
+        this.text = text;
+        this.hover = false;
+    }
+
+    toggleHover() {
+        this.hover = !this.hover;
+    }
+
+    getVisiblePoints() {
+        return [
+            new Point(this.x, this.y, 0),
+            new Point(this.x + this.w, this.y, 0),
+            new Point(this.x + this.w, this.y + this.h, 0),
+            new Point(this.x, this.y + this.h, 0),
+        ];
+    }
+
+    draw(ctx) {
+        if (this.hover) {
+            ctx.fillStyle = this.hoverColor.getString();
+        } else {
+            ctx.fillStyle = this.color.getString();
+        }
+        ctx.strokeStyle = this.stroke.getString();
+        ctx.fillRect(this.x, this.y, this.w, this.h);
+        ctx.strokeRect(this.x, this.y, this.w, this.h);
+        ctx.fillStyle = 'black';
+        ctx.textAlign = 'center';
+        ctx.textBaseline= 'middle'; 
+        ctx.font = '30px Arial';
+        ctx.fillText(this.text, this.x + (this.w / 2), this.y + (this.h / 2));
+    }
+}
+
+export { Polygon, PolygonFace, Overlay };

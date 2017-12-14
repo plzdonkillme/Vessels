@@ -28,6 +28,14 @@ class Map {
         return this.getTilesFlattened().map(t => t.getMapObject()).filter(m => m !== null);
     }
 
+    getMapObject(key) {
+        const objs = this.getMapObjects().filter(m => m.getKey() === key);
+        if (objs.length !== 1) {
+            throw Error('Invalid Key');
+        }
+        return objs[0];
+    }
+
     getObjective() {
         return this.objective;
     }
@@ -102,69 +110,20 @@ class Map {
         }
     }
 
+    getMovablePaths(key) {
+        const obj = this.getMapObject(key);
+        return obj.getMoveablePaths();
+    }
+
+    getAttackableTiles(key) {
+        const obj = this.getMapObject(key);
+        return obj.getAttackableTiles();
+    }
+
     addListener(l) {
         this.listeners.push(l);
     }
-    /*
 
-    applyAction(actor, action, receiver) {
-        if (action === 'move') {
-            actor.moveTo(receiver);
-        }
-    }
-
-    clicked(obj) {
-        if (obj instanceof MapObject) {
-            //this.setSelection(obj);
-            //rerender = true;
-        } else if (obj instanceof Tile) {
-            if (obj.isHighlighted()) {
-                this.turnActor.moveTo(obj);
-            }
-        }
-    }
-
-    serialize() {
-        const serializer = new MapSerializer();
-        return serializer.serialize(this);
-    }
-
-    /*nextTurn() {
-        if (this.turnActor !== null) {
-            this.turnQueue.pop();
-            this.turnActor.subtractTicks(this.TICK_THRESHOLD);
-        }
-        while (this.turnQueue.length === 0) {
-            for (let i = 0; i < this.actors.length; i++) {
-                this.actors[i].tickForward();
-                const ticks = this.actors[i].getTicks();
-                if (ticks > this.TICK_THRESHOLD) {
-                    let idx = this.turnQueue.length;
-                    for (let j = 0; j < this.turnQueue.length; j++) {
-                        if (this.turnQueue[j][1] > ticks) {
-                            idx = j;
-                            break;
-                        }
-                    }
-                    this.turnQueue.splice(idx, 0, [this.actors[i], ticks]);
-                }
-            }
-        }
-        this.turnActor = this.turnQueue[this.turnQueue.length - 1][0];
-        return this.turnActor;
-    }*/
-
-    /*getTurnActor() {
-        return this.turnActor;
-    }
-
-    getPlayerOptions() {
-        return this.playerOptions;
-    }
-
-    setPlayerOptions(options) {
-        this.playerOptions = options;
-    }*/
 }
 
 export { Map }

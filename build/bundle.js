@@ -63,7 +63,7 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 14);
+/******/ 	return __webpack_require__(__webpack_require__.s = 16);
 /******/ })
 /************************************************************************/
 /******/ ([
@@ -263,15 +263,80 @@ exports.Vector = Vector;
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var Color = function () {
+    function Color(r, g, b, a) {
+        _classCallCheck(this, Color);
+
+        this.r = r;
+        this.g = g;
+        this.b = b;
+        this.a = a;
+    }
+
+    _createClass(Color, [{
+        key: "getString",
+        value: function getString() {
+            return "rgba(" + Math.floor(this.r) + ", " + Math.floor(this.g) + ", " + Math.floor(this.b) + ", " + this.a + ")";
+        }
+    }, {
+        key: "getR",
+        value: function getR() {
+            return this.r;
+        }
+    }, {
+        key: "getG",
+        value: function getG() {
+            return this.g;
+        }
+    }, {
+        key: "getB",
+        value: function getB() {
+            return this.b;
+        }
+    }, {
+        key: "getA",
+        value: function getA() {
+            return this.a;
+        }
+    }, {
+        key: "translate",
+        value: function translate(r, g, b, a) {
+            this.r += r;
+            this.g += g;
+            this.b += b;
+            this.a += a;
+        }
+    }]);
+
+    return Color;
+}();
+
+exports.Color = Color;
+
+/***/ }),
+/* 2 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
 exports.deserialize = exports.serialize = undefined;
 
-var _Tile = __webpack_require__(12);
+var _Tile = __webpack_require__(3);
 
-var _MapObject = __webpack_require__(7);
+var _MapObject = __webpack_require__(10);
 
-var _Map = __webpack_require__(6);
+var _Map = __webpack_require__(9);
 
-var _Objective = __webpack_require__(9);
+var _Objective = __webpack_require__(12);
 
 function serialize(map) {
     var mapString = '';
@@ -349,7 +414,7 @@ exports.serialize = serialize;
 exports.deserialize = deserialize;
 
 /***/ }),
-/* 2 */
+/* 3 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -361,9 +426,144 @@ Object.defineProperty(exports, "__esModule", {
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
-var _MapScreen = __webpack_require__(8);
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
 
-var _DefaultMap = __webpack_require__(5);
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var Tile = function () {
+    function Tile(x, y, h) {
+        _classCallCheck(this, Tile);
+
+        this.x = x;
+        this.y = y;
+        this.h = h;
+        this.left = null;
+        this.right = null;
+        this.top = null;
+        this.down = null;
+        this.mapObject = null;
+    }
+
+    _createClass(Tile, [{
+        key: 'link',
+        value: function link(dir, tile) {
+            this[dir] = tile;
+        }
+    }, {
+        key: 'getX',
+        value: function getX() {
+            return this.x;
+        }
+    }, {
+        key: 'getY',
+        value: function getY() {
+            return this.y;
+        }
+    }, {
+        key: 'getH',
+        value: function getH() {
+            return this.h;
+        }
+    }, {
+        key: 'setMapObject',
+        value: function setMapObject(mapObject) {
+            this.mapObject = mapObject;
+        }
+    }, {
+        key: 'unsetMapObject',
+        value: function unsetMapObject() {
+            this.mapObject = null;
+        }
+    }, {
+        key: 'getMapObject',
+        value: function getMapObject() {
+            return this.mapObject;
+        }
+    }, {
+        key: 'serialize',
+        value: function serialize() {
+            return this.constructor.name() + '-' + this.h;
+        }
+    }, {
+        key: 'getKey',
+        value: function getKey() {
+            return this.constructor.name() + '-' + this.x + '-' + this.y;
+        }
+    }], [{
+        key: 'getClass',
+        value: function getClass(name) {
+            return TILE_MAP[name];
+        }
+    }]);
+
+    return Tile;
+}();
+
+var PlainTile = function (_Tile) {
+    _inherits(PlainTile, _Tile);
+
+    function PlainTile() {
+        _classCallCheck(this, PlainTile);
+
+        return _possibleConstructorReturn(this, (PlainTile.__proto__ || Object.getPrototypeOf(PlainTile)).apply(this, arguments));
+    }
+
+    _createClass(PlainTile, null, [{
+        key: 'name',
+        value: function name() {
+            return 'p';
+        }
+    }]);
+
+    return PlainTile;
+}(Tile);
+
+var EmptyTile = function (_Tile2) {
+    _inherits(EmptyTile, _Tile2);
+
+    function EmptyTile() {
+        _classCallCheck(this, EmptyTile);
+
+        return _possibleConstructorReturn(this, (EmptyTile.__proto__ || Object.getPrototypeOf(EmptyTile)).apply(this, arguments));
+    }
+
+    _createClass(EmptyTile, null, [{
+        key: 'name',
+        value: function name() {
+            return 'e';
+        }
+    }]);
+
+    return EmptyTile;
+}(Tile);
+
+var TILE_MAP = {
+    p: PlainTile,
+    e: EmptyTile
+};
+
+exports.Tile = Tile;
+exports.EmptyTile = EmptyTile;
+exports.PlainTile = PlainTile;
+
+/***/ }),
+/* 4 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _MapScreen = __webpack_require__(11);
+
+var _DefaultMap = __webpack_require__(8);
 
 var _DefaultMap2 = _interopRequireDefault(_DefaultMap);
 
@@ -430,6 +630,14 @@ var Game = function () {
                 });
                  this.loadDemo();
             });*/
+            dmap.doAction('move', 0, 0, 0, 1);
+            dmap.doAction('transfer', 0, 1, 1, 0);
+            dmap.doAction('end');
+            dmap.doAction('move', 2, 1, 1, 4);
+            dmap.doAction('end');
+            dmap.doAction('move', 0, 1, 0, 2);
+            dmap.doAction('end');
+            dmap.doAction('move', 1, 4, 0, 3);
         }
 
         /*loadAssets() {
@@ -447,13 +655,13 @@ var Game = function () {
 exports.default = Game;
 
 /***/ }),
-/* 3 */
+/* 5 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // style-loader: Adds some css to the DOM by adding a <style> tag
 
 // load the styles
-var content = __webpack_require__(17);
+var content = __webpack_require__(19);
 if(typeof content === 'string') content = [[module.i, content, '']];
 // Prepare cssTransformation
 var transform;
@@ -461,7 +669,7 @@ var transform;
 var options = {}
 options.transform = transform
 // add the styles to the DOM
-var update = __webpack_require__(18)(content, options);
+var update = __webpack_require__(20)(content, options);
 if(content.locals) module.exports = content.locals;
 // Hot Module Replacement
 if(false) {
@@ -478,7 +686,149 @@ if(false) {
 }
 
 /***/ }),
-/* 4 */
+/* 6 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var Animation = function () {
+    function Animation(transitions, frames) {
+        var destroy = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : false;
+
+        _classCallCheck(this, Animation);
+
+        this.frame = 0;
+        this.frames = frames;
+        this.destroy = destroy;
+        this.transitions = transitions;
+    }
+
+    _createClass(Animation, [{
+        key: "initialize",
+        value: function initialize(state) {
+            for (var key in state) {
+                if (this.transitions[key] === undefined) {
+                    this.transitions[key] = new TransitionNoop(state[key]);
+                } else if (!this.transitions[key].isInitialized()) {
+                    this.transitions[key].initialize(state[key]);
+                }
+            }
+        }
+    }, {
+        key: "isInitialized",
+        value: function isInitialized() {
+            return this.frame !== 0;
+        }
+    }, {
+        key: "finished",
+        value: function finished() {
+            return this.frame === this.frames;
+        }
+    }, {
+        key: "destroyAfter",
+        value: function destroyAfter() {
+            return this.destroy;
+        }
+    }, {
+        key: "getNextState",
+        value: function getNextState() {
+            this.frame += 1;
+            var nextState = {};
+            for (var key in this.transitions) {
+                nextState[key] = this.transitions[key].evaluate(this.frame / this.frames);
+            }
+            return nextState;
+        }
+    }]);
+
+    return Animation;
+}();
+
+var TransitionNoop = function () {
+    function TransitionNoop(start) {
+        _classCallCheck(this, TransitionNoop);
+
+        this.start = start;
+    }
+
+    _createClass(TransitionNoop, [{
+        key: "evaluate",
+        value: function evaluate(t) {
+            return this.start;
+        }
+    }]);
+
+    return TransitionNoop;
+}();
+
+var TransitionLinear = function () {
+    function TransitionLinear(start, end) {
+        _classCallCheck(this, TransitionLinear);
+
+        this.start = start;
+        this.end = end;
+    }
+
+    _createClass(TransitionLinear, [{
+        key: "isInitialized",
+        value: function isInitialized() {
+            return this.start !== null;
+        }
+    }, {
+        key: "initialize",
+        value: function initialize(start) {
+            this.start = start;
+        }
+    }, {
+        key: "evaluate",
+        value: function evaluate(t) {
+            return this.start + (this.end - this.start) * t;
+        }
+    }]);
+
+    return TransitionLinear;
+}();
+
+var TransitionQuadraticBezier = function () {
+    function TransitionQuadraticBezier(p0, p1, p2) {
+        _classCallCheck(this, TransitionQuadraticBezier);
+
+        this.p0 = p0;
+        this.p1 = p1;
+        this.p2 = p2;
+    }
+
+    _createClass(TransitionQuadraticBezier, [{
+        key: "isInitialized",
+        value: function isInitialized() {
+            return true;
+        }
+    }, {
+        key: "evaluate",
+        value: function evaluate(t) {
+            return (1 - t) * (1 - t) * this.p0 + 2 * (1 - t) * t * this.p1 + t * t * this.p2;
+        }
+    }]);
+
+    return TransitionQuadraticBezier;
+}();
+
+exports.Animation = Animation;
+exports.TransitionNoop = TransitionNoop;
+exports.TransitionLinear = TransitionLinear;
+exports.TransitionQuadraticBezier = TransitionQuadraticBezier;
+
+/***/ }),
+/* 7 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -752,7 +1102,7 @@ var BSPTree = function () {
 exports.BSPTree = BSPTree;
 
 /***/ }),
-/* 5 */
+/* 8 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -762,9 +1112,9 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
-var _MapSerializer = __webpack_require__(1);
+var _MapSerializer = __webpack_require__(2);
 
-var exampleMapString = "p-1 p-2 p-3\np-2 p-3 p-2\np-3 p-1 p-1\np-1 e-1 p-1\np-1 p-1 p-1\n===\nw-0-0-0\nw-1-0-0\nw-2-0-1\n===\n0\n0-1\n1-1-1";
+var exampleMapString = "p-1 p-2 p-3\np-2 p-3 p-2\np-3 p-1 p-1\np-1 e-1 p-1\np-1 p-1 p-1\n===\nw-0-0-0\nw-1-0-0\nw-2-0-1\nw-2-1-1\nbs-0-1\nrs-0-2\nys-0-3\n===\n0\n0-1\n1-1-1";
 /*
 var exampleMapString = 
 `p-1
@@ -777,7 +1127,7 @@ var defaultMap = (0, _MapSerializer.deserialize)(exampleMapString);
 exports.default = defaultMap;
 
 /***/ }),
-/* 6 */
+/* 9 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -790,7 +1140,7 @@ exports.Map = undefined;
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
-var _MapSerializer = __webpack_require__(1);
+var _MapSerializer = __webpack_require__(2);
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
@@ -829,6 +1179,17 @@ var Map = function () {
             }).filter(function (m) {
                 return m !== null;
             });
+        }
+    }, {
+        key: 'getMapObject',
+        value: function getMapObject(key) {
+            var objs = this.getMapObjects().filter(function (m) {
+                return m.getKey() === key;
+            });
+            if (objs.length !== 1) {
+                throw Error('Invalid Key');
+            }
+            return objs[0];
         }
     }, {
         key: 'getObjective',
@@ -905,65 +1266,22 @@ var Map = function () {
             }
         }
     }, {
+        key: 'getMovablePaths',
+        value: function getMovablePaths(key) {
+            var obj = this.getMapObject(key);
+            return obj.getMoveablePaths();
+        }
+    }, {
+        key: 'getAttackableTiles',
+        value: function getAttackableTiles(key) {
+            var obj = this.getMapObject(key);
+            return obj.getAttackableTiles();
+        }
+    }, {
         key: 'addListener',
         value: function addListener(l) {
             this.listeners.push(l);
         }
-        /*
-         applyAction(actor, action, receiver) {
-            if (action === 'move') {
-                actor.moveTo(receiver);
-            }
-        }
-         clicked(obj) {
-            if (obj instanceof MapObject) {
-                //this.setSelection(obj);
-                //rerender = true;
-            } else if (obj instanceof Tile) {
-                if (obj.isHighlighted()) {
-                    this.turnActor.moveTo(obj);
-                }
-            }
-        }
-         serialize() {
-            const serializer = new MapSerializer();
-            return serializer.serialize(this);
-        }
-         /*nextTurn() {
-            if (this.turnActor !== null) {
-                this.turnQueue.pop();
-                this.turnActor.subtractTicks(this.TICK_THRESHOLD);
-            }
-            while (this.turnQueue.length === 0) {
-                for (let i = 0; i < this.actors.length; i++) {
-                    this.actors[i].tickForward();
-                    const ticks = this.actors[i].getTicks();
-                    if (ticks > this.TICK_THRESHOLD) {
-                        let idx = this.turnQueue.length;
-                        for (let j = 0; j < this.turnQueue.length; j++) {
-                            if (this.turnQueue[j][1] > ticks) {
-                                idx = j;
-                                break;
-                            }
-                        }
-                        this.turnQueue.splice(idx, 0, [this.actors[i], ticks]);
-                    }
-                }
-            }
-            this.turnActor = this.turnQueue[this.turnQueue.length - 1][0];
-            return this.turnActor;
-        }*/
-
-        /*getTurnActor() {
-            return this.turnActor;
-        }
-         getPlayerOptions() {
-            return this.playerOptions;
-        }
-         setPlayerOptions(options) {
-            this.playerOptions = options;
-        }*/
-
     }], [{
         key: 'deserializeTurnPlayers',
         value: function deserializeTurnPlayers(str) {
@@ -987,7 +1305,7 @@ var Map = function () {
 exports.Map = Map;
 
 /***/ }),
-/* 7 */
+/* 10 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -996,10 +1314,15 @@ exports.Map = Map;
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
+exports.MapObject = undefined;
 
 var _get = function get(object, property, receiver) { if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { return get(parent, property, receiver); } } else if ("value" in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } };
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _Color = __webpack_require__(1);
+
+var _Tile = __webpack_require__(3);
 
 function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
 
@@ -1007,15 +1330,24 @@ function _inherits(subClass, superClass) { if (typeof superClass !== "function" 
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
+var COUNTER = 0;
+
 var MapObject = function () {
     function MapObject(props) {
         var tile = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
+        var id = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : null;
 
         _classCallCheck(this, MapObject);
 
         this.tile = tile;
         if (tile !== null) {
             tile.setMapObject(this);
+        }
+        if (id === null) {
+            this.id = 'mapObject-' + COUNTER;
+            COUNTER += 1;
+        } else {
+            this.id = id;
         }
     }
 
@@ -1061,9 +1393,14 @@ var MapObject = function () {
             return null;
         }
     }, {
-        key: 'moveable',
-        value: function moveable() {
-            return false;
+        key: 'getPolygon',
+        value: function getPolygon() {
+            return POLYGON_MAP[this.constructor.name()];
+        }
+    }, {
+        key: 'getKey',
+        value: function getKey() {
+            return this.id;
         }
     }], [{
         key: 'deserialize',
@@ -1089,14 +1426,15 @@ var Shard = function (_MapObject) {
     }
 
     _createClass(Shard, [{
-        key: 'moveable',
-        value: function moveable() {
-            return true;
-        }
-    }, {
         key: 'attackedBy',
-        value: function attackedBy() {
+        value: function attackedBy(vessel) {
             this.tile.unsetMapObject();
+            return {
+                name: 'attack',
+                srcKey: vessel.getKey(),
+                dstKey: this.getKey(),
+                dstColor: null
+            };
         }
     }]);
 
@@ -1112,7 +1450,17 @@ var BlueShard = function (_Shard) {
         return _possibleConstructorReturn(this, (BlueShard.__proto__ || Object.getPrototypeOf(BlueShard)).apply(this, arguments));
     }
 
-    _createClass(BlueShard, null, [{
+    _createClass(BlueShard, [{
+        key: 'getColor',
+        value: function getColor() {
+            return new _Color.Color(0, 0, 255, 1);
+        }
+    }, {
+        key: 'getHoverColor',
+        value: function getHoverColor() {
+            return new _Color.Color(0, 0, 255, 1);
+        }
+    }], [{
         key: 'name',
         value: function name() {
             return 'bs';
@@ -1131,7 +1479,17 @@ var RedShard = function (_Shard2) {
         return _possibleConstructorReturn(this, (RedShard.__proto__ || Object.getPrototypeOf(RedShard)).apply(this, arguments));
     }
 
-    _createClass(RedShard, null, [{
+    _createClass(RedShard, [{
+        key: 'getColor',
+        value: function getColor() {
+            return new _Color.Color(255, 0, 0, 1);
+        }
+    }, {
+        key: 'getHoverColor',
+        value: function getHoverColor() {
+            return new _Color.Color(255, 0, 0, 1);
+        }
+    }], [{
         key: 'name',
         value: function name() {
             return 'rs';
@@ -1150,7 +1508,17 @@ var YellowShard = function (_Shard3) {
         return _possibleConstructorReturn(this, (YellowShard.__proto__ || Object.getPrototypeOf(YellowShard)).apply(this, arguments));
     }
 
-    _createClass(YellowShard, null, [{
+    _createClass(YellowShard, [{
+        key: 'getColor',
+        value: function getColor() {
+            return new _Color.Color(255, 255, 0, 1);
+        }
+    }, {
+        key: 'getHoverColor',
+        value: function getHoverColor() {
+            return new _Color.Color(255, 255, 0, 1);
+        }
+    }], [{
         key: 'name',
         value: function name() {
             return 'ys';
@@ -1188,8 +1556,17 @@ var Vessel = function (_MapObject2) {
             var mO = tile.getMapObject();
             if (mO !== null && mO.getPlayer() === this.player && this.getShard() !== null) {
                 var cls = mO.consumeShard(this.getShard());
-                new cls([mO.getPlayer()], tile);
-                new WhiteVessel([this.player], this.tile);
+                var newObj = new cls([mO.getPlayer()], tile, mO.getKey());
+                var origObj = new WhiteVessel([this.player], this.tile, this.getKey());
+                return {
+                    name: 'transfer',
+                    srcKey: this.getKey(),
+                    dstKey: mO.getKey(),
+                    srcColor: origObj.getColor(),
+                    srcHoverColor: origObj.getHoverColor(),
+                    dstColor: newObj.getColor(),
+                    dstHoverColor: newObj.getHoverColor()
+                };
             } else {
                 throw Error('Invalid transfer tile');
             }
@@ -1200,15 +1577,22 @@ var Vessel = function (_MapObject2) {
             if (player !== this.player) {
                 throw Error('Invalid action: wrong player');
             }
-            if (!this.tile.getNeighbors(this.range).has(tile)) {
+
+            var targetTiles = this.getAttackableTiles();
+            var key = tile.getKey();
+
+            if (targetTiles.indexOf(key) === -1) {
                 throw Error('Invalid action: cannot reach tile');
             }
 
-            var mO = tile.getMapObject();
-            if (mO !== null) {
-                mO.attackedBy(this);
-            } else {
+            var targets = this.getAttackedObjects(tile);
+
+            if (targets.length === 0) {
                 throw Error('Invalid attack tile');
+            } else {
+                targets.forEach(function (target) {
+                    return t;
+                });
             }
         }
     }, {
@@ -1218,8 +1602,9 @@ var Vessel = function (_MapObject2) {
                 throw Error('Invalid action: wrong player');
             }
 
-            var paths = this.tile.getPaths(this.movement);
-            var key = tile.getX() + '-' + tile.getY();
+            var paths = this.getMoveablePaths();
+            var key = tile.getKey();
+
             if (paths[key] === undefined) {
                 throw Error('Invalid action: cannot reach tile');
             }
@@ -1231,14 +1616,20 @@ var Vessel = function (_MapObject2) {
                 this.tile = tile;
                 return {
                     name: 'move',
-                    path: paths[key]
+                    path: paths[key],
+                    objKey: this.getKey()
                 };
             } else if (mO instanceof Shard) {
                 var cls = this.consumeShard(mO);
-                new cls([this.player], tile);
+                var newObj = new cls([this.player], tile, this.getKey());
                 this.tile.unsetMapObject();
                 return {
-                    name: 'move'
+                    name: 'move',
+                    path: paths[key],
+                    color: newObj.getColor(),
+                    hoverColor: newObj.getHoverColor(),
+                    objKey: this.getKey(),
+                    shardKey: mO.getKey()
                 };
             }
             throw Error('Invalid move tile');
@@ -1254,9 +1645,114 @@ var Vessel = function (_MapObject2) {
             return null;
         }
     }, {
+        key: 'getAttackableTiles',
+        value: function getAttackableTiles() {
+            var _this6 = this;
+
+            var dirs = ['left', 'right', 'top', 'down'];
+            var queue = new Set([this.tile]);
+            var nextQueue = void 0;
+            var keySet = new Set();
+            for (var i = 0; i < this.range; i++) {
+                nextQueue = new Set();
+                queue.forEach(function (tile) {
+                    var key = tile.getKey();
+                    dirs.forEach(function (dir) {
+                        var t = tile[dir];
+                        if (t !== null && t !== _this6.tile) {
+                            var tkey = t.getKey();
+                            nextQueue.add(t);
+                            keySet.add(tkey);
+                        }
+                    });
+                });
+                queue = nextQueue;
+            }
+            return keySet;
+        }
+    }, {
+        key: 'getAttackedObjects',
+        value: function getAttackedObjects(tile) {
+            var mO = tile.getMapObject();
+            if (mO === null) {
+                return [];
+            } else {
+                return [mO];
+            }
+        }
+    }, {
+        key: 'getMoveablePaths',
+        value: function getMoveablePaths() {
+            var _this7 = this;
+
+            var dirs = ['left', 'right', 'top', 'down'];
+            var queue = new Set([this.tile]);
+            var nextQueue = void 0;
+            var paths = {};
+            var startKey = this.tile.getKey();
+            paths[startKey] = [startKey];
+            var keysToDelete = [startKey];
+            for (var i = 0; i < this.movement; i++) {
+                nextQueue = new Set();
+                queue.forEach(function (tile) {
+                    var key = tile.getKey();
+                    dirs.forEach(function (dir) {
+                        var t = tile[dir];
+                        if (t !== null && t !== _this7.tile) {
+                            if (_this7.canMoveThrough(t) && Math.abs(t.getH() - tile.getH()) < 2) {
+                                var tkey = t.getKey();
+                                if (paths[tkey] === undefined) {
+                                    nextQueue.add(t);
+                                    paths[tkey] = paths[key].concat(tkey);
+                                    if (!_this7.canMoveTo(t)) {
+                                        keysToDelete.push(tkey);
+                                    }
+                                }
+                            }
+                        }
+                    });
+                });
+                queue = nextQueue;
+            }
+            keysToDelete.forEach(function (key) {
+                return delete paths[key];
+            });
+            return paths;
+        }
+    }, {
+        key: 'canMoveThrough',
+        value: function canMoveThrough(tile) {
+            if (tile instanceof _Tile.EmptyTile) {
+                return false;
+            }
+            var mO = tile.getMapObject();
+            if (mO === null || mO instanceof Shard || mO.getPlayer() === this.player) {
+                return true;
+            }
+            return false;
+        }
+    }, {
+        key: 'canMoveTo',
+        value: function canMoveTo(tile) {
+            if (tile instanceof _Tile.EmptyTile) {
+                return false;
+            }
+            var mO = tile.getMapObject();
+            if (mO === null || mO instanceof Shard) {
+                return true;
+            }
+            return false;
+        }
+    }, {
         key: 'attackedBy',
-        value: function attackedBy() {
+        value: function attackedBy(vessel) {
             this.tile.unsetMapObject();
+            return {
+                name: 'attack',
+                srcKey: vessel.getKey(),
+                dstKey: this.getKey(),
+                dstColor: null
+            };
         }
     }]);
 
@@ -1283,6 +1779,16 @@ var WhiteVessel = function (_Vessel) {
                 return YellowVessel;
             }
         }
+    }, {
+        key: 'getColor',
+        value: function getColor() {
+            return new _Color.Color(255, 255, 255, 1);
+        }
+    }, {
+        key: 'getHoverColor',
+        value: function getHoverColor() {
+            return new _Color.Color(230, 230, 230, 1);
+        }
     }], [{
         key: 'name',
         value: function name() {
@@ -1299,13 +1805,40 @@ var BlueVessel = function (_Vessel2) {
     function BlueVessel() {
         _classCallCheck(this, BlueVessel);
 
-        return _possibleConstructorReturn(this, (BlueVessel.__proto__ || Object.getPrototypeOf(BlueVessel)).apply(this, arguments));
+        var _this9 = _possibleConstructorReturn(this, (BlueVessel.__proto__ || Object.getPrototypeOf(BlueVessel)).apply(this, arguments));
+
+        _this9.range = 2;
+        return _this9;
     }
 
     _createClass(BlueVessel, [{
         key: 'getShard',
         value: function getShard() {
             return new BlueShard();
+        }
+    }, {
+        key: 'getColor',
+        value: function getColor() {
+            return new _Color.Color(0, 0, 255, 1);
+        }
+    }, {
+        key: 'getHoverColor',
+        value: function getHoverColor() {
+            return new _Color.Color(0, 0, 255, 1);
+        }
+    }, {
+        key: 'attackedBy',
+        value: function attackedBy(vessel) {
+            if (vessel instanceof WhiteVessel) {
+                var obj = new WhiteVessel([this.player], this.tile, this.getKey());
+                return {
+                    name: 'attack',
+                    srcKey: vessel.getKey(),
+                    dstKey: this.getKey(),
+                    dstColor: obj.getColor(),
+                    dstHoverColor: obj.getHoverColor()
+                };
+            }
         }
     }], [{
         key: 'name',
@@ -1331,6 +1864,30 @@ var RedVessel = function (_Vessel3) {
         value: function getShard() {
             return new RedShard();
         }
+    }, {
+        key: 'getColor',
+        value: function getColor() {
+            return new _Color.Color(255, 0, 0, 1);
+        }
+    }, {
+        key: 'getHoverColor',
+        value: function getHoverColor() {
+            return new _Color.Color(255, 0, 0, 1);
+        }
+    }, {
+        key: 'attackedBy',
+        value: function attackedBy(vessel) {
+            if (vessel instanceof WhiteVessel) {
+                var obj = new WhiteVessel([this.player], this.tile, this.getKey());
+                return {
+                    name: 'attack',
+                    srcKey: vessel.getKey(),
+                    dstKey: this.getKey(),
+                    dstColor: obj.getColor(),
+                    dstHoverColor: obj.getHoverColor()
+                };
+            }
+        }
     }], [{
         key: 'name',
         value: function name() {
@@ -1347,16 +1904,40 @@ var YellowVessel = function (_Vessel4) {
     function YellowVessel() {
         _classCallCheck(this, YellowVessel);
 
-        var _this9 = _possibleConstructorReturn(this, (YellowVessel.__proto__ || Object.getPrototypeOf(YellowVessel)).apply(this, arguments));
+        var _this11 = _possibleConstructorReturn(this, (YellowVessel.__proto__ || Object.getPrototypeOf(YellowVessel)).apply(this, arguments));
 
-        _this9.movement = 5;
-        return _this9;
+        _this11.movement = 5;
+        return _this11;
     }
 
     _createClass(YellowVessel, [{
         key: 'getShard',
         value: function getShard() {
             return new YellowShard();
+        }
+    }, {
+        key: 'getColor',
+        value: function getColor() {
+            return new _Color.Color(255, 255, 0, 1);
+        }
+    }, {
+        key: 'getHoverColor',
+        value: function getHoverColor() {
+            return new _Color.Color(255, 255, 0, 1);
+        }
+    }, {
+        key: 'attackedBy',
+        value: function attackedBy(vessel) {
+            if (vessel instanceof WhiteVessel) {
+                var obj = new WhiteVessel([this.player], this.tile, this.getKey());
+                return {
+                    name: 'attack',
+                    srcKey: vessel.getKey(),
+                    dstKey: this.getKey(),
+                    dstColor: obj.getColor(),
+                    dstHoverColor: obj.getHoverColor()
+                };
+            }
         }
     }], [{
         key: 'name',
@@ -1378,10 +1959,20 @@ var NAME_MAP = {
     y: YellowVessel
 };
 
+var POLYGON_MAP = {
+    bs: 'tetrahedron',
+    rs: 'tetrahedron',
+    ys: 'tetrahedron',
+    w: 'icosahedron',
+    b: 'icosahedron',
+    r: 'icosahedron',
+    y: 'icosahedron'
+};
+
 exports.MapObject = MapObject;
 
 /***/ }),
-/* 8 */
+/* 11 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1396,11 +1987,13 @@ var _createClass = function () { function defineProperties(target, props) { for 
 
 var _Vector = __webpack_require__(0);
 
-var _Viewport = __webpack_require__(13);
+var _Animation = __webpack_require__(6);
 
-var _Polygon = __webpack_require__(10);
+var _Viewport = __webpack_require__(15);
 
-var _PolygonRenderer = __webpack_require__(11);
+var _Polygon = __webpack_require__(13);
+
+var _PolygonRenderer = __webpack_require__(14);
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
@@ -1415,20 +2008,40 @@ var MapScreen = function () {
         this.viewport = new _Viewport.Viewport(new _Vector.Point(0, 0, 500), new _Vector.Point(this.canvas.width, 0, 500), new _Vector.Point(0, this.canvas.height, 500), new _Vector.Point(this.canvas.width, this.canvas.height, 500), 500);
         this.pressed = {};
 
-        this.r = new _Vector.Vector(0, 0, 1);
-        var tilePolygons = this.map.getTilesFlattened().filter(function (t) {
-            return t.constructor.name() !== 'e';
-        }).map(function (t) {
-            return _Polygon.Polygon.createBox(t.getX() * TLEN, t.getY() * TLEN, 0, TLEN, TLEN, t.getH() * TLEN);
-        });
-        this.objPolygons = this.map.getMapObjects().reduce(function (a, m) {
-            var p = _Polygon.Polygon.createIcosahedron(m.getX() * TLEN + TLEN / 2, m.getY() * TLEN + TLEN / 2, m.getH() * TLEN + TLEN / 2, 20);
-            m.getPlayer() === '0' ? p.setColor('#FFFFFF', '#E6E6E6') : p.setColor('#e6e6e6', '#ffffff');
-            a[m.getX() + "-" + m.getY()] = p;
-            return a;
-        }, {});
+        this.staticPolygons = {};
+        this.dynamicPolygons = {};
+        this.animations = [];
 
-        this.renderer = new _PolygonRenderer.PolygonRenderer(this.canvas, tilePolygons, function (a, b) {
+        this.map.getTilesFlattened().filter(function (t) {
+            return t.constructor.name() !== 'e';
+        }).reduce(function (polygons, tile) {
+            var polygon = _Polygon.Polygon.createBox(tile.getX() * TLEN, tile.getY() * TLEN, 0, TLEN, TLEN, tile.getH() * TLEN);
+            polygons[tile.getKey()] = polygon;
+            return polygons;
+        }, this.staticPolygons);
+
+        this.map.getMapObjects().reduce(function (polygons, mapObject) {
+            var polygon = void 0;
+            if (mapObject.getPolygon() === 'icosahedron') {
+                polygon = _Polygon.Polygon.createIcosahedron(mapObject.getX() * TLEN + TLEN / 2, mapObject.getY() * TLEN + TLEN / 2, mapObject.getH() * TLEN + TLEN / 2, 20);
+            } else if (mapObject.getPolygon() === 'tetrahedron') {
+                polygon = _Polygon.Polygon.createTetrahedron(mapObject.getX() * TLEN + TLEN / 2, mapObject.getY() * TLEN + TLEN / 2, mapObject.getH() * TLEN + TLEN / 2, 20);
+            }
+            polygon.setColor(mapObject.getColor(), mapObject.getHoverColor());
+            polygons[mapObject.getKey()] = polygon;
+            return polygons;
+        }, this.dynamicPolygons);
+
+        this.overlays = {
+            'move': new _Polygon.Overlay(50, 50, 150, 50, 'move'),
+            'attack': new _Polygon.Overlay(50, 100, 150, 50, 'attack'),
+            'transfer': new _Polygon.Overlay(50, 150, 150, 50, 'transfer'),
+            'end': new _Polygon.Overlay(50, 200, 150, 50, 'end')
+        };
+
+        this.r = new _Vector.Vector(0, 0, 1);
+
+        this.renderer = new _PolygonRenderer.PolygonRenderer(this.canvas, Object.values(this.staticPolygons), function (a, b) {
             return a.getNormal().getZ() - b.getNormal().getZ();
         });
         map.addListener(this);
@@ -1446,12 +2059,43 @@ var MapScreen = function () {
 
             this.viewport.updatePosition();
             this.r.rotate(new _Vector.Vector(1, 0, 0), 1 * Math.PI / 180);
-            var objs = Object.values(this.objPolygons);
-            objs.forEach(function (obj) {
-                obj.rotate(_this.r, 1 * Math.PI / 180);
-                obj.updatePosition();
+            Object.values(this.dynamicPolygons).forEach(function (p) {
+                p.rotate(_this.r, 1 * Math.PI / 180);
             });
-            this.renderer.render(this.viewport, objs);
+
+            var polygonsToDestroy = [];
+            if (this.animations.length > 0) {
+                var animation = this.animations[0];
+                var finishedAnimations = [];
+                for (var key in animation) {
+                    var a = animation[key];
+                    var p = this.dynamicPolygons[key];
+                    if (!a.isInitialized()) {
+                        a.initialize(p.getState());
+                    }
+                    var state = a.getNextState();
+                    p.applyState(state);
+                    if (a.finished()) {
+                        finishedAnimations.push(key);
+                        if (a.destroyAfter()) {
+                            polygonsToDestroy.push(key);
+                        }
+                    }
+                }
+                finishedAnimations.forEach(function (key) {
+                    return delete animation[key];
+                });
+                if (Object.keys(animation).length === 0) {
+                    this.animations.splice(0, 1);
+                }
+            }
+
+            this.renderer.render(this.viewport, Object.values(this.dynamicPolygons), Object.values(this.overlays));
+
+            polygonsToDestroy.forEach(function (key) {
+                return delete _this.dynamicPolygons[key];
+            });
+
             window.requestAnimationFrame(function (step) {
                 _this.renderLoop();
             });
@@ -1460,46 +2104,95 @@ var MapScreen = function () {
         key: "trigger",
         value: function trigger(e) {
             if (e.name === 'move') {
-                var obj = this.objPolygons[e.path[0]];
-                var tiles = this.map.getTiles();
-                var animations = e.path.slice(1, e.path.length).map(function (p) {
-                    var x = parseInt(p.split('-')[0]);
-                    var y = parseInt(p.split('-')[1]);
-                    var t = tiles[y][x];
-                    return {
-                        rate: null,
-                        dx: t.getX() * TLEN + TLEN / 2,
-                        dy: t.getY() * TLEN + TLEN / 2,
-                        dz: t.getH() * TLEN + TLEN / 2,
-                        frames: 30
-                    };
-                });
-                obj.queueAnimations(animations);
-            }
-        }
+                var startCenter = this.staticPolygons[e.path[0]].getCenter();
+                var x = startCenter.getX();
+                var y = startCenter.getY();
+                var z = startCenter.getZ() * 2 + TLEN / 2;
 
-        /*turnLoop() {
-            if (this.map.isResolved()) {
-                // End
-            } else {
-                const turnActor = this.map.nextTurn();
-                this.animateNextTurn(turnActor).then(() => {
-                    turnActor.takeTurn().then(() => {
-                        this.turnLoop();
-                    });
-                    //this.mapRenderer.renderMap(this.map, this.viewport);
-                });
-            }
-        }*/
+                for (var i = 1; i < e.path.length; i++) {
+                    var animation = {};
+                    var nextCenter = this.staticPolygons[e.path[i]].getCenter();
+                    var nextX = nextCenter.getX();
+                    var nextY = nextCenter.getY();
+                    var nextZ = nextCenter.getZ() * 2 + TLEN / 2;
+                    var transitions = {};
+                    if (z === nextZ) {
+                        transitions.x = new _Animation.TransitionLinear(x, nextX);
+                        transitions.y = new _Animation.TransitionLinear(y, nextY);
+                        transitions.z = new _Animation.TransitionLinear(z, nextZ);
+                    } else {
+                        transitions.x = new _Animation.TransitionQuadraticBezier(x, z > nextZ ? nextX : x, nextX);
+                        transitions.y = new _Animation.TransitionQuadraticBezier(y, z > nextZ ? nextY : y, nextY);
+                        transitions.z = new _Animation.TransitionQuadraticBezier(z, Math.max(z, nextZ), nextZ);
+                    }
 
-    }, {
-        key: "animateNextTurn",
-        value: function animateNextTurn(turnActor) {
-            return this.mapRenderer.centerOn(turnActor);
-            //return new Promise((resolve, reject) => {
-            //    resolve();
-            //return this.mapRenderer.centerOn(turnActor);
-            //});
+                    if (e.color !== undefined && i === e.path.length - 1) {
+                        transitions.r = new _Animation.TransitionLinear(null, e.color.getR());
+                        transitions.g = new _Animation.TransitionLinear(null, e.color.getG());
+                        transitions.b = new _Animation.TransitionLinear(null, e.color.getB());
+                        transitions.hr = new _Animation.TransitionLinear(null, e.hoverColor.getR());
+                        transitions.hg = new _Animation.TransitionLinear(null, e.hoverColor.getG());
+                        transitions.hb = new _Animation.TransitionLinear(null, e.hoverColor.getB());
+
+                        var shardTransitions = {};
+                        shardTransitions.a = new _Animation.TransitionLinear(null, 0);
+                        shardTransitions.ha = new _Animation.TransitionLinear(null, 0);
+                        shardTransitions.sa = new _Animation.TransitionLinear(null, 0);
+                        var shardAnimation = new _Animation.Animation(shardTransitions, 30, true);
+                        animation[e.shardKey] = shardAnimation;
+                    }
+
+                    animation[e.objKey] = new _Animation.Animation(transitions, 30);
+
+                    this.animations.push(animation);
+
+                    x = nextX;
+                    y = nextY;
+                    z = nextZ;
+                }
+            } else if (e.name === 'transfer') {
+                var _animation = {};
+
+                var srcTransitions = {};
+                srcTransitions.r = new _Animation.TransitionLinear(null, e.srcColor.getR());
+                srcTransitions.g = new _Animation.TransitionLinear(null, e.srcColor.getG());
+                srcTransitions.b = new _Animation.TransitionLinear(null, e.srcColor.getB());
+                srcTransitions.hr = new _Animation.TransitionLinear(null, e.srcHoverColor.getR());
+                srcTransitions.hg = new _Animation.TransitionLinear(null, e.srcHoverColor.getG());
+                srcTransitions.hb = new _Animation.TransitionLinear(null, e.srcHoverColor.getB());
+                _animation[e.srcKey] = new _Animation.Animation(srcTransitions, 30);
+
+                var dstTransitions = {};
+                dstTransitions.r = new _Animation.TransitionLinear(null, e.dstColor.getR());
+                dstTransitions.g = new _Animation.TransitionLinear(null, e.dstColor.getG());
+                dstTransitions.b = new _Animation.TransitionLinear(null, e.dstColor.getB());
+                dstTransitions.hr = new _Animation.TransitionLinear(null, e.dstHoverColor.getR());
+                dstTransitions.hg = new _Animation.TransitionLinear(null, e.dstHoverColor.getG());
+                dstTransitions.hb = new _Animation.TransitionLinear(null, e.dstHoverColor.getB());
+                _animation[e.dstKey] = new _Animation.Animation(dstTransitions, 30);
+
+                this.animations.push(_animation);
+            } else if (e.name === 'attack') {
+                var _animation2 = {};
+
+                var _dstTransitions = {};
+                if (e.dstColor === null) {
+                    _dstTransitions.a = new _Animation.TransitionLinear(null, 0);
+                    _dstTransitions.ha = new _Animation.TransitionLinear(null, 0);
+                    _dstTransitions.sa = new _Animation.TransitionLinear(null, 0);
+                    _animation2[e.dstKey] = new _Animation.Animation(_dstTransitions, 30, true);
+                } else {
+                    _dstTransitions.r = new _Animation.TransitionLinear(null, e.dstColor.getR());
+                    _dstTransitions.g = new _Animation.TransitionLinear(null, e.dstColor.getG());
+                    _dstTransitions.b = new _Animation.TransitionLinear(null, e.dstColor.getB());
+                    _dstTransitions.hr = new _Animation.TransitionLinear(null, e.dstHoverColor.getR());
+                    _dstTransitions.hg = new _Animation.TransitionLinear(null, e.dstHoverColor.getG());
+                    _dstTransitions.hb = new _Animation.TransitionLinear(null, e.dstHoverColor.getB());
+                    _animation2[e.dstKey] = new _Animation.Animation(_dstTransitions, 30);
+                }
+
+                this.animations.push(_animation2);
+            }
         }
     }, {
         key: "handleMouseDown",
@@ -1647,7 +2340,7 @@ var MapScreen = function () {
 exports.MapScreen = MapScreen;
 
 /***/ }),
-/* 9 */
+/* 12 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1725,7 +2418,7 @@ var OBJECT_FNS = {
 exports.Objective = Objective;
 
 /***/ }),
-/* 10 */
+/* 13 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1734,13 +2427,15 @@ exports.Objective = Objective;
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
-exports.PolygonFace = exports.Polygon = undefined;
+exports.Overlay = exports.PolygonFace = exports.Polygon = undefined;
 
 var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
 var _Vector = __webpack_require__(0);
+
+var _Color = __webpack_require__(1);
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
@@ -1758,40 +2453,26 @@ var Polygon = function () {
         this.clippedFace = null;
         this.hover = false;
         this.originalFaces = faces.slice();
-        this.color = "#CCCCCC";
-        this.highlightColor = "#E6E6E6";
-        this.animations = [];
+        this.color = new _Color.Color(204, 204, 204, 1);
+        this.hoverColor = new _Color.Color(230, 230, 230, 1);
+        this.stroke = new _Color.Color(0, 0, 0, 1);
     }
 
     _createClass(Polygon, [{
         key: "translate",
         value: function translate(x, y, z) {
-            var points = Array.from(new Set(this.faces.reduce(function (a, b) {
-                return a.concat(b.getPoints());
-            }, [])));
-            points.forEach(function (point) {
+            this.getPoints().forEach(function (point) {
                 return point.translate(x, y, z);
             });
         }
     }, {
         key: "rotate",
         value: function rotate(v, rad) {
-            var points = Array.from(new Set(this.faces.reduce(function (a, b) {
-                return a.concat(b.getPoints());
-            }, [])));
-            var x = points.reduce(function (a, b) {
-                return a + b.getX();
-            }, 0) / points.length;
-            var y = points.reduce(function (a, b) {
-                return a + b.getY();
-            }, 0) / points.length;
-            var z = points.reduce(function (a, b) {
-                return a + b.getZ();
-            }, 0) / points.length;
-            points.forEach(function (point) {
-                point.translate(-x, -y, -z);
+            var c = this.getCenter();
+            this.getPoints().forEach(function (point) {
+                point.translate(-c.getX(), -c.getY(), -c.getZ());
                 point.rotate(v, rad);
-                point.translate(x, y, z);
+                point.translate(c.getX(), c.getY(), c.getZ());
             });
             this.faces.forEach(function (face) {
                 face.getNormal().rotate(v, rad);
@@ -1799,50 +2480,19 @@ var Polygon = function () {
         }
     }, {
         key: "getColor",
-        value: function getColor(face) {
-            return this.hover ? this.highlightColor : this.color;
+        value: function getColor() {
+            return this.hover ? this.hoverColor : this.color;
         }
     }, {
         key: "setColor",
-        value: function setColor(color, highlightColor) {
+        value: function setColor(color, hoverColor) {
             this.color = color;
-            this.highlightColor = highlightColor;
+            this.hoverColor = hoverColor;
         }
     }, {
-        key: "queueAnimations",
-        value: function queueAnimations(animations) {
-            this.animations = this.animations.concat(animations);
-        }
-    }, {
-        key: "updatePosition",
-        value: function updatePosition() {
-            if (this.animations.length > 0) {
-                var animation = this.animations[0];
-                if (animation.rate === null) {
-                    var points = Array.from(new Set(this.faces.reduce(function (a, b) {
-                        return a.concat(b.getPoints());
-                    }, [])));
-                    var sx = points.reduce(function (a, b) {
-                        return a + b.getX();
-                    }, 0) / points.length;
-                    var sy = points.reduce(function (a, b) {
-                        return a + b.getY();
-                    }, 0) / points.length;
-                    var sz = points.reduce(function (a, b) {
-                        return a + b.getZ();
-                    }, 0) / points.length;
-                    animation.rate = {
-                        x: (animation.dx - sx) / animation.frames,
-                        y: (animation.dy - sy) / animation.frames,
-                        z: (animation.dz - sz) / animation.frames
-                    };
-                }
-                this.translate(animation.rate.x, animation.rate.y, animation.rate.z);
-                animation.frames -= 1;
-                if (animation.frames === 0) {
-                    this.animations.splice(0, 1);
-                }
-            }
+        key: "getStroke",
+        value: function getStroke() {
+            return this.stroke;
         }
     }, {
         key: "toggleHover",
@@ -1853,6 +2503,105 @@ var Polygon = function () {
         key: "getFaces",
         value: function getFaces() {
             return this.faces;
+        }
+    }, {
+        key: "getPoints",
+        value: function getPoints() {
+            return Array.from(new Set(this.faces.reduce(function (a, b) {
+                return a.concat(b.getPoints());
+            }, [])));
+        }
+    }, {
+        key: "getCenter",
+        value: function getCenter() {
+            var points = this.getPoints();
+            var x = points.reduce(function (a, b) {
+                return a + b.getX();
+            }, 0) / points.length;
+            var y = points.reduce(function (a, b) {
+                return a + b.getY();
+            }, 0) / points.length;
+            var z = points.reduce(function (a, b) {
+                return a + b.getZ();
+            }, 0) / points.length;
+            return new _Vector.Point(x, y, z);
+        }
+    }, {
+        key: "calcRate",
+        value: function calcRate(end, frames) {
+            var currentState = {
+                x: this.getCenter().getX(),
+                y: this.getCenter().getY(),
+                z: this.getCenter().getZ(),
+                r: this.color.getR(),
+                g: this.color.getG(),
+                b: this.color.getB(),
+                a: this.color.getA(),
+                hr: this.hoverColor.getR(),
+                hg: this.hoverColor.getG(),
+                hb: this.hoverColor.getB(),
+                ha: this.hoverColor.getA(),
+                sr: this.stroke.getR(),
+                sg: this.stroke.getG(),
+                sb: this.stroke.getB(),
+                sa: this.stroke.getA()
+            };
+            var rate = {};
+            for (var key in end) {
+                rate[key] = (end[key] - currentState[key]) / frames;
+            }
+            for (var _key in currentState) {
+                if (rate[_key] === undefined) {
+                    rate[_key] = 0;
+                }
+            }
+            return rate;
+        }
+    }, {
+        key: "getState",
+        value: function getState() {
+            return {
+                x: this.getCenter().getX(),
+                y: this.getCenter().getY(),
+                z: this.getCenter().getZ(),
+                r: this.color.getR(),
+                g: this.color.getG(),
+                b: this.color.getB(),
+                a: this.color.getA(),
+                hr: this.hoverColor.getR(),
+                hg: this.hoverColor.getG(),
+                hb: this.hoverColor.getB(),
+                ha: this.hoverColor.getA(),
+                sr: this.stroke.getR(),
+                sg: this.stroke.getG(),
+                sb: this.stroke.getB(),
+                sa: this.stroke.getA()
+            };
+        }
+    }, {
+        key: "applyState",
+        value: function applyState(_ref) {
+            var x = _ref.x,
+                y = _ref.y,
+                z = _ref.z,
+                r = _ref.r,
+                g = _ref.g,
+                b = _ref.b,
+                a = _ref.a,
+                hr = _ref.hr,
+                hg = _ref.hg,
+                hb = _ref.hb,
+                ha = _ref.ha,
+                sr = _ref.sr,
+                sg = _ref.sg,
+                sb = _ref.sb,
+                sa = _ref.sa;
+
+            var currentState = this.getState();
+            this.translate(x - currentState.x, y - currentState.y, z - currentState.z);
+            this.color.translate(r - currentState.r, g - currentState.g, b - currentState.b, a - currentState.a);
+            this.hoverColor.translate(hr - currentState.hr, hg - currentState.hg, hb - currentState.hb, ha - currentState.ha);
+            this.stroke.translate(sr - currentState.sr, sg - currentState.sg, sb - currentState.sb, sa - currentState.sa);
         }
     }, {
         key: "restoreFaces",
@@ -2005,6 +2754,30 @@ var Polygon = function () {
 
             return new Polygon(faces, 'icosahedron');
         }
+    }, {
+        key: "createTetrahedron",
+        value: function createTetrahedron(x, y, z, scale) {
+            var t = 1 / Math.sqrt(2);
+            var v = [new _Vector.Point(1, 0, -t), new _Vector.Point(-1, 0, -t), new _Vector.Point(0, 1, t), new _Vector.Point(0, -1, t)];
+
+            var faces = [[0, 2, 3], [1, 3, 2], [2, 0, 1], [3, 1, 0]].map(function (idx) {
+                var p1 = v[idx[0]];
+                var p2 = v[idx[1]];
+                var p3 = v[idx[2]];
+                var v1 = _Vector.Vector.createFromPoints(p1, p2);
+                var v2 = _Vector.Vector.createFromPoints(p1, p3);
+                var n = v1.cross(v2);
+                n.normalize();
+                return new PolygonFace([p1, p2, p3], n);
+            });
+
+            v.forEach(function (v) {
+                v.scale(scale);
+                v.translate(x, y, z);
+            });
+
+            return new Polygon(faces, 'tetrahedron');
+        }
     }]);
 
     return Polygon;
@@ -2092,7 +2865,7 @@ var PolygonFace = function () {
     }, {
         key: "draw",
         value: function draw(ctx) {
-            ctx.fillStyle = this.polygon.getColor(this);
+            ctx.fillStyle = this.polygon.getColor().getString();
             ctx.beginPath();
             var k = void 0;
             for (k = 0; k < this.visiblePoints.length; k++) {
@@ -2110,7 +2883,7 @@ var PolygonFace = function () {
             var nextK = void 0;
             var edge = void 0;
             var blacklist = void 0;
-            ctx.strokeStyle = "#000000";
+            ctx.strokeStyle = this.polygon.getStroke().getString();
             //Draw outline
             for (k = 0; k < this.visiblePoints.length; k++) {
                 nextK = k === this.visiblePoints.length - 1 ? 0 : k + 1;
@@ -2153,11 +2926,59 @@ var PolygonFace = function () {
     return PolygonFace;
 }();
 
+var Overlay = function () {
+    function Overlay(x, y, w, h, text) {
+        _classCallCheck(this, Overlay);
+
+        this.color = new _Color.Color(230, 230, 230, 1);
+        this.hoverColor = new _Color.Color(242, 242, 242, 1);
+        this.stroke = new _Color.Color(0, 0, 0, 1);
+        this.x = x;
+        this.y = y;
+        this.w = w;
+        this.h = h;
+        this.text = text;
+        this.hover = false;
+    }
+
+    _createClass(Overlay, [{
+        key: "toggleHover",
+        value: function toggleHover() {
+            this.hover = !this.hover;
+        }
+    }, {
+        key: "getVisiblePoints",
+        value: function getVisiblePoints() {
+            return [new _Vector.Point(this.x, this.y, 0), new _Vector.Point(this.x + this.w, this.y, 0), new _Vector.Point(this.x + this.w, this.y + this.h, 0), new _Vector.Point(this.x, this.y + this.h, 0)];
+        }
+    }, {
+        key: "draw",
+        value: function draw(ctx) {
+            if (this.hover) {
+                ctx.fillStyle = this.hoverColor.getString();
+            } else {
+                ctx.fillStyle = this.color.getString();
+            }
+            ctx.strokeStyle = this.stroke.getString();
+            ctx.fillRect(this.x, this.y, this.w, this.h);
+            ctx.strokeRect(this.x, this.y, this.w, this.h);
+            ctx.fillStyle = 'black';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = '30px Arial';
+            ctx.fillText(this.text, this.x + this.w / 2, this.y + this.h / 2);
+        }
+    }]);
+
+    return Overlay;
+}();
+
 exports.Polygon = Polygon;
 exports.PolygonFace = PolygonFace;
+exports.Overlay = Overlay;
 
 /***/ }),
-/* 11 */
+/* 14 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2170,7 +2991,7 @@ exports.PolygonRenderer = undefined;
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
-var _BSPTree = __webpack_require__(4);
+var _BSPTree = __webpack_require__(7);
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
@@ -2187,17 +3008,17 @@ var PolygonRenderer = function () {
         staticFaces.sort(faceSort);
         this.bsp = new _BSPTree.BSPTree(staticFaces);
         this.staticPolygons = staticPolygons;
-        this.hoveredPolygon = null;
+        this.hoveredObj = null;
     }
 
     _createClass(PolygonRenderer, [{
         key: "render",
-        value: function render(viewport, polygons) {
+        value: function render(viewport, polygons, overlays) {
             var ctx = this.canvas.getContext('2d');
             ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
             var facesToDraw = [];
-            var hoveredFace = null;
+            var hoveredObj = null;
 
             this.bsp.addFaces(polygons.reduce(function (a, b) {
                 return a.concat(b.getFaces());
@@ -2212,7 +3033,7 @@ var PolygonRenderer = function () {
                 face.setVisiblePoints(visiblePoints, mapping);
                 if (visible) {
                     if (viewport.mouseInside(visiblePoints)) {
-                        hoveredFace = face;
+                        hoveredObj = face.getPolygon();
                     }
                     facesToDraw.push(face);
                 }
@@ -2227,20 +3048,27 @@ var PolygonRenderer = function () {
                 var clippedFace = polygon.getClippedFace();
                 if (clippedFace !== null) {
                     if (viewport.mouseInside(clippedFace.getVisiblePoints())) {
-                        hoveredFace = clippedFace;
+                        hoveredObj = polygon;
                     }
                     facesToDraw.push(clippedFace);
                 }
             });
 
-            if (this.hoveredPolygon !== null) {
-                this.hoveredPolygon.toggleHover();
+            overlays.forEach(function (overlay) {
+                if (viewport.mouseInside(overlay.getVisiblePoints())) {
+                    hoveredObj = overlay;
+                }
+                facesToDraw.push(overlay);
+            });
+
+            if (this.hoveredObj !== null) {
+                this.hoveredObj.toggleHover();
             }
-            if (hoveredFace !== null) {
-                this.hoveredPolygon = hoveredFace.getPolygon();
-                this.hoveredPolygon.toggleHover();
+            if (hoveredObj !== null) {
+                this.hoveredObj = hoveredObj;
+                this.hoveredObj.toggleHover();
             } else {
-                this.hoveredPolygon = null;
+                this.hoveredObj = null;
             }
 
             facesToDraw.forEach(function (face) {
@@ -2259,186 +3087,7 @@ var PolygonRenderer = function () {
 exports.PolygonRenderer = PolygonRenderer;
 
 /***/ }),
-/* 12 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", {
-    value: true
-});
-
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-var Tile = function () {
-    function Tile(x, y, h) {
-        _classCallCheck(this, Tile);
-
-        this.x = x;
-        this.y = y;
-        this.h = h;
-        this.left = null;
-        this.right = null;
-        this.top = null;
-        this.down = null;
-        this.mapObject = null;
-    }
-
-    _createClass(Tile, [{
-        key: 'link',
-        value: function link(dir, tile) {
-            this[dir] = tile;
-        }
-    }, {
-        key: 'getX',
-        value: function getX() {
-            return this.x;
-        }
-    }, {
-        key: 'getY',
-        value: function getY() {
-            return this.y;
-        }
-    }, {
-        key: 'getH',
-        value: function getH() {
-            return this.h;
-        }
-    }, {
-        key: 'setMapObject',
-        value: function setMapObject(mapObject) {
-            this.mapObject = mapObject;
-        }
-    }, {
-        key: 'unsetMapObject',
-        value: function unsetMapObject() {
-            this.mapObject = null;
-        }
-    }, {
-        key: 'getMapObject',
-        value: function getMapObject() {
-            return this.mapObject;
-        }
-    }, {
-        key: 'getPaths',
-        value: function getPaths(dist) {
-            var _this = this;
-
-            var dirs = ['left', 'right', 'top', 'down'];
-            var queue = new Set([this]);
-            var nextQueue = void 0;
-            var paths = {};
-            var thisKey = this.getX() + '-' + this.getY();
-            paths[thisKey] = [thisKey];
-            for (var i = 0; i < dist; i++) {
-                nextQueue = new Set();
-                queue.forEach(function (tile) {
-                    var key = tile.getX() + '-' + tile.getY();
-                    dirs.forEach(function (dir) {
-                        var t = tile[dir];
-                        if (t !== null && t !== _this && t.movable() && Math.abs(t.getH() - tile.getH()) < 2) {
-                            var tkey = t.getX() + '-' + t.getY();
-                            if (paths[tkey] === undefined) {
-                                nextQueue.add(t);
-                                paths[tkey] = paths[key].concat(tkey);
-                            }
-                        }
-                    });
-                });
-                queue = nextQueue;
-            }
-            delete paths[thisKey];
-            return paths;
-        }
-    }, {
-        key: 'movable',
-        value: function movable() {
-            if (this.mapObject !== null) {
-                return this.mapObject.moveable();
-            }
-            return true;
-        }
-    }, {
-        key: 'serialize',
-        value: function serialize() {
-            return this.constructor.name() + '-' + this.h;
-        }
-    }], [{
-        key: 'getClass',
-        value: function getClass(name) {
-            return TILE_MAP[name];
-        }
-    }]);
-
-    return Tile;
-}();
-
-var PlainTile = function (_Tile) {
-    _inherits(PlainTile, _Tile);
-
-    function PlainTile() {
-        _classCallCheck(this, PlainTile);
-
-        return _possibleConstructorReturn(this, (PlainTile.__proto__ || Object.getPrototypeOf(PlainTile)).apply(this, arguments));
-    }
-
-    _createClass(PlainTile, null, [{
-        key: 'name',
-        value: function name() {
-            return 'p';
-        }
-    }]);
-
-    return PlainTile;
-}(Tile);
-
-var EmptyTile = function (_Tile2) {
-    _inherits(EmptyTile, _Tile2);
-
-    function EmptyTile() {
-        _classCallCheck(this, EmptyTile);
-
-        return _possibleConstructorReturn(this, (EmptyTile.__proto__ || Object.getPrototypeOf(EmptyTile)).apply(this, arguments));
-    }
-
-    _createClass(EmptyTile, [{
-        key: 'movable',
-        value: function movable() {
-            return false;
-        }
-    }, {
-        key: 'getNeighbors',
-        value: function getNeighbors() {
-            return new Set();
-        }
-    }], [{
-        key: 'name',
-        value: function name() {
-            return 'e';
-        }
-    }]);
-
-    return EmptyTile;
-}(Tile);
-
-var TILE_MAP = {
-    p: PlainTile,
-    e: EmptyTile
-};
-
-exports.Tile = Tile;
-exports.EmptyTile = EmptyTile;
-exports.PlainTile = PlainTile;
-
-/***/ }),
-/* 13 */
+/* 15 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2794,17 +3443,17 @@ var Viewport = function () {
 exports.Viewport = Viewport;
 
 /***/ }),
-/* 14 */
+/* 16 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
 
 
-var _Game = __webpack_require__(2);
+var _Game = __webpack_require__(4);
 
 var _Game2 = _interopRequireDefault(_Game);
 
-__webpack_require__(3);
+__webpack_require__(5);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -2812,7 +3461,7 @@ var g = new _Game2.default(window.innerWidth - 16, window.innerHeight - 16);
 g.start();
 
 /***/ }),
-/* 15 */
+/* 17 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2894,7 +3543,7 @@ function toComment(sourceMap) {
 }
 
 /***/ }),
-/* 16 */
+/* 18 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -2989,10 +3638,10 @@ module.exports = function (css) {
 };
 
 /***/ }),
-/* 17 */
+/* 19 */
 /***/ (function(module, exports, __webpack_require__) {
 
-exports = module.exports = __webpack_require__(15)(undefined);
+exports = module.exports = __webpack_require__(17)(undefined);
 // imports
 
 
@@ -3003,7 +3652,7 @@ exports.push([module.i, "canvas {\n\tborder: 1px solid black;\n}", ""]);
 
 
 /***/ }),
-/* 18 */
+/* 20 */
 /***/ (function(module, exports, __webpack_require__) {
 
 /*
@@ -3049,7 +3698,7 @@ var singleton = null;
 var	singletonCounter = 0;
 var	stylesInsertedAtTop = [];
 
-var	fixUrls = __webpack_require__(16);
+var	fixUrls = __webpack_require__(18);
 
 module.exports = function(list, options) {
 	if (typeof DEBUG !== "undefined" && DEBUG) {
