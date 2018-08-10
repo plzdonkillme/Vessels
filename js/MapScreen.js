@@ -1,10 +1,18 @@
 import { Point, Vector } from "./Vector";
 import { Animation, TransitionNoop, TransitionLinear, TransitionQuadraticBezier } from "./Animation";
 import { Viewport } from "./Viewport";
-import { Polygon, Overlay } from "./Polygon";
+import { PolygonFactory, Overlay, HOVER_NONE, HOVER_MAIN, HOVER_SECONDARY } from "./Polygon";
 import { PolygonRenderer} from "./PolygonRenderer";
+import { Color } from "./Color";
 
-const TLEN = 100;
+const DEFAULT_COLOR = new Color(242, 242, 242, 1);
+const NEXT_VALID_COLOR = new Color(0, 255, 255, 1);
+const VALID_COLOR = new Color(0, 255, 204, 1);
+const VALID_HOVER_COLOR = new Color(102, 255, 204, 1);
+const SELECTED_COLOR = new Color(0, 204, 153, 1);
+const OVERLAY_DEFAULT_COLOR = new Color(230, 230, 230, 1);
+const OVERLAY_DISABLE_COLOR = new Color(153, 153, 153, 1);
+const OVERLAY_HOVER_COLOR = new Color(242, 242, 242, 1);
 
 class MapScreen {
 
@@ -19,40 +27,80 @@ class MapScreen {
             500
         );
         this.pressed = {};
-
-        this.staticPolygons = {};
         this.dynamicPolygons = {};
         this.animations = [];
 
-        this.map.getTilesFlattened().filter(t => t.constructor.name() !== 'e').reduce((polygons, tile) => {
-            const polygon = Polygon.createBox(tile.getX() * TLEN, tile.getY() * TLEN, 0, TLEN, TLEN, tile.getH() * TLEN);
-            polygons[tile.getKey()] = polygon;
-            return polygons;
-        }, this.staticPolygons);
+        const staticPolygons = [];
+        this.polygons = {};
+        this.keyMap = {};
 
-        this.map.getMapObjects().reduce((polygons, mapObject) => {
-            let polygon;
-            if (mapObject.getPolygon() === 'icosahedron') {
-                polygon = Polygon.createIcosahedron(mapObject.getX() * TLEN + TLEN / 2, mapObject.getY() * TLEN + TLEN / 2, mapObject.getH() * TLEN + TLEN / 2, 20);
-            } else if (mapObject.getPolygon() === 'tetrahedron') {
-                polygon = Polygon.createTetrahedron(mapObject.getX() * TLEN + TLEN / 2, mapObject.getY() * TLEN + TLEN / 2, mapObject.getH() * TLEN + TLEN / 2, 20);
-            }
-            polygon.setColor(mapObject.getColor(), mapObject.getHoverColor());
-            polygons[mapObject.getKey()] = polygon;
-            return polygons;
-        }, this.dynamicPolygons);
+        const state = this.map.toJSON();
+        state.tiles.forEach(tileRow => {
+            tileRow.forEach(tile => {
+                const { tilePolygon, mapObjectPolygon } = PolygonFactory.create(tile);
+                if (tilePolygon !== null) {
+                    staticPolygons.push(tilePolygon);
+                    this.polygons[tilePolygon.getKey()] = tilePolygon;
+                    this.keyMap[tilePolygon.getKey()] = tile.key;
+                }
+                if (mapObjectPolygon !== null) {
+                    this.dynamicPolygons[mapObjectPolygon.getKey()] = mapObjectPolygon;
+                    this.polygons[mapObjectPolygon.getKey()] = mapObjectPolygon;
+                    this.keyMap[mapObjectPolygon.getKey()] = tile.key;
+                }
+            });
+        });
 
-        this.overlays = {
-            'move': new Overlay(50, 50, 150, 50, 'move'),
-            'attack': new Overlay(50, 100, 150, 50, 'attack'),
-            'transfer': new Overlay(50, 150, 150, 50, 'transfer'), 
-            'end': new Overlay(50, 200, 150, 50, 'end'),
+        this.state = {
+            mode: 'menu',
+            hoverKey: null,
+            hoverMainKeyMap: {},
+            hoverSecondaryKeyMap: {},
+            nextState: {},
         };
 
-        this.r = new Vector(0, 0, 1);
+        this.overlays = {
+            move: new Overlay(50, 50, 150, 50, 'move'),
+            attack: new Overlay(50, 100, 150, 50, 'attack'),
+            transfer: new Overlay(50, 150, 150, 50, 'transfer'), 
+            end: new Overlay(50, 200, 150, 50, 'end'),
+        };
 
-        this.renderer = new PolygonRenderer(this.canvas, Object.values(this.staticPolygons), (a,b) => a.getNormal().getZ() - b.getNormal().getZ());
+        Object.values(this.overlays).forEach(o => this.polygons[o.getKey()] = o);
+
+        const actions = this.map.getActions();
+        actions.map(a => {
+            const overlay = this.overlays[a.name];
+            const key = overlay.getKey();
+            this.state.hoverMainKeyMap[key] = [key];
+            if (a.src !== undefined) {
+                const srcList = this.state.hoverSecondaryKeyMap[key] || [];
+                const src = Object.keys(this.keyMap).filter(k => this.keyMap[k] === a.src);
+                this.state.hoverSecondaryKeyMap[key] = Array.from(new Set(srcList.concat(src)));
+            }
+            this.state.nextState[key] = {
+                hoverKey: null,
+                hoverMainKeyMap: this.state.hoverSecondaryKeyMap
+            }
+        });
+
+        /*this.state = {
+            action: 'menu',
+            validKeyGroups: this.map.getActions(),
+            selectedKeyGroup: [],
+            prevKeyGroup: [],
+        };*/
+
+        //this.postStateUpdate();
+
+        //this.r = new Vector(0, 0, 1);
+        
+        this.renderer = new PolygonRenderer(this.canvas, staticPolygons, (a,b) => a.getNormal().getZ() - b.getNormal().getZ());
         map.addListener(this);
+    }
+
+    constructStateTree(actions) {
+        
     }
 
     start() {
@@ -61,13 +109,15 @@ class MapScreen {
 
     renderLoop() {
         this.viewport.updatePosition();
-        this.r.rotate(new Vector(1, 0, 0), 1 * Math.PI / 180);
+        const overlays = this.getOverlays();
+        this.renderer.render(this.viewport, Object.values(this.dynamicPolygons), overlays);
+        this.updateHover();
+        /*this.r.rotate(new Vector(1, 0, 0), 1 * Math.PI / 180);
         Object.values(this.dynamicPolygons).forEach(p => {
             p.rotate(this.r, 1 * Math.PI / 180);
-        });
+        });*/
 
-
-        const polygonsToDestroy = [];
+        /*const polygonsToDestroy = [];
         if (this.animations.length > 0) {
             const animation = this.animations[0];
             const finishedAnimations = [];
@@ -77,7 +127,7 @@ class MapScreen {
                 if (!a.isInitialized()) {
                     a.initialize(p.getState());
                 }
-                const state = a.getNextState()
+                const state = a.getNextState();
                 p.applyState(state);
                 if (a.finished()) {
                     finishedAnimations.push(key);
@@ -92,15 +142,117 @@ class MapScreen {
             }
         }
 
+        const overlays = this.state.action === 'menu' ? Object.values(this.overlays) : [];
 
-        this.renderer.render(this.viewport, Object.values(this.dynamicPolygons), Object.values(this.overlays));
+        const nextValidKeyGroups = this.getNextValidKeyGroups();
+        this.state.selectedKeyGroup.forEach(key => {
+            if (this.staticPolygons[key] !== undefined) {
+                this.staticPolygons[key].setColor(VALID_HOVER_COLOR);
+            }
+            if (this.overlays[key] !== undefined) {
+                this.overlays[key].setColor(OVERLAY_HOVER_COLOR);
+            }
+        });
+        nextValidKeyGroups.forEach(keyGroup => {
+            keyGroup.forEach(key => {
+                if (this.staticPolygons[key] !== undefined) {
+                    this.staticPolygons[key].setColor(NEXT_VALID_COLOR);
+                }
+            });
+        });     
+
+        this.renderer.render(this.viewport, Object.values(this.dynamicPolygons), overlays);
+
+        nextValidKeyGroups.forEach(keyGroup => {
+            keyGroup.forEach(key => {
+                if (this.staticPolygons[key] !== undefined) {
+                    if (this.getKeyGroup(key).length > 0) {
+                        this.staticPolygons[key].setColor(VALID_COLOR);
+                    } else {
+                        this.staticPolygons[key].setColor(DEFAULT_COLOR);
+                    }
+                }
+            });
+        });
+        this.state.selectedKeyGroup.forEach(key => {
+            if (this.staticPolygons[key] !== undefined) {
+                this.staticPolygons[key].setColor(VALID_COLOR);
+            }
+            if (this.overlays[key] !== undefined) {
+                this.overlays[key].setColor(OVERLAY_DEFAULT_COLOR);
+            }
+        });
+
+        this.state.selectedKeyGroup = this.getKeyGroup(this.getKey(this.renderer.getHoveredObj()));
 
         polygonsToDestroy.forEach(key => delete this.dynamicPolygons[key]);
-
+        */
 
         window.requestAnimationFrame((step) => {
             this.renderLoop();
         });
+    }
+
+    getOverlays() {
+        return Object.values(this.overlays);
+    }
+
+    /*
+        Three hover states:
+            None - no hover highlight
+            Secondary - secondary hover highlight
+            Main - main hover highlight
+     */ 
+    updateHover() {
+        this.cancelHover();
+        const obj = this.renderer.getHoveredObj();
+        this.state.hoverKey = obj === null ? null : obj.getKey();
+        this.setHover();
+    }
+
+    cancelHover() {
+        const key = this.state.hoverKey;
+        if (key !== null) {
+            const hoverMainKeys = this.state.hoverMainKeyMap[key];
+            const hoverSecondaryKeys = this.state.hoverSecondaryKeyMap[key];
+            if (hoverMainKeys !== undefined) {
+                hoverMainKeys.forEach(k => {
+                    this.polygons[k].setHover(HOVER_NONE);
+                });
+            }
+            if (hoverSecondaryKeys !== undefined) {
+                hoverSecondaryKeys.forEach(k => {
+                    this.polygons[k].setHover(HOVER_NONE);
+                });
+            }
+        }
+    }
+
+    setHover() {
+        const key = this.state.hoverKey;
+        if (key !== null) {
+            const hoverMainKeys = this.state.hoverMainKeyMap[key];
+            const hoverSecondaryKeys = this.state.hoverSecondaryKeyMap[key];
+            if (hoverMainKeys !== undefined) {
+                hoverMainKeys.forEach(k => {
+                    this.polygons[k].setHover(HOVER_MAIN);
+                });
+            }
+            if (hoverSecondaryKeys !== undefined) {
+                hoverSecondaryKeys.forEach(k => {
+                    this.polygons[k].setHover(HOVER_SECONDARY);
+                });
+            }
+        }
+    }
+
+    handleClick(x, y) {
+        this.cancelHover();
+        const key = this.state.hoverKey;
+        this.state.hoverMainKeyMap = this.state.hoverSecondaryKeyMap;
+        this.state.hoverSecondaryKeyMap = this.state.
+
+        console.log(this.state);
     }
 
     trigger(e) {
@@ -131,13 +283,9 @@ class MapScreen {
                     transitions.r = new TransitionLinear(null, e.color.getR());
                     transitions.g = new TransitionLinear(null, e.color.getG());
                     transitions.b = new TransitionLinear(null, e.color.getB());
-                    transitions.hr = new TransitionLinear(null, e.hoverColor.getR());
-                    transitions.hg = new TransitionLinear(null, e.hoverColor.getG());
-                    transitions.hb = new TransitionLinear(null, e.hoverColor.getB());
 
                     const shardTransitions = {}
                     shardTransitions.a = new TransitionLinear(null, 0);
-                    shardTransitions.ha = new TransitionLinear(null, 0);
                     shardTransitions.sa = new TransitionLinear(null, 0);
                     const shardAnimation = new Animation(shardTransitions, 30, true);
                     animation[e.shardKey] = shardAnimation
@@ -158,39 +306,31 @@ class MapScreen {
             srcTransitions.r = new TransitionLinear(null, e.srcColor.getR());
             srcTransitions.g = new TransitionLinear(null, e.srcColor.getG());
             srcTransitions.b = new TransitionLinear(null, e.srcColor.getB());
-            srcTransitions.hr = new TransitionLinear(null, e.srcHoverColor.getR());
-            srcTransitions.hg = new TransitionLinear(null, e.srcHoverColor.getG());
-            srcTransitions.hb = new TransitionLinear(null, e.srcHoverColor.getB());
             animation[e.srcKey] = new Animation(srcTransitions, 30);
 
             const dstTransitions = {}
             dstTransitions.r = new TransitionLinear(null, e.dstColor.getR());
             dstTransitions.g = new TransitionLinear(null, e.dstColor.getG());
             dstTransitions.b = new TransitionLinear(null, e.dstColor.getB());
-            dstTransitions.hr = new TransitionLinear(null, e.dstHoverColor.getR());
-            dstTransitions.hg = new TransitionLinear(null, e.dstHoverColor.getG());
-            dstTransitions.hb = new TransitionLinear(null, e.dstHoverColor.getB());
             animation[e.dstKey] = new Animation(dstTransitions, 30);
 
             this.animations.push(animation);
         } else if (e.name === 'attack') {
             const animation = {};
 
-            const dstTransitions = {}
-            if (e.dstColor === null) {
-                dstTransitions.a = new TransitionLinear(null, 0);
-                dstTransitions.ha = new TransitionLinear(null, 0);
-                dstTransitions.sa = new TransitionLinear(null, 0);
-                animation[e.dstKey] = new Animation(dstTransitions, 30, true);
-            } else {
-                dstTransitions.r = new TransitionLinear(null, e.dstColor.getR());
-                dstTransitions.g = new TransitionLinear(null, e.dstColor.getG());
-                dstTransitions.b = new TransitionLinear(null, e.dstColor.getB());
-                dstTransitions.hr = new TransitionLinear(null, e.dstHoverColor.getR());
-                dstTransitions.hg = new TransitionLinear(null, e.dstHoverColor.getG());
-                dstTransitions.hb = new TransitionLinear(null, e.dstHoverColor.getB());
-                animation[e.dstKey] = new Animation(dstTransitions, 30);
-            }
+            e.dst.forEach(target => {
+                const transitions = {};
+                if (target.color === null) {
+                    transitions.a = new TransitionLinear(null, 0);
+                    transitions.sa = new TransitionLinear(null, 0);
+                    animation[target.key] = new Animation(transitions, 30, true);
+                } else {
+                    transitions.r = new TransitionLinear(null, target.color.getR());
+                    transitions.g = new TransitionLinear(null, target.color.getG());
+                    transitions.b = new TransitionLinear(null, target.color.getB());
+                    animation[target.key] = new Animation(transitions, 30);
+                }
+            });
 
             this.animations.push(animation);
         }
@@ -216,28 +356,6 @@ class MapScreen {
     handleMouseUp(x, y) {
         //this.startDragX = null;
         //this.startDragY = null;
-    }
-
-    handleClick(x, y) {
-        //this.viewport.mx = this.viewport.x1 + x;
-        //this.viewport.my = this.viewport.y1 + y;
-        /*const clickedObj = this.mapRenderer.getClickedObject();
-        if (clickedObj instanceof Tile) {
-            const action = this.map.getSelectedAction(clickedObj);
-            if (action !== null && action.action === 'move') {
-                this.mapRenderer.animateMove(action.actor, action.receiver).then(() => {
-                    this.map.applyAction(action.actor, action.action, action.receiver);
-                });
-            }
-        } else if (clickedObj instanceof ActorAction) {
-            this.map.getTurnActor().handleAction(clickedObj);
-        }*/
-        //const clickedObjs = this.mapRenderer.getClickedObjects();
-
-        //const rerender = this.map.clicked(clickedObjs);
-        //if (rerender) {
-            //this.mapRenderer.renderMap(this.map, this.viewport);
-        //}
     }
 
     handleMouseLeave() {

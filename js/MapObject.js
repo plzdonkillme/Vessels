@@ -1,21 +1,19 @@
 import { Color } from './Color';
-import { EmptyTile } from './Tile';
-
-let COUNTER = 0;
+import { Tile, EmptyTile, TileGroup } from './Tile';
 
 class MapObject {
 
-    constructor(props, tile = null, id = null) {
+    constructor(props, tile = null) {
+        this.player = null;
         this.tile = tile;
         if (tile !== null) {
             tile.setMapObject(this);
         }
-        if (id === null) {
-            this.id = `mapObject-${COUNTER}`;
-            COUNTER += 1;
-        } else {
-            this.id = id;
-        }
+    }
+
+    setTile(tile) {
+        this.tile = tile;
+        tile.setMapObject(this);
     }
 
     getTile() {
@@ -34,37 +32,20 @@ class MapObject {
         return this.tile.getH();
     }
 
-    serialize() {
-        return `${this.constructor.name()}-${this.getX()}-${this.getY()}`;
-    }
-
-    static deserialize(props, tiles) {
-        const p = props.split('-');
-        const cls = NAME_MAP[p[0]];
-        const x = parseInt(p[1]);
-        const y = parseInt(p[2]);
-        return new cls(p.slice(3, p.length), tiles[y][x]);
-    }
-
-    setReferences(tiles, mapObjects) {
-        this.tile = tiles[this.y][this.x];
-        this.tile.setMapObject(this);
-    }
-
-    getActions() {
-        return [];
-    }
-
     getPlayer() {
-        return null;
+        return this.player;
     }
 
-    getPolygon() {
-        return POLYGON_MAP[this.constructor.name()];
+    toJSON() {
+        return {
+            type: this.constructor.name(),
+            x: this.tile.getX(),
+            y: this.tile.getY(),
+        };
     }
 
-    getKey() {
-        return this.id;
+    static name() {
+        throw Error('Unimplemented');
     }
 }
 
@@ -73,26 +54,15 @@ class Shard extends MapObject {
     attackedBy(vessel) {
         this.tile.unsetMapObject();
         return {
-            name: 'attack',
-            srcKey: vessel.getKey(),
-            dstKey: this.getKey(),
-            dstColor: null,
+            key: this.getKey(),
+            color: null,
         };
     }
 }
 
 class BlueShard extends Shard {
-
     static name() {
         return 'bs';
-    }
-
-    getColor() {
-        return new Color(0, 0, 255, 1);
-    }
-
-    getHoverColor() {
-        return new Color(0, 0, 255, 1);
     }
 }
 
@@ -100,165 +70,117 @@ class RedShard extends Shard {
     static name() {
         return 'rs';
     }
-
-    getColor() {
-        return new Color(255, 0, 0, 1);
-    }
-
-    getHoverColor() {
-        return new Color(255, 0, 0, 1);
-    }
 }
 
 class YellowShard extends Shard {
     static name() {
         return 'ys';
     }
-
-    getColor() {
-        return new Color(255, 255, 0, 1);
-    }
-
-    getHoverColor() {
-        return new Color(255, 255, 0, 1);
-    }
 }
 
 
 class Vessel extends MapObject {
 
-    constructor(props, tile) {
+    constructor(props, tile = null) {
         super(...arguments);
-        this.player = props[0];
+        this.player = props.player
         this.movement = 4;
         this.range = 1;
     }
 
-
-    serialize() {
-        return `${super.serialize()}-${this.player}`
+    toJSON() {
+        const json = super.toJSON();
+        json.player = this.player;
+        return json;
     }
 
-    transfer(tile, player) {
-        if (player !== this.player) {
-            throw Error('Invalid action: wrong player');
+    getMoveActions() {
+        const paths = this.getMoveablePaths();
+        const srcKey = this.tile.getKey();
+        const actions = [];
+        for (let key in paths) {
+            actions.push({
+                name: 'move',
+                src: srcKey,
+                dst: key,
+                path: paths[key],
+            });
         }
-        const mO = tile.getMapObject();
-        if (mO !== null && mO.getPlayer() === this.player && this.getShard() !== null) {
-            const cls = mO.consumeShard(this.getShard());
-            var newObj = new cls([mO.getPlayer()], tile, mO.getKey());
-            var origObj = new WhiteVessel([this.player], this.tile, this.getKey());
+        return actions;
+    }
+
+    getTransferActions(objs) {
+        if (this.getShard() === null) {
+            return [];
+        }
+        return objs.filter(o => o !== this && o.getShard() === null).map(o => {
             return {
                 name: 'transfer',
-                srcKey: this.getKey(), 
-                dstKey: mO.getKey(),
-                srcColor: origObj.getColor(),
-                srcHoverColor: origObj.getHoverColor(),
-                dstColor: newObj.getColor(),
-                dstHoverColor: newObj.getHoverColor(),
-            }
-        } else {
-            throw Error('Invalid transfer tile');
-        }
+                src: this.tile.getKey(),
+                dst: o.tile.getKey(),
+            };
+        });
     }
 
-    attack(tile, player) {
-        if (player !== this.player) {
-            throw Error('Invalid action: wrong player');
-        }
-
-        const targetTiles = this.getAttackableTiles();
-        const key = tile.getKey();
-
-        if (targetTiles.indexOf(key) === -1) {
-            throw Error('Invalid action: cannot reach tile');
-        }
-
-        const targets = this.getAttackedObjects(tile);
-
-        if (targets.length === 0) {
-            throw Error('Invalid attack tile');
-        } else {
-            targets.forEach(target => t)
-        }
+    getAttackActions() {
+        let tileGroups = this.getAttackableTileGroups();
+        tileGroups = tileGroups.filter(t => t.getMapObjects().length > 0);
+        return tileGroups.map(t => {
+            return {
+                name: 'attack',
+                src: this.tile.getKey(),
+                dst: t.getTiles().map(tile => tile.getKey()),
+            };
+        });
     }
 
-    move(tile, player) {
-        if (player !== this.player) {
-            throw Error('Invalid action: wrong player');
-        }
+    transfer(tile) {
+        const target = tile.getMapObject();
+        const cls = target.consumeShard(this.getShard());
+        const newObj = new cls(target.toJSON(), tile);
+        const origObj = new WhiteVessel(this.toJSON(), this.tile);
+    }
 
-        const paths = this.getMoveablePaths();
-        const key = tile.getKey();
+    attack(tiles) {
+        tiles.map(t => t.getMapObject()).filter(m => m !== null).forEach(m => m.attackedBy(this));
+    }
 
-        if (paths[key] === undefined) {
-            throw Error('Invalid action: cannot reach tile');
-        }
-
+    move(tile) {
         const mO = tile.getMapObject();
         if (mO === null) {
             this.tile.unsetMapObject();
             tile.setMapObject(this);
             this.tile = tile;
-            return {
-                name: 'move',
-                path: paths[key],
-                objKey: this.getKey(),
-            };
         } else if (mO instanceof Shard) {
             const cls = this.consumeShard(mO);
-            var newObj = new cls([this.player], tile, this.getKey());
+            var newObj = new cls(this.toJSON(), tile);
             this.tile.unsetMapObject();
-            return {
-                name: 'move',
-                path: paths[key],
-                color: newObj.getColor(),
-                hoverColor: newObj.getHoverColor(),
-                objKey: this.getKey(),
-                shardKey: mO.getKey(),
-            };
         }
-        throw Error('Invalid move tile');
-    }
-
-    getPlayer() {
-        return this.player;
     }
 
     getShard() {
         return null;
     }
 
-    getAttackableTiles() {
+    getAttackableTileGroups() {
         const dirs = ['left', 'right', 'top', 'down'];
         let queue = new Set([this.tile]);
         let nextQueue;
-        const keySet = new Set();
+        const tileSet = new Set();
         for (let i = 0; i < this.range; i++) {
             nextQueue = new Set();
             queue.forEach(tile => {
-                const key = tile.getKey();
                 dirs.forEach((dir) => {
                     const t = tile[dir];
                     if (t !== null && t !== this.tile) {
-                        const tkey = t.getKey();
                         nextQueue.add(t);
-                        keySet.add(tkey);
+                        tileSet.add(t);
                     }
                 })
             });
             queue = nextQueue;
         }
-        return keySet;
-    }
-
-    getAttackedObjects(tile) {
-        const mO = tile.getMapObject();
-        if (mO === null) {
-            return [];
-        } else {
-            return [mO];
-        }
+        return Array.from(tileSet).map(t => new TileGroup([t]));
     }
 
     getMoveablePaths() {
@@ -320,10 +242,8 @@ class Vessel extends MapObject {
     attackedBy(vessel) {
         this.tile.unsetMapObject();
         return {
-            name: 'attack',
-            srcKey: vessel.getKey(),
-            dstKey: this.getKey(),
-            dstColor: null,
+            key: this.getKey(),
+            color: null,
         };
     }
 }
@@ -343,14 +263,6 @@ class WhiteVessel extends Vessel {
     static name() {
         return 'w';
     }
-
-    getColor() {
-        return new Color(255, 255, 255, 1);
-    }
-
-    getHoverColor() {
-        return new Color(230, 230, 230, 1);
-    }
 }
 
 class BlueVessel extends Vessel {
@@ -368,23 +280,12 @@ class BlueVessel extends Vessel {
         return new BlueShard();
     }
 
-    getColor() {
-        return new Color(0, 0, 255, 1);
-    }
-
-    getHoverColor() {
-        return new Color(0, 0, 255, 1);
-    }
-
     attackedBy(vessel) {
         if (vessel instanceof WhiteVessel) {
-            const obj = new WhiteVessel([this.player], this.tile, this.getKey());
+            const obj = new WhiteVessel(this.toJSON(), tile);
             return {
-                name: 'attack',
-                srcKey: vessel.getKey(),
-                dstKey: this.getKey(),
-                dstColor: obj.getColor(),
-                dstHoverColor: obj.getHoverColor(),
+                key: this.getKey(),
+                color: obj.getColor(),
             };
         }
     }
@@ -400,25 +301,55 @@ class RedVessel extends Vessel {
         return new RedShard();
     }
 
-    getColor() {
-        return new Color(255, 0, 0, 1);
-    }
-
-    getHoverColor() {
-        return new Color(255, 0, 0, 1);
-    }
-
     attackedBy(vessel) {
         if (vessel instanceof WhiteVessel) {
             const obj = new WhiteVessel([this.player], this.tile, this.getKey());
             return {
-                name: 'attack',
-                srcKey: vessel.getKey(),
-                dstKey: this.getKey(),
-                dstColor: obj.getColor(),
-                dstHoverColor: obj.getHoverColor(),
+                key: this.getKey(),
+                color: obj.getColor(),
             };
         }
+    }
+
+    getAttackableTargets() {
+        const dirs1 = ['left', 'right'];
+        const dirs2 = ['top', 'down'];
+        const tileSet = new Set();
+        dirs1.forEach(dir => {
+            const t = this.tile[dir];
+            if (t !== null) {
+                if (t.getMapObject() !== null) {
+                    tileSet.add(t);
+                }
+                dirs2.forEach(dir2 => {
+                    const t2 = t[dir2];
+                    if (t2 !== null && t2.getMapObject() !== null) {
+                        tileSet.add(t2);
+                    }
+                });
+            }
+        });
+        dirs2.forEach(dir => {
+            const t = this.tile[dir];
+            if (t !== null) {
+                if (t.getMapObject() !== null) {
+                    tileSet.add(t);
+                }
+                dirs1.forEach(dir2 => {
+                    const t2 = t[dir2];
+                    if (t2 !== null && t2.getMapObject() !== null) {
+                        tileSet.add(t2);
+                    }
+                });
+            }
+        });
+
+        const tileArray = Array.from(tileSet);
+        const tileKeys = tileArray.map(t => t.getKey());
+        const objKeys = tileArray.map(t => t.getMapObject().getKey());
+        const ret = [];
+        ret.push(tileKeys.concat(objKeys));
+        return ret;
     }
 }
 
@@ -437,23 +368,12 @@ class YellowVessel extends Vessel {
         return new YellowShard();
     }
 
-    getColor() {
-        return new Color(255, 255, 0, 1);
-    }
-
-    getHoverColor() {
-        return new Color(255, 255, 0, 1);
-    }
-
     attackedBy(vessel) {
         if (vessel instanceof WhiteVessel) {
             const obj = new WhiteVessel([this.player], this.tile, this.getKey());
             return {
-                name: 'attack',
-                srcKey: vessel.getKey(),
-                dstKey: this.getKey(),
-                dstColor: obj.getColor(),
-                dstHoverColor: obj.getHoverColor(),
+                key: this.getKey(),
+                color: obj.getColor(),
             };
         }
     }
@@ -479,4 +399,37 @@ const POLYGON_MAP = {
     y: 'icosahedron',
 }
 
-export { MapObject }
+const MapObjectFactory = {
+    map: {
+        bs: BlueShard,
+        rs: RedShard,
+        ys: YellowShard,
+        w: WhiteVessel,
+        b: BlueVessel,
+        r: RedVessel,
+        y: YellowVessel, 
+    },
+    create: function(json) {
+        const cls = this.map[json.type];
+        return new cls(json);
+    },
+    getJSON: function(propString) {
+        const props = propString.split('-');
+        const json = {
+            type: props[0],
+        }
+        if (props.length > 1) {
+            json.player = props[1];
+        }
+        return json;
+    },
+    getPropString: function(json) {
+        let propString = `${json.x}-${json.y}-${json.type}`;
+        if (json.player !== undefined) {
+            propString += `-${json.player}`;
+        }
+        return propString;
+    },
+}
+
+export { MapObject, MapObjectFactory }

@@ -1,16 +1,21 @@
-import { Tile } from "./Tile";
-import { MapObject } from "./MapObject";
-import { Map } from './Map';
-import { Objective } from './Objective';
+import { TileFactory } from "./Tile";
+import { MapObjectFactory } from "./MapObject";
+import { ObjectiveFactory } from './Objective';
+import { Map } from "./Map";
 
 function serialize(map) {
+    const state = map.toJSON();
     let mapString = '';
-    const tiles = map.getTiles();
+    const tiles = state.tiles;
+    const mapObjects = [];
     for (let i = 0; i < tiles.length; i++) {
         const tileRow = tiles[i];
         for (let j = 0; j < tileRow.length; j++) {
             const tile = tileRow[j];
-            const tileString = tile.serialize();
+            if (tile.mapObject !== undefined) {
+                mapObjects.push(tile.mapObject);
+            }
+            const tileString = TileFactory.getPropString(tile);
             mapString += tileString;
             if (j !== tileRow.length - 1) {
                 mapString += ' ';
@@ -19,23 +24,23 @@ function serialize(map) {
         mapString += '\n';
     }
     mapString += '===\n';
-    const mapObjects = map.getMapObjects();
     for (let i = 0; i < mapObjects.length; i++) {
         const mapObject = mapObjects[i];
-        const mapObjectString = mapObject.serialize();
+        const mapObjectString = MapObjectFactory.getPropString(mapObject);
         mapString += mapObjectString;
         mapString += '\n';
     }
     mapString += '===\n';
-    mapString += map.getObjective().serialize();
+    mapString += ObjectiveFactory.getPropString(state.objective);
     mapString += '\n';
-    mapString += map.serializeTurnPlayers();
+    mapString += state.turnPlayers.join('-');
     mapString += '\n';
-    mapString += map.serializeActions();
+    mapString += `${state.actions.move}-${state.actions.transfer}-${state.actions.attack}`;
     return mapString;
 }
 
 function deserialize(mapString) {
+    const state = {};
     const splitString = mapString.split('\n===\n');
     const tileArrayString = splitString[0];
     const mapObjectArrayString = splitString[1];
@@ -47,32 +52,35 @@ function deserialize(mapString) {
         const tileRow = [];
         const tileStrings = tileRowStrings[y].split(' ');
         for (let x = 0; x < tileStrings.length; x++) {
-            const props = tileStrings[x].split('-');
-            const tileClass = Tile.getClass(props[0]);
-            const tile = new tileClass(x, y, props[1]);
-
-            if (x > 0) {
-                tile.link('left', tileRow[x - 1]);
-                tileRow[x - 1].link('right', tile);
-            }
-            if (y > 0) {
-                tile.link('top', tiles[y - 1][x]);
-                tiles[y - 1][x].link('down', tile);
-            }
-            tileRow.push(tile);
+            const json = TileFactory.getJSON(tileStrings[x]);
+            json.x = x;
+            json.y = y;
+            tileRow.push(json);
         }
         tiles.push(tileRow);
     }
 
     const mapObjectStrings = mapObjectArrayString.split('\n');
     for (let i = 0; i < mapObjectStrings.length; i++) {
-        const mapObject = MapObject.deserialize(mapObjectStrings[i], tiles);
+        const props = mapObjectStrings[i].split('-');
+        const x = parseInt(props[0]);
+        const y = parseInt(props[1]);
+        const json = MapObjectFactory.getJSON(props.slice(2, props.length).join('-'));
+        json.x = x;
+        json.y = y;
+        tiles[y][x].mapObject = json;
     }
 
-    const objective = Objective.deserialize(settings[0]);
-    const turnPlayers = Map.deserializeTurnPlayers(settings[1]);
-    const actions = Map.deserializeActions(settings[2]);
-    return new Map(tiles, objective, turnPlayers, actions);
+    state.objective = ObjectiveFactory.getJSON(settings[0]);
+    state.turnPlayers = settings[1].split('-');
+    const s = settings[2].split('-');
+    state.actions = {
+        move: parseInt(s[0]),
+        transfer: parseInt(s[1]),
+        attack: parseInt(s[2]),
+    };
+    state.tiles = tiles;
+    return new Map(state);
 }
 
 export { serialize, deserialize }

@@ -9,10 +9,10 @@ export default class Game {
     }
 
     start() {
+        window.dmap = DefaultMap;
         document.body.appendChild(this.canvas);
         this.screen = new MapScreen(this.canvas, DefaultMap);
         this.screen.start();
-        window.dmap = DefaultMap;
     
         this.canvas.addEventListener("click", (e) => {
             const rect = this.canvas.getBoundingClientRect();
@@ -47,29 +47,5 @@ export default class Game {
             e.preventDefault();
             this.screen.handleKeyUp(e.code);
         });
-
-        /*this.loadAssets().then(() => {
-
-            this.canvas.addEventListener("click", (e) => {
-                console.log(e);
-            });
-
-            this.loadDemo();
-        });*/
-        dmap.doAction('move', 0, 0, 0, 1);
-        dmap.doAction('transfer', 0, 1, 1, 0);
-        dmap.doAction('end');
-        dmap.doAction('move', 2, 1, 1, 4);
-        dmap.doAction('end');
-        dmap.doAction('move', 0, 1, 0, 2);
-        dmap.doAction('end');
-        dmap.doAction('move', 1, 4, 0, 3);
     }
-
-    /*loadAssets() {
-        let loadingPromise = new Promise((resolve, reject) => {
-            resolve();
-        });
-        return loadingPromise
-    }*/
 }

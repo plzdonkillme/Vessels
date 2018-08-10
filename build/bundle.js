@@ -279,6 +279,14 @@ var Color = function () {
     }
 
     _createClass(Color, [{
+        key: "set",
+        value: function set(r, g, b, a) {
+            this.r = r;
+            this.g = g;
+            this.b = b;
+            this.a = a;
+        }
+    }, {
         key: "getString",
         value: function getString() {
             return "rgba(" + Math.floor(this.r) + ", " + Math.floor(this.g) + ", " + Math.floor(this.b) + ", " + this.a + ")";
@@ -320,101 +328,6 @@ exports.Color = Color;
 
 /***/ }),
 /* 2 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", {
-    value: true
-});
-exports.deserialize = exports.serialize = undefined;
-
-var _Tile = __webpack_require__(3);
-
-var _MapObject = __webpack_require__(10);
-
-var _Map = __webpack_require__(9);
-
-var _Objective = __webpack_require__(12);
-
-function serialize(map) {
-    var mapString = '';
-    var tiles = map.getTiles();
-    for (var i = 0; i < tiles.length; i++) {
-        var tileRow = tiles[i];
-        for (var j = 0; j < tileRow.length; j++) {
-            var tile = tileRow[j];
-            var tileString = tile.serialize();
-            mapString += tileString;
-            if (j !== tileRow.length - 1) {
-                mapString += ' ';
-            }
-        }
-        mapString += '\n';
-    }
-    mapString += '===\n';
-    var mapObjects = map.getMapObjects();
-    for (var _i = 0; _i < mapObjects.length; _i++) {
-        var mapObject = mapObjects[_i];
-        var mapObjectString = mapObject.serialize();
-        mapString += mapObjectString;
-        mapString += '\n';
-    }
-    mapString += '===\n';
-    mapString += map.getObjective().serialize();
-    mapString += '\n';
-    mapString += map.serializeTurnPlayers();
-    mapString += '\n';
-    mapString += map.serializeActions();
-    return mapString;
-}
-
-function deserialize(mapString) {
-    var splitString = mapString.split('\n===\n');
-    var tileArrayString = splitString[0];
-    var mapObjectArrayString = splitString[1];
-    var settings = splitString[2].split('\n');
-
-    var tiles = [];
-    var tileRowStrings = tileArrayString.split('\n');
-    for (var y = 0; y < tileRowStrings.length; y++) {
-        var tileRow = [];
-        var tileStrings = tileRowStrings[y].split(' ');
-        for (var x = 0; x < tileStrings.length; x++) {
-            var props = tileStrings[x].split('-');
-            var tileClass = _Tile.Tile.getClass(props[0]);
-            var tile = new tileClass(x, y, props[1]);
-
-            if (x > 0) {
-                tile.link('left', tileRow[x - 1]);
-                tileRow[x - 1].link('right', tile);
-            }
-            if (y > 0) {
-                tile.link('top', tiles[y - 1][x]);
-                tiles[y - 1][x].link('down', tile);
-            }
-            tileRow.push(tile);
-        }
-        tiles.push(tileRow);
-    }
-
-    var mapObjectStrings = mapObjectArrayString.split('\n');
-    for (var i = 0; i < mapObjectStrings.length; i++) {
-        var mapObject = _MapObject.MapObject.deserialize(mapObjectStrings[i], tiles);
-    }
-
-    var objective = _Objective.Objective.deserialize(settings[0]);
-    var turnPlayers = _Map.Map.deserializeTurnPlayers(settings[1]);
-    var actions = _Map.Map.deserializeActions(settings[2]);
-    return new _Map.Map(tiles, objective, turnPlayers, actions);
-}
-
-exports.serialize = serialize;
-exports.deserialize = deserialize;
-
-/***/ }),
-/* 3 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -482,19 +395,24 @@ var Tile = function () {
             return this.mapObject;
         }
     }, {
-        key: 'serialize',
-        value: function serialize() {
-            return this.constructor.name() + '-' + this.h;
-        }
-    }, {
         key: 'getKey',
         value: function getKey() {
             return this.constructor.name() + '-' + this.x + '-' + this.y;
         }
-    }], [{
-        key: 'getClass',
-        value: function getClass(name) {
-            return TILE_MAP[name];
+    }, {
+        key: 'toJSON',
+        value: function toJSON() {
+            var json = {
+                x: this.x,
+                y: this.y,
+                h: this.h,
+                type: this.constructor.name(),
+                key: this.getKey()
+            };
+            if (this.mapObject !== null) {
+                json.mapObject = this.mapObject.toJSON();
+            }
+            return json;
         }
     }]);
 
@@ -539,14 +457,691 @@ var EmptyTile = function (_Tile2) {
     return EmptyTile;
 }(Tile);
 
-var TILE_MAP = {
-    p: PlainTile,
-    e: EmptyTile
+var TileGroup = function () {
+    function TileGroup(tiles) {
+        _classCallCheck(this, TileGroup);
+
+        this.tiles = tiles;
+    }
+
+    _createClass(TileGroup, [{
+        key: 'getMapObjects',
+        value: function getMapObjects() {
+            return this.tiles.map(function (t) {
+                return t.getMapObject();
+            }).filter(function (m) {
+                return m !== null;
+            });
+        }
+    }, {
+        key: 'getTiles',
+        value: function getTiles() {
+            return this.tiles;
+        }
+    }]);
+
+    return TileGroup;
+}();
+
+var TileFactory = {
+    map: {
+        p: PlainTile,
+        e: EmptyTile
+    },
+    create: function create(json) {
+        var cls = this.map[json.type];
+        return new cls(json.x, json.y, json.h);
+    },
+    getJSON: function getJSON(propString) {
+        var props = propString.split('-');
+        return {
+            type: props[0],
+            h: parseInt(props[1])
+        };
+    },
+    getPropString: function getPropString(json) {
+        return json.type + '-' + json.h;
+    }
 };
 
 exports.Tile = Tile;
 exports.EmptyTile = EmptyTile;
 exports.PlainTile = PlainTile;
+exports.TileGroup = TileGroup;
+exports.TileFactory = TileFactory;
+
+/***/ }),
+/* 3 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+exports.MapObjectFactory = exports.MapObject = undefined;
+
+var _get = function get(object, property, receiver) { if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { return get(parent, property, receiver); } } else if ("value" in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } };
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _Color = __webpack_require__(1);
+
+var _Tile = __webpack_require__(2);
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var MapObject = function () {
+    function MapObject(props) {
+        var tile = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
+
+        _classCallCheck(this, MapObject);
+
+        this.player = null;
+        this.tile = tile;
+        if (tile !== null) {
+            tile.setMapObject(this);
+        }
+    }
+
+    _createClass(MapObject, [{
+        key: 'setTile',
+        value: function setTile(tile) {
+            this.tile = tile;
+            tile.setMapObject(this);
+        }
+    }, {
+        key: 'getTile',
+        value: function getTile() {
+            return this.tile;
+        }
+    }, {
+        key: 'getX',
+        value: function getX() {
+            return this.tile.getX();
+        }
+    }, {
+        key: 'getY',
+        value: function getY() {
+            return this.tile.getY();
+        }
+    }, {
+        key: 'getH',
+        value: function getH() {
+            return this.tile.getH();
+        }
+    }, {
+        key: 'getPlayer',
+        value: function getPlayer() {
+            return this.player;
+        }
+    }, {
+        key: 'toJSON',
+        value: function toJSON() {
+            return {
+                type: this.constructor.name(),
+                x: this.tile.getX(),
+                y: this.tile.getY()
+            };
+        }
+    }], [{
+        key: 'name',
+        value: function name() {
+            throw Error('Unimplemented');
+        }
+    }]);
+
+    return MapObject;
+}();
+
+var Shard = function (_MapObject) {
+    _inherits(Shard, _MapObject);
+
+    function Shard() {
+        _classCallCheck(this, Shard);
+
+        return _possibleConstructorReturn(this, (Shard.__proto__ || Object.getPrototypeOf(Shard)).apply(this, arguments));
+    }
+
+    _createClass(Shard, [{
+        key: 'attackedBy',
+        value: function attackedBy(vessel) {
+            this.tile.unsetMapObject();
+            return {
+                key: this.getKey(),
+                color: null
+            };
+        }
+    }]);
+
+    return Shard;
+}(MapObject);
+
+var BlueShard = function (_Shard) {
+    _inherits(BlueShard, _Shard);
+
+    function BlueShard() {
+        _classCallCheck(this, BlueShard);
+
+        return _possibleConstructorReturn(this, (BlueShard.__proto__ || Object.getPrototypeOf(BlueShard)).apply(this, arguments));
+    }
+
+    _createClass(BlueShard, null, [{
+        key: 'name',
+        value: function name() {
+            return 'bs';
+        }
+    }]);
+
+    return BlueShard;
+}(Shard);
+
+var RedShard = function (_Shard2) {
+    _inherits(RedShard, _Shard2);
+
+    function RedShard() {
+        _classCallCheck(this, RedShard);
+
+        return _possibleConstructorReturn(this, (RedShard.__proto__ || Object.getPrototypeOf(RedShard)).apply(this, arguments));
+    }
+
+    _createClass(RedShard, null, [{
+        key: 'name',
+        value: function name() {
+            return 'rs';
+        }
+    }]);
+
+    return RedShard;
+}(Shard);
+
+var YellowShard = function (_Shard3) {
+    _inherits(YellowShard, _Shard3);
+
+    function YellowShard() {
+        _classCallCheck(this, YellowShard);
+
+        return _possibleConstructorReturn(this, (YellowShard.__proto__ || Object.getPrototypeOf(YellowShard)).apply(this, arguments));
+    }
+
+    _createClass(YellowShard, null, [{
+        key: 'name',
+        value: function name() {
+            return 'ys';
+        }
+    }]);
+
+    return YellowShard;
+}(Shard);
+
+var Vessel = function (_MapObject2) {
+    _inherits(Vessel, _MapObject2);
+
+    function Vessel(props) {
+        var tile = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
+
+        _classCallCheck(this, Vessel);
+
+        var _this5 = _possibleConstructorReturn(this, (Vessel.__proto__ || Object.getPrototypeOf(Vessel)).apply(this, arguments));
+
+        _this5.player = props.player;
+        _this5.movement = 4;
+        _this5.range = 1;
+        return _this5;
+    }
+
+    _createClass(Vessel, [{
+        key: 'toJSON',
+        value: function toJSON() {
+            var json = _get(Vessel.prototype.__proto__ || Object.getPrototypeOf(Vessel.prototype), 'toJSON', this).call(this);
+            json.player = this.player;
+            return json;
+        }
+    }, {
+        key: 'getMoveActions',
+        value: function getMoveActions() {
+            var paths = this.getMoveablePaths();
+            var srcKey = this.tile.getKey();
+            var actions = [];
+            for (var key in paths) {
+                actions.push({
+                    name: 'move',
+                    src: srcKey,
+                    dst: key,
+                    path: paths[key]
+                });
+            }
+            return actions;
+        }
+    }, {
+        key: 'getTransferActions',
+        value: function getTransferActions(objs) {
+            var _this6 = this;
+
+            if (this.getShard() === null) {
+                return [];
+            }
+            return objs.filter(function (o) {
+                return o !== _this6 && o.getShard() === null;
+            }).map(function (o) {
+                return {
+                    name: 'transfer',
+                    src: _this6.tile.getKey(),
+                    dst: o.tile.getKey()
+                };
+            });
+        }
+    }, {
+        key: 'getAttackActions',
+        value: function getAttackActions() {
+            var _this7 = this;
+
+            var tileGroups = this.getAttackableTileGroups();
+            tileGroups = tileGroups.filter(function (t) {
+                return t.getMapObjects().length > 0;
+            });
+            return tileGroups.map(function (t) {
+                return {
+                    name: 'attack',
+                    src: _this7.tile.getKey(),
+                    dst: t.getTiles().map(function (tile) {
+                        return tile.getKey();
+                    })
+                };
+            });
+        }
+    }, {
+        key: 'transfer',
+        value: function transfer(tile) {
+            var target = tile.getMapObject();
+            var cls = target.consumeShard(this.getShard());
+            var newObj = new cls(target.toJSON(), tile);
+            var origObj = new WhiteVessel(this.toJSON(), this.tile);
+        }
+    }, {
+        key: 'attack',
+        value: function attack(tiles) {
+            var _this8 = this;
+
+            tiles.map(function (t) {
+                return t.getMapObject();
+            }).filter(function (m) {
+                return m !== null;
+            }).forEach(function (m) {
+                return m.attackedBy(_this8);
+            });
+        }
+    }, {
+        key: 'move',
+        value: function move(tile) {
+            var mO = tile.getMapObject();
+            if (mO === null) {
+                this.tile.unsetMapObject();
+                tile.setMapObject(this);
+                this.tile = tile;
+            } else if (mO instanceof Shard) {
+                var cls = this.consumeShard(mO);
+                var newObj = new cls(this.toJSON(), tile);
+                this.tile.unsetMapObject();
+            }
+        }
+    }, {
+        key: 'getShard',
+        value: function getShard() {
+            return null;
+        }
+    }, {
+        key: 'getAttackableTileGroups',
+        value: function getAttackableTileGroups() {
+            var _this9 = this;
+
+            var dirs = ['left', 'right', 'top', 'down'];
+            var queue = new Set([this.tile]);
+            var nextQueue = void 0;
+            var tileSet = new Set();
+            for (var i = 0; i < this.range; i++) {
+                nextQueue = new Set();
+                queue.forEach(function (tile) {
+                    dirs.forEach(function (dir) {
+                        var t = tile[dir];
+                        if (t !== null && t !== _this9.tile) {
+                            nextQueue.add(t);
+                            tileSet.add(t);
+                        }
+                    });
+                });
+                queue = nextQueue;
+            }
+            return Array.from(tileSet).map(function (t) {
+                return new _Tile.TileGroup([t]);
+            });
+        }
+    }, {
+        key: 'getMoveablePaths',
+        value: function getMoveablePaths() {
+            var _this10 = this;
+
+            var dirs = ['left', 'right', 'top', 'down'];
+            var queue = new Set([this.tile]);
+            var nextQueue = void 0;
+            var paths = {};
+            var startKey = this.tile.getKey();
+            paths[startKey] = [startKey];
+            var keysToDelete = [startKey];
+            for (var i = 0; i < this.movement; i++) {
+                nextQueue = new Set();
+                queue.forEach(function (tile) {
+                    var key = tile.getKey();
+                    dirs.forEach(function (dir) {
+                        var t = tile[dir];
+                        if (t !== null && t !== _this10.tile) {
+                            if (_this10.canMoveThrough(t) && Math.abs(t.getH() - tile.getH()) < 2) {
+                                var tkey = t.getKey();
+                                if (paths[tkey] === undefined) {
+                                    nextQueue.add(t);
+                                    paths[tkey] = paths[key].concat(tkey);
+                                    if (!_this10.canMoveTo(t)) {
+                                        keysToDelete.push(tkey);
+                                    }
+                                }
+                            }
+                        }
+                    });
+                });
+                queue = nextQueue;
+            }
+            keysToDelete.forEach(function (key) {
+                return delete paths[key];
+            });
+            return paths;
+        }
+    }, {
+        key: 'canMoveThrough',
+        value: function canMoveThrough(tile) {
+            if (tile instanceof _Tile.EmptyTile) {
+                return false;
+            }
+            var mO = tile.getMapObject();
+            if (mO === null || mO instanceof Shard || mO.getPlayer() === this.player) {
+                return true;
+            }
+            return false;
+        }
+    }, {
+        key: 'canMoveTo',
+        value: function canMoveTo(tile) {
+            if (tile instanceof _Tile.EmptyTile) {
+                return false;
+            }
+            var mO = tile.getMapObject();
+            if (mO === null || mO instanceof Shard) {
+                return true;
+            }
+            return false;
+        }
+    }, {
+        key: 'attackedBy',
+        value: function attackedBy(vessel) {
+            this.tile.unsetMapObject();
+            return {
+                key: this.getKey(),
+                color: null
+            };
+        }
+    }]);
+
+    return Vessel;
+}(MapObject);
+
+var WhiteVessel = function (_Vessel) {
+    _inherits(WhiteVessel, _Vessel);
+
+    function WhiteVessel() {
+        _classCallCheck(this, WhiteVessel);
+
+        return _possibleConstructorReturn(this, (WhiteVessel.__proto__ || Object.getPrototypeOf(WhiteVessel)).apply(this, arguments));
+    }
+
+    _createClass(WhiteVessel, [{
+        key: 'consumeShard',
+        value: function consumeShard(shard) {
+            if (shard instanceof BlueShard) {
+                return BlueVessel;
+            } else if (shard instanceof RedShard) {
+                return RedVessel;
+            } else if (shard instanceof YellowShard) {
+                return YellowVessel;
+            }
+        }
+    }], [{
+        key: 'name',
+        value: function name() {
+            return 'w';
+        }
+    }]);
+
+    return WhiteVessel;
+}(Vessel);
+
+var BlueVessel = function (_Vessel2) {
+    _inherits(BlueVessel, _Vessel2);
+
+    function BlueVessel() {
+        _classCallCheck(this, BlueVessel);
+
+        var _this12 = _possibleConstructorReturn(this, (BlueVessel.__proto__ || Object.getPrototypeOf(BlueVessel)).apply(this, arguments));
+
+        _this12.range = 2;
+        return _this12;
+    }
+
+    _createClass(BlueVessel, [{
+        key: 'getShard',
+        value: function getShard() {
+            return new BlueShard();
+        }
+    }, {
+        key: 'attackedBy',
+        value: function attackedBy(vessel) {
+            if (vessel instanceof WhiteVessel) {
+                var obj = new WhiteVessel(this.toJSON(), tile);
+                return {
+                    key: this.getKey(),
+                    color: obj.getColor()
+                };
+            }
+        }
+    }], [{
+        key: 'name',
+        value: function name() {
+            return 'b';
+        }
+    }]);
+
+    return BlueVessel;
+}(Vessel);
+
+var RedVessel = function (_Vessel3) {
+    _inherits(RedVessel, _Vessel3);
+
+    function RedVessel() {
+        _classCallCheck(this, RedVessel);
+
+        return _possibleConstructorReturn(this, (RedVessel.__proto__ || Object.getPrototypeOf(RedVessel)).apply(this, arguments));
+    }
+
+    _createClass(RedVessel, [{
+        key: 'getShard',
+        value: function getShard() {
+            return new RedShard();
+        }
+    }, {
+        key: 'attackedBy',
+        value: function attackedBy(vessel) {
+            if (vessel instanceof WhiteVessel) {
+                var obj = new WhiteVessel([this.player], this.tile, this.getKey());
+                return {
+                    key: this.getKey(),
+                    color: obj.getColor()
+                };
+            }
+        }
+    }, {
+        key: 'getAttackableTargets',
+        value: function getAttackableTargets() {
+            var _this14 = this;
+
+            var dirs1 = ['left', 'right'];
+            var dirs2 = ['top', 'down'];
+            var tileSet = new Set();
+            dirs1.forEach(function (dir) {
+                var t = _this14.tile[dir];
+                if (t !== null) {
+                    if (t.getMapObject() !== null) {
+                        tileSet.add(t);
+                    }
+                    dirs2.forEach(function (dir2) {
+                        var t2 = t[dir2];
+                        if (t2 !== null && t2.getMapObject() !== null) {
+                            tileSet.add(t2);
+                        }
+                    });
+                }
+            });
+            dirs2.forEach(function (dir) {
+                var t = _this14.tile[dir];
+                if (t !== null) {
+                    if (t.getMapObject() !== null) {
+                        tileSet.add(t);
+                    }
+                    dirs1.forEach(function (dir2) {
+                        var t2 = t[dir2];
+                        if (t2 !== null && t2.getMapObject() !== null) {
+                            tileSet.add(t2);
+                        }
+                    });
+                }
+            });
+
+            var tileArray = Array.from(tileSet);
+            var tileKeys = tileArray.map(function (t) {
+                return t.getKey();
+            });
+            var objKeys = tileArray.map(function (t) {
+                return t.getMapObject().getKey();
+            });
+            var ret = [];
+            ret.push(tileKeys.concat(objKeys));
+            return ret;
+        }
+    }], [{
+        key: 'name',
+        value: function name() {
+            return 'r';
+        }
+    }]);
+
+    return RedVessel;
+}(Vessel);
+
+var YellowVessel = function (_Vessel4) {
+    _inherits(YellowVessel, _Vessel4);
+
+    function YellowVessel() {
+        _classCallCheck(this, YellowVessel);
+
+        var _this15 = _possibleConstructorReturn(this, (YellowVessel.__proto__ || Object.getPrototypeOf(YellowVessel)).apply(this, arguments));
+
+        _this15.movement = 5;
+        return _this15;
+    }
+
+    _createClass(YellowVessel, [{
+        key: 'getShard',
+        value: function getShard() {
+            return new YellowShard();
+        }
+    }, {
+        key: 'attackedBy',
+        value: function attackedBy(vessel) {
+            if (vessel instanceof WhiteVessel) {
+                var obj = new WhiteVessel([this.player], this.tile, this.getKey());
+                return {
+                    key: this.getKey(),
+                    color: obj.getColor()
+                };
+            }
+        }
+    }], [{
+        key: 'name',
+        value: function name() {
+            return 'y';
+        }
+    }]);
+
+    return YellowVessel;
+}(Vessel);
+
+var NAME_MAP = {
+    bs: BlueShard,
+    rs: RedShard,
+    ys: YellowShard,
+    w: WhiteVessel,
+    b: BlueVessel,
+    r: RedVessel,
+    y: YellowVessel
+};
+
+var POLYGON_MAP = {
+    bs: 'tetrahedron',
+    rs: 'tetrahedron',
+    ys: 'tetrahedron',
+    w: 'icosahedron',
+    b: 'icosahedron',
+    r: 'icosahedron',
+    y: 'icosahedron'
+};
+
+var MapObjectFactory = {
+    map: {
+        bs: BlueShard,
+        rs: RedShard,
+        ys: YellowShard,
+        w: WhiteVessel,
+        b: BlueVessel,
+        r: RedVessel,
+        y: YellowVessel
+    },
+    create: function create(json) {
+        var cls = this.map[json.type];
+        return new cls(json);
+    },
+    getJSON: function getJSON(propString) {
+        var props = propString.split('-');
+        var json = {
+            type: props[0]
+        };
+        if (props.length > 1) {
+            json.player = props[1];
+        }
+        return json;
+    },
+    getPropString: function getPropString(json) {
+        var propString = json.x + '-' + json.y + '-' + json.type;
+        if (json.player !== undefined) {
+            propString += '-' + json.player;
+        }
+        return propString;
+    }
+};
+
+exports.MapObject = MapObject;
+exports.MapObjectFactory = MapObjectFactory;
 
 /***/ }),
 /* 4 */
@@ -558,12 +1153,228 @@ exports.PlainTile = PlainTile;
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
+exports.deserialize = exports.serialize = undefined;
+
+var _Tile = __webpack_require__(2);
+
+var _MapObject = __webpack_require__(3);
+
+var _Objective = __webpack_require__(5);
+
+var _Map = __webpack_require__(11);
+
+function serialize(map) {
+    var state = map.toJSON();
+    var mapString = '';
+    var tiles = state.tiles;
+    var mapObjects = [];
+    for (var i = 0; i < tiles.length; i++) {
+        var tileRow = tiles[i];
+        for (var j = 0; j < tileRow.length; j++) {
+            var tile = tileRow[j];
+            if (tile.mapObject !== undefined) {
+                mapObjects.push(tile.mapObject);
+            }
+            var tileString = _Tile.TileFactory.getPropString(tile);
+            mapString += tileString;
+            if (j !== tileRow.length - 1) {
+                mapString += ' ';
+            }
+        }
+        mapString += '\n';
+    }
+    mapString += '===\n';
+    for (var _i = 0; _i < mapObjects.length; _i++) {
+        var mapObject = mapObjects[_i];
+        var mapObjectString = _MapObject.MapObjectFactory.getPropString(mapObject);
+        mapString += mapObjectString;
+        mapString += '\n';
+    }
+    mapString += '===\n';
+    mapString += _Objective.ObjectiveFactory.getPropString(state.objective);
+    mapString += '\n';
+    mapString += state.turnPlayers.join('-');
+    mapString += '\n';
+    mapString += state.actions.move + "-" + state.actions.transfer + "-" + state.actions.attack;
+    return mapString;
+}
+
+function deserialize(mapString) {
+    var state = {};
+    var splitString = mapString.split('\n===\n');
+    var tileArrayString = splitString[0];
+    var mapObjectArrayString = splitString[1];
+    var settings = splitString[2].split('\n');
+
+    var tiles = [];
+    var tileRowStrings = tileArrayString.split('\n');
+    for (var y = 0; y < tileRowStrings.length; y++) {
+        var tileRow = [];
+        var tileStrings = tileRowStrings[y].split(' ');
+        for (var x = 0; x < tileStrings.length; x++) {
+            var json = _Tile.TileFactory.getJSON(tileStrings[x]);
+            json.x = x;
+            json.y = y;
+            tileRow.push(json);
+        }
+        tiles.push(tileRow);
+    }
+
+    var mapObjectStrings = mapObjectArrayString.split('\n');
+    for (var i = 0; i < mapObjectStrings.length; i++) {
+        var props = mapObjectStrings[i].split('-');
+        var _x = parseInt(props[0]);
+        var _y = parseInt(props[1]);
+        var _json = _MapObject.MapObjectFactory.getJSON(props.slice(2, props.length).join('-'));
+        _json.x = _x;
+        _json.y = _y;
+        tiles[_y][_x].mapObject = _json;
+    }
+
+    state.objective = _Objective.ObjectiveFactory.getJSON(settings[0]);
+    state.turnPlayers = settings[1].split('-');
+    var s = settings[2].split('-');
+    state.actions = {
+        move: parseInt(s[0]),
+        transfer: parseInt(s[1]),
+        attack: parseInt(s[2])
+    };
+    state.tiles = tiles;
+    return new _Map.Map(state);
+}
+
+exports.serialize = serialize;
+exports.deserialize = deserialize;
+
+/***/ }),
+/* 5 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
-var _MapScreen = __webpack_require__(11);
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
 
-var _DefaultMap = __webpack_require__(8);
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var Objective = function () {
+    function Objective() {
+        _classCallCheck(this, Objective);
+    }
+
+    _createClass(Objective, [{
+        key: 'serialize',
+        value: function serialize() {
+            return this.constructor.name();
+        }
+    }, {
+        key: 'toJSON',
+        value: function toJSON() {
+            return this.constructor.name();
+        }
+    }, {
+        key: 'check',
+        value: function check(map) {
+            throw Error('Unimplemented');
+        }
+    }, {
+        key: 'success',
+        value: function success(map) {
+            throw Error('Unimplemented');
+        }
+    }]);
+
+    return Objective;
+}();
+
+var Objective1 = function (_Objective) {
+    _inherits(Objective1, _Objective);
+
+    function Objective1() {
+        _classCallCheck(this, Objective1);
+
+        return _possibleConstructorReturn(this, (Objective1.__proto__ || Object.getPrototypeOf(Objective1)).apply(this, arguments));
+    }
+
+    _createClass(Objective1, [{
+        key: 'check',
+        value: function check(map) {
+            var players = map.getMapObjects().map(function (m) {
+                return m.getPlayer();
+            }).filter(function (p) {
+                return p !== null;
+            });
+            var player = players.filter(function (p) {
+                return p === '0';
+            });
+            var enemies = players.filter(function (p) {
+                return p !== '0';
+            });
+            return player.length === 0 || enemies.length === 0;
+        }
+    }, {
+        key: 'success',
+        value: function success(map) {
+            var players = map.getMapObjects().map(function (m) {
+                return m.getPlayer();
+            });
+            var enemies = players.filter(function (p) {
+                return p !== '0' && p !== null;
+            });
+            return enemies.length === 0;
+        }
+    }], [{
+        key: 'name',
+        value: function name() {
+            return 0;
+        }
+    }]);
+
+    return Objective1;
+}(Objective);
+
+var ObjectiveFactory = {
+    map: {
+        0: Objective1
+    },
+    create: function create(json) {
+        var cls = this.map[json];
+        return new cls();
+    },
+    getJSON: function getJSON(propString) {
+        return parseInt(propString);
+    },
+    getPropString: function getPropString(json) {
+        return '' + json;
+    }
+};
+
+exports.ObjectiveFactory = ObjectiveFactory;
+
+/***/ }),
+/* 6 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+    value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _MapScreen = __webpack_require__(12);
+
+var _DefaultMap = __webpack_require__(10);
 
 var _DefaultMap2 = _interopRequireDefault(_DefaultMap);
 
@@ -585,10 +1396,10 @@ var Game = function () {
         value: function start() {
             var _this = this;
 
+            window.dmap = _DefaultMap2.default;
             document.body.appendChild(this.canvas);
             this.screen = new _MapScreen.MapScreen(this.canvas, _DefaultMap2.default);
             this.screen.start();
-            window.dmap = _DefaultMap2.default;
 
             this.canvas.addEventListener("click", function (e) {
                 var rect = _this.canvas.getBoundingClientRect();
@@ -623,30 +1434,7 @@ var Game = function () {
                 e.preventDefault();
                 _this.screen.handleKeyUp(e.code);
             });
-
-            /*this.loadAssets().then(() => {
-                 this.canvas.addEventListener("click", (e) => {
-                    console.log(e);
-                });
-                 this.loadDemo();
-            });*/
-            dmap.doAction('move', 0, 0, 0, 1);
-            dmap.doAction('transfer', 0, 1, 1, 0);
-            dmap.doAction('end');
-            dmap.doAction('move', 2, 1, 1, 4);
-            dmap.doAction('end');
-            dmap.doAction('move', 0, 1, 0, 2);
-            dmap.doAction('end');
-            dmap.doAction('move', 1, 4, 0, 3);
         }
-
-        /*loadAssets() {
-            let loadingPromise = new Promise((resolve, reject) => {
-                resolve();
-            });
-            return loadingPromise
-        }*/
-
     }]);
 
     return Game;
@@ -655,7 +1443,7 @@ var Game = function () {
 exports.default = Game;
 
 /***/ }),
-/* 5 */
+/* 7 */
 /***/ (function(module, exports, __webpack_require__) {
 
 // style-loader: Adds some css to the DOM by adding a <style> tag
@@ -686,7 +1474,7 @@ if(false) {
 }
 
 /***/ }),
-/* 6 */
+/* 8 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -828,7 +1616,7 @@ exports.TransitionLinear = TransitionLinear;
 exports.TransitionQuadraticBezier = TransitionQuadraticBezier;
 
 /***/ }),
-/* 7 */
+/* 9 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1102,7 +1890,7 @@ var BSPTree = function () {
 exports.BSPTree = BSPTree;
 
 /***/ }),
-/* 8 */
+/* 10 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1112,22 +1900,16 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
-var _MapSerializer = __webpack_require__(2);
+var _MapSerializer = __webpack_require__(4);
 
-var exampleMapString = "p-1 p-2 p-3\np-2 p-3 p-2\np-3 p-1 p-1\np-1 e-1 p-1\np-1 p-1 p-1\n===\nw-0-0-0\nw-1-0-0\nw-2-0-1\nw-2-1-1\nbs-0-1\nrs-0-2\nys-0-3\n===\n0\n0-1\n1-1-1";
-/*
-var exampleMapString = 
-`p-1
-p-3
-===
-k-0-0-0-20`;*/
+var exampleMapString = "p-1 p-2 p-3\np-2 p-3 p-2\np-3 p-1 p-1\np-1 e-1 p-1\np-1 p-1 p-1\n===\n0-0-w-0\n1-0-w-0\n2-0-w-1\n0-1-bs\n2-1-w-1\n0-2-rs\n0-3-ys\n===\n0\n0-1\n1-1-1";
 
 var defaultMap = (0, _MapSerializer.deserialize)(exampleMapString);
 
 exports.default = defaultMap;
 
 /***/ }),
-/* 9 */
+/* 11 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1140,115 +1922,90 @@ exports.Map = undefined;
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
-var _MapSerializer = __webpack_require__(2);
+var _MapSerializer = __webpack_require__(4);
+
+var _Tile = __webpack_require__(2);
+
+var _Objective = __webpack_require__(5);
+
+var _MapObject = __webpack_require__(3);
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
 var Map = function () {
-    function Map(tiles, objective, turnPlayers, actions) {
+    function Map(state) {
         _classCallCheck(this, Map);
 
-        this.tiles = tiles;
-        this.objective = objective;
-        this.turnPlayers = turnPlayers;
-        this.turnPlayer = turnPlayers[0];
-        this.turnPlayerIdx = 0;
-        this.actions = actions;
+        this.tiles = [];
+        this.tileMap = {};
+        for (var y = 0; y < state.tiles.length; y++) {
+            var tileRow = [];
+            for (var x = 0; x < state.tiles[y].length; x++) {
+                var tile = _Tile.TileFactory.create(state.tiles[y][x]);
+                this.tileMap[tile.getKey()] = tile;
+                if (state.tiles[y][x].mapObject !== undefined) {
+                    var m = _MapObject.MapObjectFactory.create(state.tiles[y][x].mapObject);
+                    m.setTile(tile);
+                }
+                if (y > 0) {
+                    this.tiles[y - 1][x].link('down', tile);
+                    tile.link('top', this.tiles[y - 1][x]);
+                }
+                if (x > 0) {
+                    tileRow[x - 1].link('right', tile);
+                    tile.link('left', tileRow[x - 1]);
+                }
+                tileRow.push(tile);
+            }
+            this.tiles.push(tileRow);
+        }
+        this.objective = _Objective.ObjectiveFactory.create(state.objective);
+        this.turnPlayers = state.turnPlayers;
+        this.actions = state.actions;
         this.listeners = [];
+        this.cachedActions = null;
     }
 
     _createClass(Map, [{
-        key: 'getTiles',
-        value: function getTiles() {
-            return this.tiles;
-        }
-    }, {
-        key: 'getTilesFlattened',
-        value: function getTilesFlattened() {
-            var flattenedArray = [];
-            this.tiles.forEach(function (row) {
-                flattenedArray = flattenedArray.concat(row);
+        key: "toJSON",
+        value: function toJSON() {
+            var state = {};
+            state.tiles = this.tiles.map(function (tileRow) {
+                return tileRow.map(function (tile) {
+                    return tile.toJSON();
+                });
             });
-            return flattenedArray;
+            state.objective = this.objective.toJSON();
+            state.turnPlayers = this.turnPlayers;
+            state.actions = this.actions;
+            return state;
         }
     }, {
-        key: 'getMapObjects',
-        value: function getMapObjects() {
-            return this.getTilesFlattened().map(function (t) {
-                return t.getMapObject();
-            }).filter(function (m) {
-                return m !== null;
-            });
-        }
-    }, {
-        key: 'getMapObject',
-        value: function getMapObject(key) {
-            var objs = this.getMapObjects().filter(function (m) {
-                return m.getKey() === key;
-            });
-            if (objs.length !== 1) {
-                throw Error('Invalid Key');
-            }
-            return objs[0];
-        }
-    }, {
-        key: 'getObjective',
-        value: function getObjective() {
-            return this.objective;
-        }
-    }, {
-        key: 'serializeTurnPlayers',
-        value: function serializeTurnPlayers() {
-            var ret = '';
-            var idx = this.turnPlayerIdx;
-            for (var i = 0; i < this.turnPlayers.length; i++) {
-                ret += this.turnPlayers[idx];
-                if (i !== this.turnPlayers.length - 1) {
-                    ret += '-';
-                }
-                idx = (idx + 1) % this.turnPlayers.length;
-            }
-            return ret;
-        }
-    }, {
-        key: 'getTurnPlayer',
-        value: function getTurnPlayer() {
-            return this.turnPlayer;
-        }
-    }, {
-        key: 'serializeActions',
-        value: function serializeActions() {
-            return this.actions.move + '-' + this.actions.transfer + '-' + this.actions.attack;
-        }
-    }, {
-        key: 'isResolved',
-        value: function isResolved() {
-            return this.objective.check(this);
-        }
-    }, {
-        key: 'serialize',
-        value: function serialize() {
-            return (0, _MapSerializer.serialize)(this);
-        }
+        key: "doAction",
+        value: function doAction(action) {
+            var _this = this;
 
-        /*
-           Actions:
-            move/attack
-            transfer
-        */
-
-    }, {
-        key: 'doAction',
-        value: function doAction(name, sx, sy, dx, dy) {
+            //TODO: Validate actions is in available actions
+            var validActions = this.getActions();
+            if (validActions.indexOf(action) === -1) {
+                throw Error('Invalid Action');
+            }
+            var name = action.name;
             if (this.actions[name] > 0) {
-                var srcTile = this.tiles[sy][sx];
-                var obj = srcTile.getMapObject();
-                var dstTile = this.tiles[dy][dx];
-                var e = obj[name](dstTile, this.turnPlayer);
+                var src = this.tileMap[action.src].getMapObject();
+                var dst = void 0;
+                if (name === 'attack') {
+                    dst = action.dst.map(function (d) {
+                        return _this.tileMap[d];
+                    });
+                } else {
+                    dst = this.tileMap[action.dst];
+                }
+                src[name](dst);
                 this.actions[name] -= 1;
 
                 this.listeners.forEach(function (l) {
-                    return l.trigger(e);
+                    return l.trigger(action);
                 });
             } else if (name !== 'end') {
                 throw Error('Invalid action');
@@ -1256,8 +2013,7 @@ var Map = function () {
             if (name === 'end' || Object.values(this.actions).reduce(function (a, b) {
                 return a + b;
             }, 0) === 0) {
-                this.turnPlayerIdx = (this.turnPlayerIdx + 1) % this.turnPlayers.length;
-                this.turnPlayer = this.turnPlayers[this.turnPlayerIdx];
+                this.turnPlayers.push(this.turnPlayers.shift());
                 this.actions = {
                     move: 1,
                     transfer: 1,
@@ -1266,36 +2022,80 @@ var Map = function () {
             }
         }
     }, {
-        key: 'getMovablePaths',
-        value: function getMovablePaths(key) {
-            var obj = this.getMapObject(key);
-            return obj.getMoveablePaths();
+        key: "getActions",
+        value: function getActions() {
+            var _this2 = this;
+
+            if (this.cachedActions !== null) {
+                return this.cachedActions;
+            }
+            var actions = [{ name: 'end' }];
+            var objs = this.getMapObjects().filter(function (m) {
+                return m.getPlayer() === _this2.turnPlayers[0];
+            });
+            if (this.actions.move > 0) {
+                actions = objs.reduce(function (a, b) {
+                    return a.concat(b.getMoveActions());
+                }, actions);
+            }
+            if (this.actions.transfer > 0) {
+                actions = objs.reduce(function (a, b) {
+                    return a.concat(b.getTransferActions(objs));
+                }, actions);
+            }
+            if (this.actions.attack > 0) {
+                actions = objs.reduce(function (a, b) {
+                    return a.concat(b.getAttackActions());
+                }, actions);
+            }
+            this.cachedActions = actions;
+            return actions;
         }
     }, {
-        key: 'getAttackableTiles',
-        value: function getAttackableTiles(key) {
-            var obj = this.getMapObject(key);
-            return obj.getAttackableTiles();
-        }
-    }, {
-        key: 'addListener',
+        key: "addListener",
         value: function addListener(l) {
             this.listeners.push(l);
         }
-    }], [{
-        key: 'deserializeTurnPlayers',
-        value: function deserializeTurnPlayers(str) {
-            return str.split('-');
+    }, {
+        key: "getMapObjects",
+        value: function getMapObjects() {
+            var mapObjects = [];
+            this.tiles.forEach(function (tileRow) {
+                tileRow.forEach(function (tile) {
+                    var mapObject = tile.getMapObject();
+                    if (mapObject !== null) {
+                        mapObjects.push(mapObject);
+                    }
+                });
+            });
+            return mapObjects;
         }
     }, {
-        key: 'deserializeActions',
-        value: function deserializeActions(str) {
-            var s = str.split('-');
-            return {
-                move: parseInt(s[0]),
-                transfer: parseInt(s[1]),
-                attack: parseInt(s[2])
-            };
+        key: "getObjective",
+        value: function getObjective() {
+            return this.objective;
+        }
+    }, {
+        key: "getTurnPlayer",
+        value: function getTurnPlayer() {
+            return this.turnPlayer;
+        }
+    }, {
+        key: "isResolved",
+        value: function isResolved() {
+            return this.objective.check(this);
+        }
+    }, {
+        key: "serialize",
+        value: function serialize() {
+            return (0, _MapSerializer.serialize)(this);
+        }
+    }], [{
+        key: "transition",
+        value: function transition(state, action) {
+            var map = new Map(state);
+            map.doAction(action);
+            return map.toJSON();
         }
     }]);
 
@@ -1305,674 +2105,7 @@ var Map = function () {
 exports.Map = Map;
 
 /***/ }),
-/* 10 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", {
-    value: true
-});
-exports.MapObject = undefined;
-
-var _get = function get(object, property, receiver) { if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { return get(parent, property, receiver); } } else if ("value" in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } };
-
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-var _Color = __webpack_require__(1);
-
-var _Tile = __webpack_require__(3);
-
-function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-var COUNTER = 0;
-
-var MapObject = function () {
-    function MapObject(props) {
-        var tile = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
-        var id = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : null;
-
-        _classCallCheck(this, MapObject);
-
-        this.tile = tile;
-        if (tile !== null) {
-            tile.setMapObject(this);
-        }
-        if (id === null) {
-            this.id = 'mapObject-' + COUNTER;
-            COUNTER += 1;
-        } else {
-            this.id = id;
-        }
-    }
-
-    _createClass(MapObject, [{
-        key: 'getTile',
-        value: function getTile() {
-            return this.tile;
-        }
-    }, {
-        key: 'getX',
-        value: function getX() {
-            return this.tile.getX();
-        }
-    }, {
-        key: 'getY',
-        value: function getY() {
-            return this.tile.getY();
-        }
-    }, {
-        key: 'getH',
-        value: function getH() {
-            return this.tile.getH();
-        }
-    }, {
-        key: 'serialize',
-        value: function serialize() {
-            return this.constructor.name() + '-' + this.getX() + '-' + this.getY();
-        }
-    }, {
-        key: 'setReferences',
-        value: function setReferences(tiles, mapObjects) {
-            this.tile = tiles[this.y][this.x];
-            this.tile.setMapObject(this);
-        }
-    }, {
-        key: 'getActions',
-        value: function getActions() {
-            return [];
-        }
-    }, {
-        key: 'getPlayer',
-        value: function getPlayer() {
-            return null;
-        }
-    }, {
-        key: 'getPolygon',
-        value: function getPolygon() {
-            return POLYGON_MAP[this.constructor.name()];
-        }
-    }, {
-        key: 'getKey',
-        value: function getKey() {
-            return this.id;
-        }
-    }], [{
-        key: 'deserialize',
-        value: function deserialize(props, tiles) {
-            var p = props.split('-');
-            var cls = NAME_MAP[p[0]];
-            var x = parseInt(p[1]);
-            var y = parseInt(p[2]);
-            return new cls(p.slice(3, p.length), tiles[y][x]);
-        }
-    }]);
-
-    return MapObject;
-}();
-
-var Shard = function (_MapObject) {
-    _inherits(Shard, _MapObject);
-
-    function Shard() {
-        _classCallCheck(this, Shard);
-
-        return _possibleConstructorReturn(this, (Shard.__proto__ || Object.getPrototypeOf(Shard)).apply(this, arguments));
-    }
-
-    _createClass(Shard, [{
-        key: 'attackedBy',
-        value: function attackedBy(vessel) {
-            this.tile.unsetMapObject();
-            return {
-                name: 'attack',
-                srcKey: vessel.getKey(),
-                dstKey: this.getKey(),
-                dstColor: null
-            };
-        }
-    }]);
-
-    return Shard;
-}(MapObject);
-
-var BlueShard = function (_Shard) {
-    _inherits(BlueShard, _Shard);
-
-    function BlueShard() {
-        _classCallCheck(this, BlueShard);
-
-        return _possibleConstructorReturn(this, (BlueShard.__proto__ || Object.getPrototypeOf(BlueShard)).apply(this, arguments));
-    }
-
-    _createClass(BlueShard, [{
-        key: 'getColor',
-        value: function getColor() {
-            return new _Color.Color(0, 0, 255, 1);
-        }
-    }, {
-        key: 'getHoverColor',
-        value: function getHoverColor() {
-            return new _Color.Color(0, 0, 255, 1);
-        }
-    }], [{
-        key: 'name',
-        value: function name() {
-            return 'bs';
-        }
-    }]);
-
-    return BlueShard;
-}(Shard);
-
-var RedShard = function (_Shard2) {
-    _inherits(RedShard, _Shard2);
-
-    function RedShard() {
-        _classCallCheck(this, RedShard);
-
-        return _possibleConstructorReturn(this, (RedShard.__proto__ || Object.getPrototypeOf(RedShard)).apply(this, arguments));
-    }
-
-    _createClass(RedShard, [{
-        key: 'getColor',
-        value: function getColor() {
-            return new _Color.Color(255, 0, 0, 1);
-        }
-    }, {
-        key: 'getHoverColor',
-        value: function getHoverColor() {
-            return new _Color.Color(255, 0, 0, 1);
-        }
-    }], [{
-        key: 'name',
-        value: function name() {
-            return 'rs';
-        }
-    }]);
-
-    return RedShard;
-}(Shard);
-
-var YellowShard = function (_Shard3) {
-    _inherits(YellowShard, _Shard3);
-
-    function YellowShard() {
-        _classCallCheck(this, YellowShard);
-
-        return _possibleConstructorReturn(this, (YellowShard.__proto__ || Object.getPrototypeOf(YellowShard)).apply(this, arguments));
-    }
-
-    _createClass(YellowShard, [{
-        key: 'getColor',
-        value: function getColor() {
-            return new _Color.Color(255, 255, 0, 1);
-        }
-    }, {
-        key: 'getHoverColor',
-        value: function getHoverColor() {
-            return new _Color.Color(255, 255, 0, 1);
-        }
-    }], [{
-        key: 'name',
-        value: function name() {
-            return 'ys';
-        }
-    }]);
-
-    return YellowShard;
-}(Shard);
-
-var Vessel = function (_MapObject2) {
-    _inherits(Vessel, _MapObject2);
-
-    function Vessel(props, tile) {
-        _classCallCheck(this, Vessel);
-
-        var _this5 = _possibleConstructorReturn(this, (Vessel.__proto__ || Object.getPrototypeOf(Vessel)).apply(this, arguments));
-
-        _this5.player = props[0];
-        _this5.movement = 4;
-        _this5.range = 1;
-        return _this5;
-    }
-
-    _createClass(Vessel, [{
-        key: 'serialize',
-        value: function serialize() {
-            return _get(Vessel.prototype.__proto__ || Object.getPrototypeOf(Vessel.prototype), 'serialize', this).call(this) + '-' + this.player;
-        }
-    }, {
-        key: 'transfer',
-        value: function transfer(tile, player) {
-            if (player !== this.player) {
-                throw Error('Invalid action: wrong player');
-            }
-            var mO = tile.getMapObject();
-            if (mO !== null && mO.getPlayer() === this.player && this.getShard() !== null) {
-                var cls = mO.consumeShard(this.getShard());
-                var newObj = new cls([mO.getPlayer()], tile, mO.getKey());
-                var origObj = new WhiteVessel([this.player], this.tile, this.getKey());
-                return {
-                    name: 'transfer',
-                    srcKey: this.getKey(),
-                    dstKey: mO.getKey(),
-                    srcColor: origObj.getColor(),
-                    srcHoverColor: origObj.getHoverColor(),
-                    dstColor: newObj.getColor(),
-                    dstHoverColor: newObj.getHoverColor()
-                };
-            } else {
-                throw Error('Invalid transfer tile');
-            }
-        }
-    }, {
-        key: 'attack',
-        value: function attack(tile, player) {
-            if (player !== this.player) {
-                throw Error('Invalid action: wrong player');
-            }
-
-            var targetTiles = this.getAttackableTiles();
-            var key = tile.getKey();
-
-            if (targetTiles.indexOf(key) === -1) {
-                throw Error('Invalid action: cannot reach tile');
-            }
-
-            var targets = this.getAttackedObjects(tile);
-
-            if (targets.length === 0) {
-                throw Error('Invalid attack tile');
-            } else {
-                targets.forEach(function (target) {
-                    return t;
-                });
-            }
-        }
-    }, {
-        key: 'move',
-        value: function move(tile, player) {
-            if (player !== this.player) {
-                throw Error('Invalid action: wrong player');
-            }
-
-            var paths = this.getMoveablePaths();
-            var key = tile.getKey();
-
-            if (paths[key] === undefined) {
-                throw Error('Invalid action: cannot reach tile');
-            }
-
-            var mO = tile.getMapObject();
-            if (mO === null) {
-                this.tile.unsetMapObject();
-                tile.setMapObject(this);
-                this.tile = tile;
-                return {
-                    name: 'move',
-                    path: paths[key],
-                    objKey: this.getKey()
-                };
-            } else if (mO instanceof Shard) {
-                var cls = this.consumeShard(mO);
-                var newObj = new cls([this.player], tile, this.getKey());
-                this.tile.unsetMapObject();
-                return {
-                    name: 'move',
-                    path: paths[key],
-                    color: newObj.getColor(),
-                    hoverColor: newObj.getHoverColor(),
-                    objKey: this.getKey(),
-                    shardKey: mO.getKey()
-                };
-            }
-            throw Error('Invalid move tile');
-        }
-    }, {
-        key: 'getPlayer',
-        value: function getPlayer() {
-            return this.player;
-        }
-    }, {
-        key: 'getShard',
-        value: function getShard() {
-            return null;
-        }
-    }, {
-        key: 'getAttackableTiles',
-        value: function getAttackableTiles() {
-            var _this6 = this;
-
-            var dirs = ['left', 'right', 'top', 'down'];
-            var queue = new Set([this.tile]);
-            var nextQueue = void 0;
-            var keySet = new Set();
-            for (var i = 0; i < this.range; i++) {
-                nextQueue = new Set();
-                queue.forEach(function (tile) {
-                    var key = tile.getKey();
-                    dirs.forEach(function (dir) {
-                        var t = tile[dir];
-                        if (t !== null && t !== _this6.tile) {
-                            var tkey = t.getKey();
-                            nextQueue.add(t);
-                            keySet.add(tkey);
-                        }
-                    });
-                });
-                queue = nextQueue;
-            }
-            return keySet;
-        }
-    }, {
-        key: 'getAttackedObjects',
-        value: function getAttackedObjects(tile) {
-            var mO = tile.getMapObject();
-            if (mO === null) {
-                return [];
-            } else {
-                return [mO];
-            }
-        }
-    }, {
-        key: 'getMoveablePaths',
-        value: function getMoveablePaths() {
-            var _this7 = this;
-
-            var dirs = ['left', 'right', 'top', 'down'];
-            var queue = new Set([this.tile]);
-            var nextQueue = void 0;
-            var paths = {};
-            var startKey = this.tile.getKey();
-            paths[startKey] = [startKey];
-            var keysToDelete = [startKey];
-            for (var i = 0; i < this.movement; i++) {
-                nextQueue = new Set();
-                queue.forEach(function (tile) {
-                    var key = tile.getKey();
-                    dirs.forEach(function (dir) {
-                        var t = tile[dir];
-                        if (t !== null && t !== _this7.tile) {
-                            if (_this7.canMoveThrough(t) && Math.abs(t.getH() - tile.getH()) < 2) {
-                                var tkey = t.getKey();
-                                if (paths[tkey] === undefined) {
-                                    nextQueue.add(t);
-                                    paths[tkey] = paths[key].concat(tkey);
-                                    if (!_this7.canMoveTo(t)) {
-                                        keysToDelete.push(tkey);
-                                    }
-                                }
-                            }
-                        }
-                    });
-                });
-                queue = nextQueue;
-            }
-            keysToDelete.forEach(function (key) {
-                return delete paths[key];
-            });
-            return paths;
-        }
-    }, {
-        key: 'canMoveThrough',
-        value: function canMoveThrough(tile) {
-            if (tile instanceof _Tile.EmptyTile) {
-                return false;
-            }
-            var mO = tile.getMapObject();
-            if (mO === null || mO instanceof Shard || mO.getPlayer() === this.player) {
-                return true;
-            }
-            return false;
-        }
-    }, {
-        key: 'canMoveTo',
-        value: function canMoveTo(tile) {
-            if (tile instanceof _Tile.EmptyTile) {
-                return false;
-            }
-            var mO = tile.getMapObject();
-            if (mO === null || mO instanceof Shard) {
-                return true;
-            }
-            return false;
-        }
-    }, {
-        key: 'attackedBy',
-        value: function attackedBy(vessel) {
-            this.tile.unsetMapObject();
-            return {
-                name: 'attack',
-                srcKey: vessel.getKey(),
-                dstKey: this.getKey(),
-                dstColor: null
-            };
-        }
-    }]);
-
-    return Vessel;
-}(MapObject);
-
-var WhiteVessel = function (_Vessel) {
-    _inherits(WhiteVessel, _Vessel);
-
-    function WhiteVessel() {
-        _classCallCheck(this, WhiteVessel);
-
-        return _possibleConstructorReturn(this, (WhiteVessel.__proto__ || Object.getPrototypeOf(WhiteVessel)).apply(this, arguments));
-    }
-
-    _createClass(WhiteVessel, [{
-        key: 'consumeShard',
-        value: function consumeShard(shard) {
-            if (shard instanceof BlueShard) {
-                return BlueVessel;
-            } else if (shard instanceof RedShard) {
-                return RedVessel;
-            } else if (shard instanceof YellowShard) {
-                return YellowVessel;
-            }
-        }
-    }, {
-        key: 'getColor',
-        value: function getColor() {
-            return new _Color.Color(255, 255, 255, 1);
-        }
-    }, {
-        key: 'getHoverColor',
-        value: function getHoverColor() {
-            return new _Color.Color(230, 230, 230, 1);
-        }
-    }], [{
-        key: 'name',
-        value: function name() {
-            return 'w';
-        }
-    }]);
-
-    return WhiteVessel;
-}(Vessel);
-
-var BlueVessel = function (_Vessel2) {
-    _inherits(BlueVessel, _Vessel2);
-
-    function BlueVessel() {
-        _classCallCheck(this, BlueVessel);
-
-        var _this9 = _possibleConstructorReturn(this, (BlueVessel.__proto__ || Object.getPrototypeOf(BlueVessel)).apply(this, arguments));
-
-        _this9.range = 2;
-        return _this9;
-    }
-
-    _createClass(BlueVessel, [{
-        key: 'getShard',
-        value: function getShard() {
-            return new BlueShard();
-        }
-    }, {
-        key: 'getColor',
-        value: function getColor() {
-            return new _Color.Color(0, 0, 255, 1);
-        }
-    }, {
-        key: 'getHoverColor',
-        value: function getHoverColor() {
-            return new _Color.Color(0, 0, 255, 1);
-        }
-    }, {
-        key: 'attackedBy',
-        value: function attackedBy(vessel) {
-            if (vessel instanceof WhiteVessel) {
-                var obj = new WhiteVessel([this.player], this.tile, this.getKey());
-                return {
-                    name: 'attack',
-                    srcKey: vessel.getKey(),
-                    dstKey: this.getKey(),
-                    dstColor: obj.getColor(),
-                    dstHoverColor: obj.getHoverColor()
-                };
-            }
-        }
-    }], [{
-        key: 'name',
-        value: function name() {
-            return 'b';
-        }
-    }]);
-
-    return BlueVessel;
-}(Vessel);
-
-var RedVessel = function (_Vessel3) {
-    _inherits(RedVessel, _Vessel3);
-
-    function RedVessel() {
-        _classCallCheck(this, RedVessel);
-
-        return _possibleConstructorReturn(this, (RedVessel.__proto__ || Object.getPrototypeOf(RedVessel)).apply(this, arguments));
-    }
-
-    _createClass(RedVessel, [{
-        key: 'getShard',
-        value: function getShard() {
-            return new RedShard();
-        }
-    }, {
-        key: 'getColor',
-        value: function getColor() {
-            return new _Color.Color(255, 0, 0, 1);
-        }
-    }, {
-        key: 'getHoverColor',
-        value: function getHoverColor() {
-            return new _Color.Color(255, 0, 0, 1);
-        }
-    }, {
-        key: 'attackedBy',
-        value: function attackedBy(vessel) {
-            if (vessel instanceof WhiteVessel) {
-                var obj = new WhiteVessel([this.player], this.tile, this.getKey());
-                return {
-                    name: 'attack',
-                    srcKey: vessel.getKey(),
-                    dstKey: this.getKey(),
-                    dstColor: obj.getColor(),
-                    dstHoverColor: obj.getHoverColor()
-                };
-            }
-        }
-    }], [{
-        key: 'name',
-        value: function name() {
-            return 'r';
-        }
-    }]);
-
-    return RedVessel;
-}(Vessel);
-
-var YellowVessel = function (_Vessel4) {
-    _inherits(YellowVessel, _Vessel4);
-
-    function YellowVessel() {
-        _classCallCheck(this, YellowVessel);
-
-        var _this11 = _possibleConstructorReturn(this, (YellowVessel.__proto__ || Object.getPrototypeOf(YellowVessel)).apply(this, arguments));
-
-        _this11.movement = 5;
-        return _this11;
-    }
-
-    _createClass(YellowVessel, [{
-        key: 'getShard',
-        value: function getShard() {
-            return new YellowShard();
-        }
-    }, {
-        key: 'getColor',
-        value: function getColor() {
-            return new _Color.Color(255, 255, 0, 1);
-        }
-    }, {
-        key: 'getHoverColor',
-        value: function getHoverColor() {
-            return new _Color.Color(255, 255, 0, 1);
-        }
-    }, {
-        key: 'attackedBy',
-        value: function attackedBy(vessel) {
-            if (vessel instanceof WhiteVessel) {
-                var obj = new WhiteVessel([this.player], this.tile, this.getKey());
-                return {
-                    name: 'attack',
-                    srcKey: vessel.getKey(),
-                    dstKey: this.getKey(),
-                    dstColor: obj.getColor(),
-                    dstHoverColor: obj.getHoverColor()
-                };
-            }
-        }
-    }], [{
-        key: 'name',
-        value: function name() {
-            return 'y';
-        }
-    }]);
-
-    return YellowVessel;
-}(Vessel);
-
-var NAME_MAP = {
-    bs: BlueShard,
-    rs: RedShard,
-    ys: YellowShard,
-    w: WhiteVessel,
-    b: BlueVessel,
-    r: RedVessel,
-    y: YellowVessel
-};
-
-var POLYGON_MAP = {
-    bs: 'tetrahedron',
-    rs: 'tetrahedron',
-    ys: 'tetrahedron',
-    w: 'icosahedron',
-    b: 'icosahedron',
-    r: 'icosahedron',
-    y: 'icosahedron'
-};
-
-exports.MapObject = MapObject;
-
-/***/ }),
-/* 11 */
+/* 12 */
 /***/ (function(module, exports, __webpack_require__) {
 
 "use strict";
@@ -1987,7 +2120,7 @@ var _createClass = function () { function defineProperties(target, props) { for 
 
 var _Vector = __webpack_require__(0);
 
-var _Animation = __webpack_require__(6);
+var _Animation = __webpack_require__(8);
 
 var _Viewport = __webpack_require__(15);
 
@@ -1995,53 +2128,102 @@ var _Polygon = __webpack_require__(13);
 
 var _PolygonRenderer = __webpack_require__(14);
 
+var _Color = __webpack_require__(1);
+
+function _toConsumableArray(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } else { return Array.from(arr); } }
+
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-var TLEN = 100;
+var DEFAULT_COLOR = new _Color.Color(242, 242, 242, 1);
+var NEXT_VALID_COLOR = new _Color.Color(0, 255, 255, 1);
+var VALID_COLOR = new _Color.Color(0, 255, 204, 1);
+var VALID_HOVER_COLOR = new _Color.Color(102, 255, 204, 1);
+var SELECTED_COLOR = new _Color.Color(0, 204, 153, 1);
+var OVERLAY_DEFAULT_COLOR = new _Color.Color(230, 230, 230, 1);
+var OVERLAY_DISABLE_COLOR = new _Color.Color(153, 153, 153, 1);
+var OVERLAY_HOVER_COLOR = new _Color.Color(242, 242, 242, 1);
 
 var MapScreen = function () {
     function MapScreen(canvas, map) {
+        var _this = this;
+
         _classCallCheck(this, MapScreen);
 
         this.canvas = canvas;
         this.map = map;
         this.viewport = new _Viewport.Viewport(new _Vector.Point(0, 0, 500), new _Vector.Point(this.canvas.width, 0, 500), new _Vector.Point(0, this.canvas.height, 500), new _Vector.Point(this.canvas.width, this.canvas.height, 500), 500);
         this.pressed = {};
-
-        this.staticPolygons = {};
         this.dynamicPolygons = {};
         this.animations = [];
 
-        this.map.getTilesFlattened().filter(function (t) {
-            return t.constructor.name() !== 'e';
-        }).reduce(function (polygons, tile) {
-            var polygon = _Polygon.Polygon.createBox(tile.getX() * TLEN, tile.getY() * TLEN, 0, TLEN, TLEN, tile.getH() * TLEN);
-            polygons[tile.getKey()] = polygon;
-            return polygons;
-        }, this.staticPolygons);
+        var staticPolygons = [];
+        this.polygons = {};
+        this.keyMap = {};
 
-        this.map.getMapObjects().reduce(function (polygons, mapObject) {
-            var polygon = void 0;
-            if (mapObject.getPolygon() === 'icosahedron') {
-                polygon = _Polygon.Polygon.createIcosahedron(mapObject.getX() * TLEN + TLEN / 2, mapObject.getY() * TLEN + TLEN / 2, mapObject.getH() * TLEN + TLEN / 2, 20);
-            } else if (mapObject.getPolygon() === 'tetrahedron') {
-                polygon = _Polygon.Polygon.createTetrahedron(mapObject.getX() * TLEN + TLEN / 2, mapObject.getY() * TLEN + TLEN / 2, mapObject.getH() * TLEN + TLEN / 2, 20);
-            }
-            polygon.setColor(mapObject.getColor(), mapObject.getHoverColor());
-            polygons[mapObject.getKey()] = polygon;
-            return polygons;
-        }, this.dynamicPolygons);
+        var state = this.map.toJSON();
+        state.tiles.forEach(function (tileRow) {
+            tileRow.forEach(function (tile) {
+                var _PolygonFactory$creat = _Polygon.PolygonFactory.create(tile),
+                    tilePolygon = _PolygonFactory$creat.tilePolygon,
+                    mapObjectPolygon = _PolygonFactory$creat.mapObjectPolygon;
 
-        this.overlays = {
-            'move': new _Polygon.Overlay(50, 50, 150, 50, 'move'),
-            'attack': new _Polygon.Overlay(50, 100, 150, 50, 'attack'),
-            'transfer': new _Polygon.Overlay(50, 150, 150, 50, 'transfer'),
-            'end': new _Polygon.Overlay(50, 200, 150, 50, 'end')
+                if (tilePolygon !== null) {
+                    staticPolygons.push(tilePolygon);
+                    _this.polygons[tilePolygon.getKey()] = tilePolygon;
+                    _this.keyMap[tilePolygon.getKey()] = tile.key;
+                }
+                if (mapObjectPolygon !== null) {
+                    _this.dynamicPolygons[mapObjectPolygon.getKey()] = mapObjectPolygon;
+                    _this.polygons[mapObjectPolygon.getKey()] = mapObjectPolygon;
+                    _this.keyMap[mapObjectPolygon.getKey()] = tile.key;
+                }
+            });
+        });
+
+        this.state = {
+            mode: 'menu',
+            hoverKey: null,
+            hoverMainKeyMap: {},
+            hoverSecondaryKeyMap: {}
         };
 
-        this.r = new _Vector.Vector(0, 0, 1);
+        this.overlays = {
+            move: new _Polygon.Overlay(50, 50, 150, 50, 'move'),
+            attack: new _Polygon.Overlay(50, 100, 150, 50, 'attack'),
+            transfer: new _Polygon.Overlay(50, 150, 150, 50, 'transfer'),
+            end: new _Polygon.Overlay(50, 200, 150, 50, 'end')
+        };
 
-        this.renderer = new _PolygonRenderer.PolygonRenderer(this.canvas, Object.values(this.staticPolygons), function (a, b) {
+        Object.values(this.overlays).forEach(function (o) {
+            return _this.polygons[o.getKey()] = o;
+        });
+
+        var actions = this.map.getActions();
+        actions.map(function (a) {
+            var overlay = _this.overlays[a.name];
+            var key = overlay.getKey();
+            _this.state.hoverMainKeyMap[key] = [key];
+            if (a.src !== undefined) {
+                var srcList = _this.state.hoverSecondaryKeyMap[key] || [];
+                var src = Object.keys(_this.keyMap).filter(function (k) {
+                    return _this.keyMap[k] === a.src;
+                });
+                _this.state.hoverSecondaryKeyMap[key] = Array.from(new Set(srcList.concat(src)));
+            }
+        });
+
+        /*this.state = {
+            action: 'menu',
+            validKeyGroups: this.map.getActions(),
+            selectedKeyGroup: [],
+            prevKeyGroup: [],
+        };*/
+
+        //this.postStateUpdate();
+
+        //this.r = new Vector(0, 0, 1);
+
+        this.renderer = new _PolygonRenderer.PolygonRenderer(this.canvas, staticPolygons, function (a, b) {
             return a.getNormal().getZ() - b.getNormal().getZ();
         });
         map.addListener(this);
@@ -2055,25 +2237,28 @@ var MapScreen = function () {
     }, {
         key: "renderLoop",
         value: function renderLoop() {
-            var _this = this;
+            var _this2 = this;
 
             this.viewport.updatePosition();
-            this.r.rotate(new _Vector.Vector(1, 0, 0), 1 * Math.PI / 180);
-            Object.values(this.dynamicPolygons).forEach(function (p) {
-                p.rotate(_this.r, 1 * Math.PI / 180);
-            });
+            var overlays = this.getOverlays();
+            this.renderer.render(this.viewport, Object.values(this.dynamicPolygons), overlays);
+            this.updateHover();
+            /*this.r.rotate(new Vector(1, 0, 0), 1 * Math.PI / 180);
+            Object.values(this.dynamicPolygons).forEach(p => {
+                p.rotate(this.r, 1 * Math.PI / 180);
+            });*/
 
-            var polygonsToDestroy = [];
+            /*const polygonsToDestroy = [];
             if (this.animations.length > 0) {
-                var animation = this.animations[0];
-                var finishedAnimations = [];
-                for (var key in animation) {
-                    var a = animation[key];
-                    var p = this.dynamicPolygons[key];
+                const animation = this.animations[0];
+                const finishedAnimations = [];
+                for (let key in animation) {
+                    const a = animation[key];
+                    const p = this.dynamicPolygons[key];
                     if (!a.isInitialized()) {
                         a.initialize(p.getState());
                     }
-                    var state = a.getNextState();
+                    const state = a.getNextState();
                     p.applyState(state);
                     if (a.finished()) {
                         finishedAnimations.push(key);
@@ -2082,23 +2267,118 @@ var MapScreen = function () {
                         }
                     }
                 }
-                finishedAnimations.forEach(function (key) {
-                    return delete animation[key];
-                });
+                finishedAnimations.forEach(key => delete animation[key]);
                 if (Object.keys(animation).length === 0) {
                     this.animations.splice(0, 1);
                 }
             }
-
-            this.renderer.render(this.viewport, Object.values(this.dynamicPolygons), Object.values(this.overlays));
-
-            polygonsToDestroy.forEach(function (key) {
-                return delete _this.dynamicPolygons[key];
+             const overlays = this.state.action === 'menu' ? Object.values(this.overlays) : [];
+             const nextValidKeyGroups = this.getNextValidKeyGroups();
+            this.state.selectedKeyGroup.forEach(key => {
+                if (this.staticPolygons[key] !== undefined) {
+                    this.staticPolygons[key].setColor(VALID_HOVER_COLOR);
+                }
+                if (this.overlays[key] !== undefined) {
+                    this.overlays[key].setColor(OVERLAY_HOVER_COLOR);
+                }
             });
+            nextValidKeyGroups.forEach(keyGroup => {
+                keyGroup.forEach(key => {
+                    if (this.staticPolygons[key] !== undefined) {
+                        this.staticPolygons[key].setColor(NEXT_VALID_COLOR);
+                    }
+                });
+            });     
+             this.renderer.render(this.viewport, Object.values(this.dynamicPolygons), overlays);
+             nextValidKeyGroups.forEach(keyGroup => {
+                keyGroup.forEach(key => {
+                    if (this.staticPolygons[key] !== undefined) {
+                        if (this.getKeyGroup(key).length > 0) {
+                            this.staticPolygons[key].setColor(VALID_COLOR);
+                        } else {
+                            this.staticPolygons[key].setColor(DEFAULT_COLOR);
+                        }
+                    }
+                });
+            });
+            this.state.selectedKeyGroup.forEach(key => {
+                if (this.staticPolygons[key] !== undefined) {
+                    this.staticPolygons[key].setColor(VALID_COLOR);
+                }
+                if (this.overlays[key] !== undefined) {
+                    this.overlays[key].setColor(OVERLAY_DEFAULT_COLOR);
+                }
+            });
+             this.state.selectedKeyGroup = this.getKeyGroup(this.getKey(this.renderer.getHoveredObj()));
+             polygonsToDestroy.forEach(key => delete this.dynamicPolygons[key]);
+            */
 
             window.requestAnimationFrame(function (step) {
-                _this.renderLoop();
+                _this2.renderLoop();
             });
+        }
+    }, {
+        key: "getOverlays",
+        value: function getOverlays() {
+            return Object.values(this.overlays);
+        }
+
+        /*
+            Three hover states:
+                None - no hover highlight
+                Secondary - secondary hover highlight
+                Main - main hover highlight
+         */
+
+    }, {
+        key: "updateHover",
+        value: function updateHover() {
+            this.cancelHover();
+            var obj = this.renderer.getHoveredObj();
+            this.state.hoverKey = obj === null ? null : obj.getKey();
+            this.setHover();
+        }
+    }, {
+        key: "cancelHover",
+        value: function cancelHover() {
+            var _this3 = this;
+
+            var key = this.state.hoverKey;
+            if (key !== null) {
+                var hoverMainKeys = this.state.hoverMainKeyMap[key];
+                var hoverSecondaryKeys = this.state.hoverSecondaryKeyMap[key];
+                if (hoverMainKeys !== undefined) {
+                    hoverMainKeys.forEach(function (k) {
+                        _this3.polygons[k].setHover(_Polygon.HOVER_NONE);
+                    });
+                }
+                if (hoverSecondaryKeys !== undefined) {
+                    hoverSecondaryKeys.forEach(function (k) {
+                        _this3.polygons[k].setHover(_Polygon.HOVER_NONE);
+                    });
+                }
+            }
+        }
+    }, {
+        key: "setHover",
+        value: function setHover() {
+            var _this4 = this;
+
+            var key = this.state.hoverKey;
+            if (key !== null) {
+                var hoverMainKeys = this.state.hoverMainKeyMap[key];
+                var hoverSecondaryKeys = this.state.hoverSecondaryKeyMap[key];
+                if (hoverMainKeys !== undefined) {
+                    hoverMainKeys.forEach(function (k) {
+                        _this4.polygons[k].setHover(_Polygon.HOVER_MAIN);
+                    });
+                }
+                if (hoverSecondaryKeys !== undefined) {
+                    hoverSecondaryKeys.forEach(function (k) {
+                        _this4.polygons[k].setHover(_Polygon.HOVER_SECONDARY);
+                    });
+                }
+            }
         }
     }, {
         key: "trigger",
@@ -2130,13 +2410,9 @@ var MapScreen = function () {
                         transitions.r = new _Animation.TransitionLinear(null, e.color.getR());
                         transitions.g = new _Animation.TransitionLinear(null, e.color.getG());
                         transitions.b = new _Animation.TransitionLinear(null, e.color.getB());
-                        transitions.hr = new _Animation.TransitionLinear(null, e.hoverColor.getR());
-                        transitions.hg = new _Animation.TransitionLinear(null, e.hoverColor.getG());
-                        transitions.hb = new _Animation.TransitionLinear(null, e.hoverColor.getB());
 
                         var shardTransitions = {};
                         shardTransitions.a = new _Animation.TransitionLinear(null, 0);
-                        shardTransitions.ha = new _Animation.TransitionLinear(null, 0);
                         shardTransitions.sa = new _Animation.TransitionLinear(null, 0);
                         var shardAnimation = new _Animation.Animation(shardTransitions, 30, true);
                         animation[e.shardKey] = shardAnimation;
@@ -2157,39 +2433,31 @@ var MapScreen = function () {
                 srcTransitions.r = new _Animation.TransitionLinear(null, e.srcColor.getR());
                 srcTransitions.g = new _Animation.TransitionLinear(null, e.srcColor.getG());
                 srcTransitions.b = new _Animation.TransitionLinear(null, e.srcColor.getB());
-                srcTransitions.hr = new _Animation.TransitionLinear(null, e.srcHoverColor.getR());
-                srcTransitions.hg = new _Animation.TransitionLinear(null, e.srcHoverColor.getG());
-                srcTransitions.hb = new _Animation.TransitionLinear(null, e.srcHoverColor.getB());
                 _animation[e.srcKey] = new _Animation.Animation(srcTransitions, 30);
 
                 var dstTransitions = {};
                 dstTransitions.r = new _Animation.TransitionLinear(null, e.dstColor.getR());
                 dstTransitions.g = new _Animation.TransitionLinear(null, e.dstColor.getG());
                 dstTransitions.b = new _Animation.TransitionLinear(null, e.dstColor.getB());
-                dstTransitions.hr = new _Animation.TransitionLinear(null, e.dstHoverColor.getR());
-                dstTransitions.hg = new _Animation.TransitionLinear(null, e.dstHoverColor.getG());
-                dstTransitions.hb = new _Animation.TransitionLinear(null, e.dstHoverColor.getB());
                 _animation[e.dstKey] = new _Animation.Animation(dstTransitions, 30);
 
                 this.animations.push(_animation);
             } else if (e.name === 'attack') {
                 var _animation2 = {};
 
-                var _dstTransitions = {};
-                if (e.dstColor === null) {
-                    _dstTransitions.a = new _Animation.TransitionLinear(null, 0);
-                    _dstTransitions.ha = new _Animation.TransitionLinear(null, 0);
-                    _dstTransitions.sa = new _Animation.TransitionLinear(null, 0);
-                    _animation2[e.dstKey] = new _Animation.Animation(_dstTransitions, 30, true);
-                } else {
-                    _dstTransitions.r = new _Animation.TransitionLinear(null, e.dstColor.getR());
-                    _dstTransitions.g = new _Animation.TransitionLinear(null, e.dstColor.getG());
-                    _dstTransitions.b = new _Animation.TransitionLinear(null, e.dstColor.getB());
-                    _dstTransitions.hr = new _Animation.TransitionLinear(null, e.dstHoverColor.getR());
-                    _dstTransitions.hg = new _Animation.TransitionLinear(null, e.dstHoverColor.getG());
-                    _dstTransitions.hb = new _Animation.TransitionLinear(null, e.dstHoverColor.getB());
-                    _animation2[e.dstKey] = new _Animation.Animation(_dstTransitions, 30);
-                }
+                e.dst.forEach(function (target) {
+                    var transitions = {};
+                    if (target.color === null) {
+                        transitions.a = new _Animation.TransitionLinear(null, 0);
+                        transitions.sa = new _Animation.TransitionLinear(null, 0);
+                        _animation2[target.key] = new _Animation.Animation(transitions, 30, true);
+                    } else {
+                        transitions.r = new _Animation.TransitionLinear(null, target.color.getR());
+                        transitions.g = new _Animation.TransitionLinear(null, target.color.getG());
+                        transitions.b = new _Animation.TransitionLinear(null, target.color.getB());
+                        _animation2[target.key] = new _Animation.Animation(transitions, 30);
+                    }
+                });
 
                 this.animations.push(_animation2);
             }
@@ -2220,27 +2488,189 @@ var MapScreen = function () {
             //this.startDragY = null;
         }
     }, {
+        key: "preStateUpdate",
+        value: function preStateUpdate() {
+            var _this5 = this;
+
+            this.state.prevKeyGroup.forEach(function (k) {
+                if (_this5.state.action.indexOf('choose') !== -1) {
+                    if (_this5.staticPolygons[k] !== undefined) {
+                        _this5.staticPolygons[k].setColor(DEFAULT_COLOR);
+                    }
+                }
+            });
+            this.state.validKeyGroups.forEach(function (keyGroup) {
+                keyGroup.forEach(function (k) {
+                    if (_this5.state.action.indexOf('choose') !== -1) {
+                        if (_this5.staticPolygons[k] !== undefined) {
+                            _this5.staticPolygons[k].setColor(DEFAULT_COLOR);
+                        }
+                    }
+                    if (_this5.state.action === 'menu') {
+                        _this5.overlays[k].setColor(OVERLAY_DISABLE_COLOR);
+                    }
+                });
+            });
+        }
+    }, {
+        key: "postStateUpdate",
+        value: function postStateUpdate() {
+            var _this6 = this;
+
+            this.state.prevKeyGroup.forEach(function (k) {
+                if (_this6.state.action.indexOf('choose') !== -1) {
+                    if (_this6.staticPolygons[k] !== undefined) {
+                        _this6.staticPolygons[k].setColor(SELECTED_COLOR);
+                    }
+                }
+            });
+            this.state.validKeyGroups.forEach(function (keyGroup) {
+                keyGroup.forEach(function (k) {
+                    if (_this6.state.action.indexOf('choose') !== -1) {
+                        if (_this6.staticPolygons[k] !== undefined) {
+                            _this6.staticPolygons[k].setColor(VALID_COLOR);
+                        }
+                    }
+                    if (_this6.state.action === 'menu') {
+                        _this6.overlays[k].setColor(OVERLAY_DEFAULT_COLOR);
+                    }
+                });
+            });
+        }
+    }, {
+        key: "doMapAction",
+        value: function doMapAction() {
+            var mapArgs = {
+                'choose-move-dst': function chooseMoveDst(key, prevKey) {
+                    return ['move', prevKey, key];
+                },
+                'choose-attack-dst': function chooseAttackDst(key, prevKey) {
+                    return ['attack', prevKey, key];
+                },
+                'choose-transfer-dst': function chooseTransferDst(key, prevKey) {
+                    return ['transfer', prevKey, key];
+                },
+                'menu': function menu(key, prevKey) {
+                    return key === 'end' ? ['end'] : null;
+                }
+            };
+
+            if (mapArgs[this.state.action] !== undefined) {
+                var args = mapArgs[this.state.action](this.state.selectedKeyGroup[0], this.state.prevKeyGroup[0]);
+                if (args !== null) {
+                    var _map;
+
+                    (_map = this.map).doAction.apply(_map, _toConsumableArray(args));
+                }
+            }
+        }
+    }, {
+        key: "getKeyGroup",
+        value: function getKeyGroup(key) {
+            for (var i = 0; i < this.state.validKeyGroups.length; i++) {
+                if (this.state.validKeyGroups[i].indexOf(key) !== -1) {
+                    return this.state.validKeyGroups[i];
+                }
+            }
+            return [];
+        }
+    }, {
+        key: "getNextValidKeyGroups",
+        value: function getNextValidKeyGroups() {
+            var _this7 = this;
+
+            if (this.state.selectedKeyGroup.length === 0) {
+                return [];
+            }
+
+            var nextValidKeyGroups = {
+                'menu': function menu(key) {
+                    if (key === 'move') {
+                        return _this7.map.getMoveableKeys();
+                    } else if (key === 'transfer') {
+                        return _this7.map.getTransferableKeys();
+                    } else if (key === 'attack') {
+                        return _this7.map.getAttackableKeys();
+                    } else if (key === 'end') {
+                        return _this7.map.getActions();
+                    }
+                },
+                'choose-move-src': function chooseMoveSrc(key) {
+                    return _this7.map.getMoveableTargets(key);
+                },
+                'choose-move-dst': function chooseMoveDst(key) {
+                    return _this7.map.getActions();
+                },
+                'choose-transfer-src': function chooseTransferSrc(key) {
+                    return _this7.map.getTransferableTargets(key);
+                },
+                'choose-transfer-dst': function chooseTransferDst(key) {
+                    return _this7.map.getActions();
+                },
+                'choose-attack-src': function chooseAttackSrc(key) {
+                    return _this7.map.getAttackableTargets(key);
+                },
+                'choose-attack-dst': function chooseAttackDst(key) {
+                    return _this7.map.getActions();
+                }
+            };
+
+            return nextValidKeyGroups[this.state.action](this.state.selectedKeyGroup[0]);
+        }
+    }, {
+        key: "getNextAction",
+        value: function getNextAction() {
+            var nextAction = {
+                'menu': function menu(key) {
+                    if (key === 'move') {
+                        return 'choose-move-src';
+                    } else if (key === 'transfer') {
+                        return 'choose-transfer-src';
+                    } else if (key === 'attack') {
+                        return 'choose-attack-src';
+                    } else if (key === 'end') {
+                        return 'menu';
+                    }
+                },
+                'choose-move-src': function chooseMoveSrc(key) {
+                    return 'choose-move-dst';
+                },
+                'choose-move-dst': function chooseMoveDst(key) {
+                    return 'menu';
+                },
+                'choose-attack-src': function chooseAttackSrc(key) {
+                    return 'choose-attack-dst';
+                },
+                'choose-attack-dst': function chooseAttackDst(key) {
+                    return 'menu';
+                },
+                'choose-transfer-src': function chooseTransferSrc(key) {
+                    return 'choose-transfer-dst';
+                },
+                'choose-transfer-dst': function chooseTransferDst(key) {
+                    return 'menu';
+                }
+            };
+
+            return nextAction[this.state.action](this.state.selectedKeyGroup[0]);
+        }
+    }, {
         key: "handleClick",
         value: function handleClick(x, y) {
-            //this.viewport.mx = this.viewport.x1 + x;
-            //this.viewport.my = this.viewport.y1 + y;
-            /*const clickedObj = this.mapRenderer.getClickedObject();
-            if (clickedObj instanceof Tile) {
-                const action = this.map.getSelectedAction(clickedObj);
-                if (action !== null && action.action === 'move') {
-                    this.mapRenderer.animateMove(action.actor, action.receiver).then(() => {
-                        this.map.applyAction(action.actor, action.action, action.receiver);
-                    });
-                }
-            } else if (clickedObj instanceof ActorAction) {
-                this.map.getTurnActor().handleAction(clickedObj);
-            }*/
-            //const clickedObjs = this.mapRenderer.getClickedObjects();
+            this.cancelHover();
+            var key = this.state.hoverKey;
 
-            //const rerender = this.map.clicked(clickedObjs);
-            //if (rerender) {
-            //this.mapRenderer.renderMap(this.map, this.viewport);
-            //}
+            /*if (this.state.selectedKeyGroup.length > 0) {
+                this.doMapAction();
+                this.preStateUpdate();
+                this.state.prevKeyGroup = this.state.selectedKeyGroup;
+                this.state.validKeyGroups = this.getNextValidKeyGroups();
+                this.state.action = this.getNextAction();
+                this.state.selectedKeyGroup = [];
+                this.postStateUpdate();
+            }*/
+
+            console.log(this.state);
         }
     }, {
         key: "handleMouseLeave",
@@ -2340,84 +2770,6 @@ var MapScreen = function () {
 exports.MapScreen = MapScreen;
 
 /***/ }),
-/* 12 */
-/***/ (function(module, exports, __webpack_require__) {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", {
-    value: true
-});
-
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-var Objective = function () {
-    function Objective(fn, num) {
-        _classCallCheck(this, Objective);
-
-        this.fn = fn;
-        this.num = num;
-    }
-
-    _createClass(Objective, [{
-        key: 'serialize',
-        value: function serialize() {
-            return this.num;
-        }
-    }, {
-        key: 'check',
-        value: function check(map) {
-            return this.fn.check(map);
-        }
-    }, {
-        key: 'success',
-        value: function success(map) {
-            return this.fn.success(map);
-        }
-    }], [{
-        key: 'deserialize',
-        value: function deserialize(num) {
-            return new Objective(OBJECT_FNS[num], num);
-        }
-    }]);
-
-    return Objective;
-}();
-
-var OBJECT_FNS = {
-    0: {
-        check: function check(map) {
-            var players = map.getMapObjects().map(function (m) {
-                return m.getPlayer();
-            }).filter(function (p) {
-                return p !== null;
-            });
-            var player = players.filter(function (p) {
-                return p === '0';
-            });
-            var enemies = players.filter(function (p) {
-                return p !== '0';
-            });
-            return player.length === 0 || enemies.length === 0;
-        },
-        success: function success(map) {
-            var players = map.getMapObjects().map(function (m) {
-                return m.getPlayer();
-            });
-            var enemies = players.filter(function (p) {
-                return p !== '0' && p !== null;
-            });
-            return enemies.length === 0;
-        }
-    }
-};
-
-exports.Objective = Objective;
-
-/***/ }),
 /* 13 */
 /***/ (function(module, exports, __webpack_require__) {
 
@@ -2427,7 +2779,7 @@ exports.Objective = Objective;
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
-exports.Overlay = exports.PolygonFace = exports.Polygon = undefined;
+exports.HOVER_SECONDARY = exports.HOVER_MAIN = exports.HOVER_NONE = exports.PolygonFactory = exports.Overlay = exports.PolygonFace = exports.Polygon = undefined;
 
 var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
 
@@ -2438,6 +2790,11 @@ var _Vector = __webpack_require__(0);
 var _Color = __webpack_require__(1);
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+var COUNTER = 0;
+var HOVER_NONE = 1;
+var HOVER_MAIN = 2;
+var HOVER_SECONDARY = 3;
 
 var Polygon = function () {
     function Polygon(faces, type) {
@@ -2451,14 +2808,25 @@ var Polygon = function () {
         });
         this.type = type;
         this.clippedFace = null;
-        this.hover = false;
         this.originalFaces = faces.slice();
         this.color = new _Color.Color(204, 204, 204, 1);
-        this.hoverColor = new _Color.Color(230, 230, 230, 1);
         this.stroke = new _Color.Color(0, 0, 0, 1);
+        this.key = "polygon-" + COUNTER;
+        this.hover = HOVER_NONE;
+        COUNTER += 1;
     }
 
     _createClass(Polygon, [{
+        key: "getKey",
+        value: function getKey() {
+            return this.key;
+        }
+    }, {
+        key: "setHover",
+        value: function setHover(hoverState) {
+            this.hover = hoverState;
+        }
+    }, {
         key: "translate",
         value: function translate(x, y, z) {
             this.getPoints().forEach(function (point) {
@@ -2481,13 +2849,12 @@ var Polygon = function () {
     }, {
         key: "getColor",
         value: function getColor() {
-            return this.hover ? this.hoverColor : this.color;
+            return this.color;
         }
     }, {
         key: "setColor",
-        value: function setColor(color, hoverColor) {
+        value: function setColor(color) {
             this.color = color;
-            this.hoverColor = hoverColor;
         }
     }, {
         key: "getStroke",
@@ -2495,9 +2862,20 @@ var Polygon = function () {
             return this.stroke;
         }
     }, {
-        key: "toggleHover",
-        value: function toggleHover() {
-            this.hover = !this.hover;
+        key: "setStroke",
+        value: function setStroke(stroke) {
+            this.stroke = stroke;
+        }
+    }, {
+        key: "getDrawColor",
+        value: function getDrawColor() {
+            if (this.hover === HOVER_NONE) {
+                return this.color;
+            } else if (this.hover === HOVER_MAIN) {
+                return new _Color.Color(204, 204, 204, 1);
+            } else if (this.hover === HOVER_SECONDARY) {
+                return new _Color.Color(0, 255, 255, 1);
+            }
         }
     }, {
         key: "getFaces",
@@ -2527,37 +2905,6 @@ var Polygon = function () {
             return new _Vector.Point(x, y, z);
         }
     }, {
-        key: "calcRate",
-        value: function calcRate(end, frames) {
-            var currentState = {
-                x: this.getCenter().getX(),
-                y: this.getCenter().getY(),
-                z: this.getCenter().getZ(),
-                r: this.color.getR(),
-                g: this.color.getG(),
-                b: this.color.getB(),
-                a: this.color.getA(),
-                hr: this.hoverColor.getR(),
-                hg: this.hoverColor.getG(),
-                hb: this.hoverColor.getB(),
-                ha: this.hoverColor.getA(),
-                sr: this.stroke.getR(),
-                sg: this.stroke.getG(),
-                sb: this.stroke.getB(),
-                sa: this.stroke.getA()
-            };
-            var rate = {};
-            for (var key in end) {
-                rate[key] = (end[key] - currentState[key]) / frames;
-            }
-            for (var _key in currentState) {
-                if (rate[_key] === undefined) {
-                    rate[_key] = 0;
-                }
-            }
-            return rate;
-        }
-    }, {
         key: "getState",
         value: function getState() {
             return {
@@ -2568,10 +2915,6 @@ var Polygon = function () {
                 g: this.color.getG(),
                 b: this.color.getB(),
                 a: this.color.getA(),
-                hr: this.hoverColor.getR(),
-                hg: this.hoverColor.getG(),
-                hb: this.hoverColor.getB(),
-                ha: this.hoverColor.getA(),
                 sr: this.stroke.getR(),
                 sg: this.stroke.getG(),
                 sb: this.stroke.getB(),
@@ -2588,10 +2931,6 @@ var Polygon = function () {
                 g = _ref.g,
                 b = _ref.b,
                 a = _ref.a,
-                hr = _ref.hr,
-                hg = _ref.hg,
-                hb = _ref.hb,
-                ha = _ref.ha,
                 sr = _ref.sr,
                 sg = _ref.sg,
                 sb = _ref.sb,
@@ -2599,9 +2938,8 @@ var Polygon = function () {
 
             var currentState = this.getState();
             this.translate(x - currentState.x, y - currentState.y, z - currentState.z);
-            this.color.translate(r - currentState.r, g - currentState.g, b - currentState.b, a - currentState.a);
-            this.hoverColor.translate(hr - currentState.hr, hg - currentState.hg, hb - currentState.hb, ha - currentState.ha);
-            this.stroke.translate(sr - currentState.sr, sg - currentState.sg, sb - currentState.sb, sa - currentState.sa);
+            this.color.set(r, g, b, a);
+            this.stroke.set(sr, sg, sb, sa);
         }
     }, {
         key: "restoreFaces",
@@ -2865,7 +3203,7 @@ var PolygonFace = function () {
     }, {
         key: "draw",
         value: function draw(ctx) {
-            ctx.fillStyle = this.polygon.getColor().getString();
+            ctx.fillStyle = this.polygon.getDrawColor().getString();
             ctx.beginPath();
             var k = void 0;
             for (k = 0; k < this.visiblePoints.length; k++) {
@@ -2930,21 +3268,27 @@ var Overlay = function () {
     function Overlay(x, y, w, h, text) {
         _classCallCheck(this, Overlay);
 
-        this.color = new _Color.Color(230, 230, 230, 1);
-        this.hoverColor = new _Color.Color(242, 242, 242, 1);
+        this.color = new _Color.Color(153, 153, 153, 1);
         this.stroke = new _Color.Color(0, 0, 0, 1);
         this.x = x;
         this.y = y;
         this.w = w;
         this.h = h;
         this.text = text;
-        this.hover = false;
+        this.key = "polygon-" + COUNTER;
+        this.hover = HOVER_NONE;
+        COUNTER += 1;
     }
 
     _createClass(Overlay, [{
-        key: "toggleHover",
-        value: function toggleHover() {
-            this.hover = !this.hover;
+        key: "setHover",
+        value: function setHover(hoverState) {
+            this.hover = hoverState;
+        }
+    }, {
+        key: "getKey",
+        value: function getKey() {
+            return this.key;
         }
     }, {
         key: "getVisiblePoints",
@@ -2952,10 +3296,15 @@ var Overlay = function () {
             return [new _Vector.Point(this.x, this.y, 0), new _Vector.Point(this.x + this.w, this.y, 0), new _Vector.Point(this.x + this.w, this.y + this.h, 0), new _Vector.Point(this.x, this.y + this.h, 0)];
         }
     }, {
+        key: "setColor",
+        value: function setColor(color) {
+            this.color = color;
+        }
+    }, {
         key: "draw",
         value: function draw(ctx) {
-            if (this.hover) {
-                ctx.fillStyle = this.hoverColor.getString();
+            if (this.hover === HOVER_MAIN) {
+                ctx.fillStyle = new _Color.Color(204, 204, 204, 1).getString();
             } else {
                 ctx.fillStyle = this.color.getString();
             }
@@ -2973,9 +3322,48 @@ var Overlay = function () {
     return Overlay;
 }();
 
+var PolygonFactory = {
+    map: {
+        bs: 'tetrahedron',
+        rs: 'tetrahedron',
+        ys: 'tetrahedron',
+        w: 'icosahedron',
+        b: 'icosahedron',
+        r: 'icosahedron',
+        y: 'icosahedron'
+    },
+    settings: {
+        tlen: 100
+    },
+    create: function create(json) {
+        var retVal = {
+            tilePolygon: null,
+            mapObjectPolygon: null
+        };
+        if (json.type === 'e') {
+            return retVal;
+        }
+        var tlen = this.settings.tlen;
+        retVal.tilePolygon = Polygon.createBox(json.x * tlen, json.y * tlen, 0, tlen, tlen, json.h * tlen);
+        if (json.mapObject !== undefined) {
+            var shape = this.map[json.mapObject.type];
+            if (shape === 'tetrahedron') {
+                retVal.mapObjectPolygon = Polygon.createTetrahedron(json.x * tlen + tlen / 2, json.y * tlen + tlen / 2, json.h * tlen + tlen / 2, 20);
+            } else if (shape === 'icosahedron') {
+                retVal.mapObjectPolygon = Polygon.createIcosahedron(json.x * tlen + tlen / 2, json.y * tlen + tlen / 2, json.h * tlen + tlen / 2, 20);
+            }
+        }
+        return retVal;
+    }
+};
+
 exports.Polygon = Polygon;
 exports.PolygonFace = PolygonFace;
 exports.Overlay = Overlay;
+exports.PolygonFactory = PolygonFactory;
+exports.HOVER_NONE = HOVER_NONE;
+exports.HOVER_MAIN = HOVER_MAIN;
+exports.HOVER_SECONDARY = HOVER_SECONDARY;
 
 /***/ }),
 /* 14 */
@@ -2991,7 +3379,7 @@ exports.PolygonRenderer = undefined;
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
-var _BSPTree = __webpack_require__(7);
+var _BSPTree = __webpack_require__(9);
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
@@ -3014,11 +3402,13 @@ var PolygonRenderer = function () {
     _createClass(PolygonRenderer, [{
         key: "render",
         value: function render(viewport, polygons, overlays) {
+            var _this = this;
+
             var ctx = this.canvas.getContext('2d');
             ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            this.hoveredObj = null;
 
             var facesToDraw = [];
-            var hoveredObj = null;
 
             this.bsp.addFaces(polygons.reduce(function (a, b) {
                 return a.concat(b.getFaces());
@@ -3033,7 +3423,7 @@ var PolygonRenderer = function () {
                 face.setVisiblePoints(visiblePoints, mapping);
                 if (visible) {
                     if (viewport.mouseInside(visiblePoints)) {
-                        hoveredObj = face.getPolygon();
+                        _this.hoveredObj = face.getPolygon();
                     }
                     facesToDraw.push(face);
                 }
@@ -3048,7 +3438,7 @@ var PolygonRenderer = function () {
                 var clippedFace = polygon.getClippedFace();
                 if (clippedFace !== null) {
                     if (viewport.mouseInside(clippedFace.getVisiblePoints())) {
-                        hoveredObj = polygon;
+                        _this.hoveredObj = polygon;
                     }
                     facesToDraw.push(clippedFace);
                 }
@@ -3056,20 +3446,10 @@ var PolygonRenderer = function () {
 
             overlays.forEach(function (overlay) {
                 if (viewport.mouseInside(overlay.getVisiblePoints())) {
-                    hoveredObj = overlay;
+                    _this.hoveredObj = overlay;
                 }
                 facesToDraw.push(overlay);
             });
-
-            if (this.hoveredObj !== null) {
-                this.hoveredObj.toggleHover();
-            }
-            if (hoveredObj !== null) {
-                this.hoveredObj = hoveredObj;
-                this.hoveredObj.toggleHover();
-            } else {
-                this.hoveredObj = null;
-            }
 
             facesToDraw.forEach(function (face) {
                 return face.draw(ctx);
@@ -3078,6 +3458,11 @@ var PolygonRenderer = function () {
             polygons.forEach(function (polygon) {
                 return polygon.restoreFaces();
             });
+        }
+    }, {
+        key: "getHoveredObj",
+        value: function getHoveredObj() {
+            return this.hoveredObj;
         }
     }]);
 
@@ -3449,11 +3834,11 @@ exports.Viewport = Viewport;
 "use strict";
 
 
-var _Game = __webpack_require__(4);
+var _Game = __webpack_require__(6);
 
 var _Game2 = _interopRequireDefault(_Game);
 
-__webpack_require__(5);
+__webpack_require__(7);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 

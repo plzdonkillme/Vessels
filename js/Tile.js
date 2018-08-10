@@ -39,16 +39,22 @@ class Tile {
         return this.mapObject;
     }
 
-    serialize() {
-        return `${this.constructor.name()}-${this.h}`
-    }
-
-    static getClass(name) {
-        return TILE_MAP[name];
-    }
-
     getKey() {
         return `${this.constructor.name()}-${this.x}-${this.y}`
+    }
+
+    toJSON() {
+        const json = {
+            x: this.x,
+            y: this.y,
+            h: this.h,
+            type: this.constructor.name(),
+            key: this.getKey(),
+        }
+        if (this.mapObject !== null) {
+            json.mapObject = this.mapObject.toJSON();
+        }
+        return json;
     }
 
 }
@@ -67,9 +73,39 @@ class EmptyTile extends Tile {
     }
 }
 
-const TILE_MAP = {
-    p: PlainTile,
-    e: EmptyTile,
+class TileGroup {
+    constructor(tiles) {
+        this.tiles = tiles;
+    }
+
+    getMapObjects() {
+        return this.tiles.map(t => t.getMapObject()).filter(m => m !== null);
+    }
+
+    getTiles() {
+        return this.tiles;
+    }
+}
+
+const TileFactory = {
+    map: {
+        p: PlainTile,
+        e: EmptyTile,
+    },
+    create: function(json) {
+        const cls = this.map[json.type];
+        return new cls(json.x, json.y, json.h);
+    },
+    getJSON: function(propString) {
+        const props = propString.split('-');
+        return {
+            type: props[0],
+            h: parseInt(props[1]),
+        };
+    },
+    getPropString: function(json) {
+        return `${json.type}-${json.h}`;
+    }
 };
 
-export { Tile, EmptyTile, PlainTile };
+export { Tile, EmptyTile, PlainTile, TileGroup, TileFactory };

@@ -1,17 +1,31 @@
 import { Point, Vector } from "./Vector";
 import { Color } from "./Color";
 
+let COUNTER = 0;
+const HOVER_NONE = 1;
+const HOVER_MAIN = 2;
+const HOVER_SECONDARY = 3;
+
 class Polygon {
     constructor(faces, type) {
         this.faces = faces;
         faces.forEach(face => face.setPolygon(this));
         this.type = type;
         this.clippedFace = null;
-        this.hover = false;
         this.originalFaces = faces.slice();
         this.color = new Color(204, 204, 204, 1);
-        this.hoverColor = new Color(230, 230, 230, 1);
         this.stroke = new Color(0, 0, 0, 1);
+        this.key = `polygon-${COUNTER}`;
+        this.hover = HOVER_NONE;
+        COUNTER += 1;
+    }
+
+    getKey() {
+        return this.key;
+    }
+
+    setHover(hoverState) {
+        this.hover = hoverState;
     }
 
     translate(x, y, z) {
@@ -31,20 +45,29 @@ class Polygon {
     }
 
     getColor() {
-        return this.hover ? this.hoverColor : this.color;
+        return this.color;
     }
 
-    setColor(color, hoverColor) {
+    setColor(color) {
         this.color = color;
-        this.hoverColor = hoverColor;
     }
 
     getStroke() {
         return this.stroke
     }
 
-    toggleHover() {
-        this.hover = !this.hover;
+    setStroke(stroke) {
+        this.stroke = stroke;
+    }
+
+    getDrawColor() {
+        if (this.hover === HOVER_NONE) {
+            return this.color;
+        } else if (this.hover === HOVER_MAIN) {
+            return new Color(204, 204, 204, 1);
+        } else if (this.hover === HOVER_SECONDARY) {
+            return new Color(0, 255, 255, 1);
+        }
     }
 
     getFaces() {
@@ -63,36 +86,6 @@ class Polygon {
         return new Point(x, y, z);
     }
 
-    calcRate(end, frames) {
-        const currentState = {
-            x: this.getCenter().getX(),
-            y: this.getCenter().getY(),
-            z: this.getCenter().getZ(),
-            r: this.color.getR(),
-            g: this.color.getG(),
-            b: this.color.getB(),
-            a: this.color.getA(),
-            hr: this.hoverColor.getR(),
-            hg: this.hoverColor.getG(),
-            hb: this.hoverColor.getB(),
-            ha: this.hoverColor.getA(),
-            sr: this.stroke.getR(),
-            sg: this.stroke.getG(),
-            sb: this.stroke.getB(),
-            sa: this.stroke.getA(),
-        };
-        const rate = {};
-        for (let key in end) {
-            rate[key] = (end[key] - currentState[key]) / frames;
-        }
-        for (let key in currentState) {
-            if (rate[key] === undefined) {
-                rate[key] = 0;
-            }
-        }
-        return rate;
-    }
-
     getState() {
         return {
             x: this.getCenter().getX(),
@@ -102,10 +95,6 @@ class Polygon {
             g: this.color.getG(),
             b: this.color.getB(),
             a: this.color.getA(),
-            hr: this.hoverColor.getR(),
-            hg: this.hoverColor.getG(),
-            hb: this.hoverColor.getB(),
-            ha: this.hoverColor.getA(),
             sr: this.stroke.getR(),
             sg: this.stroke.getG(),
             sb: this.stroke.getB(),
@@ -113,12 +102,11 @@ class Polygon {
         };
     }
 
-    applyState({x, y, z, r, g, b, a, hr, hg, hb, ha, sr, sg, sb, sa}) {
+    applyState({x, y, z, r, g, b, a, sr, sg, sb, sa}) {
         const currentState = this.getState();
         this.translate(x - currentState.x, y - currentState.y, z - currentState.z);
-        this.color.translate(r - currentState.r, g - currentState.g, b - currentState.b, a - currentState.a);
-        this.hoverColor.translate(hr - currentState.hr, hg - currentState.hg, hb - currentState.hb, ha - currentState.ha);
-        this.stroke.translate(sr - currentState.sr, sg - currentState.sg, sb - currentState.sb, sa - currentState.sa);
+        this.color.set(r, g, b, a);
+        this.stroke.set(sr, sg, sb, sa);
     }
 
     restoreFaces() {
@@ -410,7 +398,7 @@ class PolygonFace {
     }
 
     draw(ctx) {
-        ctx.fillStyle = this.polygon.getColor().getString();
+        ctx.fillStyle = this.polygon.getDrawColor().getString();
         ctx.beginPath();
         let k;
         for (k = 0; k < this.visiblePoints.length; k++) {
@@ -468,19 +456,24 @@ class PolygonFace {
 
 class Overlay {
     constructor(x, y, w, h, text) {
-        this.color = new Color(230, 230, 230, 1);
-        this.hoverColor = new Color(242, 242, 242, 1);
+        this.color = new Color(153, 153, 153, 1)
         this.stroke = new Color(0, 0, 0, 1);
         this.x = x;
         this.y = y;
         this.w = w;
         this.h = h;
         this.text = text;
-        this.hover = false;
+        this.key = `polygon-${COUNTER}`;
+        this.hover = HOVER_NONE;
+        COUNTER += 1;
     }
 
-    toggleHover() {
-        this.hover = !this.hover;
+    setHover(hoverState) {
+        this.hover = hoverState;
+    }
+
+    getKey() {
+        return this.key;
     }
 
     getVisiblePoints() {
@@ -492,9 +485,13 @@ class Overlay {
         ];
     }
 
+    setColor(color) {
+        this.color = color;
+    }
+
     draw(ctx) {
-        if (this.hover) {
-            ctx.fillStyle = this.hoverColor.getString();
+        if (this.hover === HOVER_MAIN) {
+            ctx.fillStyle = (new Color(204, 204, 204, 1)).getString();
         } else {
             ctx.fillStyle = this.color.getString();
         }
@@ -509,4 +506,39 @@ class Overlay {
     }
 }
 
-export { Polygon, PolygonFace, Overlay };
+const PolygonFactory = {
+    map: {
+        bs: 'tetrahedron',
+        rs: 'tetrahedron',
+        ys: 'tetrahedron',
+        w: 'icosahedron',
+        b: 'icosahedron',
+        r: 'icosahedron',
+        y: 'icosahedron',
+    },
+    settings: {
+        tlen: 100,
+    },
+    create: function(json) {
+        const retVal = {
+            tilePolygon: null,
+            mapObjectPolygon: null,
+        };
+        if (json.type === 'e') {
+            return retVal;
+        }
+        const tlen = this.settings.tlen;
+        retVal.tilePolygon = Polygon.createBox(json.x * tlen, json.y * tlen, 0, tlen, tlen, json.h * tlen);
+        if (json.mapObject !== undefined) {
+            const shape = this.map[json.mapObject.type]
+            if (shape === 'tetrahedron') {
+                retVal.mapObjectPolygon = Polygon.createTetrahedron(json.x * tlen + tlen / 2, json.y * tlen + tlen / 2, json.h * tlen + tlen / 2, 20);
+            } else if (shape === 'icosahedron') {
+                retVal.mapObjectPolygon = Polygon.createIcosahedron(json.x * tlen + tlen / 2, json.y * tlen + tlen / 2, json.h * tlen + tlen / 2, 20);
+            }
+        }
+        return retVal;
+    },
+};
+
+export { Polygon, PolygonFace, Overlay, PolygonFactory, HOVER_NONE, HOVER_MAIN, HOVER_SECONDARY };

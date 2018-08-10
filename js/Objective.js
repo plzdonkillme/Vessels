@@ -1,42 +1,58 @@
 class Objective {
 
-    constructor(fn, num) {
-        this.fn = fn;
-        this.num = num;
-    }
-
     serialize() {
-        return this.num;
+        return this.constructor.name();
     }
 
-    static deserialize(num) {
-        return new Objective(OBJECT_FNS[num], num);
+    toJSON() {
+        return this.constructor.name();
     }
 
     check(map) {
-        return this.fn.check(map);
+        throw Error('Unimplemented');
     }
 
     success(map) {
-        return this.fn.success(map);
+        throw Error('Unimplemented');
     }
 
 }
 
-const OBJECT_FNS = {
-    0: {
-        check: map => {
-            let players = map.getMapObjects().map(m => m.getPlayer()).filter(p => p !== null);
-            let player = players.filter(p => p === '0');
-            let enemies =  players.filter(p => p !== '0');
-            return player.length === 0 || enemies.length === 0;
-        },
-        success: map => {
-            let players = map.getMapObjects().map(m => m.getPlayer());
-            let enemies =  players.filter(p => p !== '0' && p !== null);
-            return enemies.length === 0;
-        }
-    },
+class Objective1 extends Objective {
+
+    static name() {
+        return 0;
+    }
+
+    check(map) {
+        let players = map.getMapObjects().map(m => m.getPlayer()).filter(p => p !== null);
+        let player = players.filter(p => p === '0');
+        let enemies =  players.filter(p => p !== '0');
+        return player.length === 0 || enemies.length === 0;
+    }
+
+    success(map) {
+        let players = map.getMapObjects().map(m => m.getPlayer());
+        let enemies =  players.filter(p => p !== '0' && p !== null);
+        return enemies.length === 0;
+    }
 }
 
-export { Objective }
+
+const ObjectiveFactory = {
+    map: {
+        0: Objective1,
+    },
+    create: function(json) {
+        const cls = this.map[json];
+        return new cls();
+    },
+    getJSON: function(propString) {
+        return parseInt(propString);
+    },
+    getPropString: function(json) {
+        return `${json}`;
+    }
+};
+
+export { ObjectiveFactory }
