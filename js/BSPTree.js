@@ -1,21 +1,15 @@
 import { Point, Vector } from './Vector';
-
-
-/**
-face
-  getPoints()
-  getNormal()
-  split()
-**/
+import Face from './Face';
 
 class BSPTree {
-  constructor(faces) {
+  constructor(faces, splitFacesMap = new Map()) {
     if (faces.length === 0) {
       throw Error('Must provide faces to BSP');
     }
     this.nodes = [faces[0]];
     this.front = null;
     this.back = null;
+    this.splitFacesMap = splitFacesMap;
     this.addFaces(faces.slice(1));
   }
 
@@ -29,6 +23,34 @@ class BSPTree {
     };
   }
 
+  getSplitFacesMap() {
+    return this.splitFacesMap;
+  }
+
+  getFront() {
+    return this.front;
+  }
+
+  getBack() {
+    return this.back;
+  }
+
+  getNodes() {
+    return this.nodes;
+  }
+
+  setFront(bsp) {
+    this.front = bsp;
+  }
+
+  setBack(bsp) {
+    this.back = bsp;
+  }
+
+  setNodes(nodes) {
+    this.nodes = nodes;
+  }
+
   addFaces(faces) {
     if (faces.length === 0) {
       return;
@@ -37,7 +59,12 @@ class BSPTree {
     const { p0, n } = this.getPlane();
 
     // sort faces
-    const { frontFaces, backFaces, nodeFaces } = this.sortFaces(faces, p0, n);
+    const { frontFaces, backFaces, nodeFaces } = BSPTree.sortFaces(
+      faces,
+      p0,
+      n,
+      this.splitFacesMap,
+    );
 
     for (let i = 0; i < nodeFaces.length; i += 1) {
       const face = nodeFaces[i];
@@ -48,14 +75,14 @@ class BSPTree {
     }
     if (frontFaces.length > 0) {
       if (this.front === null) {
-        this.front = new BSPTree(frontFaces);
+        this.front = new BSPTree(frontFaces, this.splitFacesMap);
       } else {
         this.front.addFaces(frontFaces);
       }
     }
     if (backFaces.length > 0) {
       if (this.back === null) {
-        this.back = new BSPTree(backFaces);
+        this.back = new BSPTree(backFaces, this.splitFacesMap);
       } else {
         this.back.addFace(backFaces);
       }
@@ -66,40 +93,57 @@ class BSPTree {
     this.addFaces([face]);
   }
 
-  removeFaces(faces) {
+  static removeFaces(bsp, faces) {
     if (faces.length === 0) {
-      return;
+      return bsp;
     }
 
-    const { p0, n } = this.getPlane();
+    if (bsp === null && faces.length > 0) {
+      throw Error('Cannot remove from null');
+    }
+
+    const { p0, n } = bsp.getPlane();
 
     // sort faces
-    const { frontFaces, backFaces, nodeFaces } = this.sortFaces(faces, p0, n);
-
-    if (backFaces.length > 0) {
-      if (this.back === null) {
-        throw Error('Back faces do not exist');
-      } else {
-        this.back.removeFaces(backFaces);
-      }
-    }
-    if (frontFaces.length > 0) {
-      if (this.front === null) {
-        throw Error('Front faces do not exist');
-      } else {
-        this.front.removeFaces(frontFaces);
-      }
-    }
+    const { frontFaces, backFaces, nodeFaces } = BSPTree.sortFaces(
+      faces,
+      p0,
+      n,
+      bsp.getSplitFacesMap(),
+    );
+    bsp.setBack(BSPTree.removeFaces(bsp.getBack(), backFaces));
+    bsp.setFront(BSPTree.removeFaces(bsp.getFront(), frontFaces));
+    const nodes = bsp.getNodes();
+    const splitFacesMap = bsp.getSplitFacesMap();
     for (let i = 0; i < nodeFaces.length; i += 1) {
       const face = nodeFaces[i];
-      const idx = this.nodes.indexOf(face);
+      const idx = nodes.indexOf(face);
       if (idx === -1) {
         throw Error('Node face does not exist');
       }
-      this.nodes.splice(idx, 1);
+      nodes.splice(idx, 1);
+      if (splitFacesMap.has(face)) {
+        splitFacesMap.delete(face);
+      }
     }
 
-    // TODO REORDER TREE
+    if (nodes.length === 0) {
+      if (bsp.getBack() === null && bsp.getFront() === null) {
+        return null;
+      }
+      if (bsp.getBack() === null) {
+        return bsp.getFront();
+      }
+      if (bsp.getFront() === null) {
+        return bsp.getBack();
+      }
+      const facesToMove = [];
+      const traverseFn = face => facesToMove.push(face);
+      bsp.getBack().traverse(traverseFn, new Vector(0, 0, 1));
+      bsp.getFront().addFaces(facesToMove);
+      return bsp.getFront();
+    }
+    return bsp;
   }
 
   removeFace(face) {
@@ -169,14 +213,27 @@ class BSPTree {
     };
   }
 
-  static sortFaces(faces, p0, n) {
+  static sortFaces(faces, p0, n, splitFacesMap = new Map()) {
     const frontFaces = [];
     const backFaces = [];
     const nodeFaces = [];
-    for (let i = 0; i < faces.length; i += 1) {
-      const face = faces[i];
+
+    const childMap = new Map();
+    splitFacesMap.forEach((value, key) => {
+      if (childMap.has(value)) {
+        childMap.get(value).push(key);
+      } else {
+        childMap.set(value, [key]);
+      }
+    });
+    const facesToIterate = [].concat(
+      ...faces.map(face => (childMap.has(face) ? childMap.get(face) : [face])),
+    );
+
+    for (let i = 0; i < facesToIterate.length; i += 1) {
+      const face = facesToIterate[i];
       const points = face.getPoints();
-      const { frontPoints, backPoints } = this.sortPoints(points, p0, n);
+      const { frontPoints, backPoints } = BSPTree.sortPoints(points, p0, n);
 
       if (Point.arrayEquals(frontPoints, points) && Point.arrayEquals(backPoints, points)) {
         nodeFaces.push(face);
@@ -185,7 +242,16 @@ class BSPTree {
       } else if (Point.arrayEquals(backPoints, points)) {
         backFaces.push(face);
       } else {
-        const { frontFace, backFace } = face.split(frontPoints, backPoints);
+        const frontFace = new Face(frontPoints, face.getNormal().copy());
+        const backFace = new Face(backPoints, face.getNormal().copy());
+        let parentFace = face;
+        if (splitFacesMap.has(face)) {
+          parentFace = splitFacesMap.get(face);
+          splitFacesMap.delete(face);
+        }
+        splitFacesMap.set(frontFace, parentFace);
+        splitFacesMap.set(backFace, parentFace);
+
         frontFaces.push(frontFace);
         backFaces.push(backFace);
       }
@@ -198,31 +264,38 @@ class BSPTree {
     };
   }
 
-  traverse(fn, viewport) {
-    if (this.nodes.length > 0) {
-      const n = this.nodes[0].getNormal();
-      const p = this.nodes[0].getPoints()[0];
-      const viewDir = viewport.getViewDir(p, n);
-      if (viewDir === 'towards') {
-        if (this.back !== null) {
-          this.back.traverse(fn, viewport);
+  traverse(fn, dir) {
+    const { n } = this.getPlane();
+    const d = n.dot(dir);
+    if (d > 0) {
+      if (this.front !== null) {
+        this.front.traverse(fn, dir);
+      }
+      for (let i = 0; i < this.nodes.length; i += 1) {
+        const face = this.nodes[i];
+        let parentFace = face;
+        if (this.splitFacesMap.has(face)) {
+          parentFace = this.splitFacesMap.get(face);
         }
-        for (let i = 0; i < this.nodes.length; i++) {
-          fn(this.nodes[i]);
+        fn(face, parentFace);
+      }
+      if (this.back !== null) {
+        this.back.traverse(fn, dir);
+      }
+    } else {
+      if (this.back !== null) {
+        this.back.traverse(fn, dir);
+      }
+      for (let i = 0; i < this.nodes.length; i += 1) {
+        const face = this.nodes[i];
+        let parentFace = face;
+        if (this.splitFacesMap.has(face)) {
+          parentFace = this.splitFacesMap.get(face);
         }
-        if (this.front !== null) {
-          this.front.traverse(fn, viewport);
-        }
-      } else {
-        if (this.front !== null) {
-          this.front.traverse(fn, viewport);
-        }
-        for (let i = 0; i < this.nodes.length; i++) {
-          fn(this.nodes[i]);
-        }
-        if (this.back !== null) {
-          this.back.traverse(fn, viewport);
-        }
+        fn(face, parentFace);
+      }
+      if (this.front !== null) {
+        this.front.traverse(fn, dir);
       }
     }
   }
