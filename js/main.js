@@ -5,5 +5,3 @@
 // g.start();
 
 import '@babel/polyfill';
-
-const a = new Map();

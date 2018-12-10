@@ -1,4 +1,6 @@
 const path = require('path');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+const CleanWebpackPlugin = require('clean-webpack-plugin');
 
 module.exports = {
   entry: './js/main.js',
@@ -31,4 +33,13 @@ module.exports = {
   },
   mode: 'development',
   devtool: 'inline-source-map',
+  devServer: {
+    contentBase: './build',
+  },
+  plugins: [
+    new HtmlWebpackPlugin({
+      title: 'Knights',
+    }),
+    new CleanWebpackPlugin(['build']),
+  ],
 };

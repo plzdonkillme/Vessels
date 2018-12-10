@@ -93,7 +93,6 @@ class Vector {
     this.x = x;
     this.y = y;
     this.z = z;
-    this.mag = Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z);
   }
 
   static createFromPoints(p1, p2) {
@@ -112,15 +111,11 @@ class Vector {
     return this.z;
   }
 
-  getMag() {
-    return this.mag;
-  }
-
   normalize() {
-    this.x = this.x / this.mag;
-    this.y = this.y / this.mag;
-    this.z = this.z / this.mag;
-    this.mag = 1;
+    const mag = Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z);
+    this.x = this.x / mag;
+    this.y = this.y / mag;
+    this.z = this.z / mag;
   }
 
   cross(v) {
@@ -159,6 +154,16 @@ class Vector {
 
   copy() {
     return new Vector(this.x, this.y, this.z);
+  }
+
+  static isColinear(p1, p2, p3) {
+    const v1 = Vector.createFromPoints(p1, p2);
+    const v2 = Vector.createFromPoints(p1, p3);
+    const cross = v1.cross(v2);
+    const cx = cross.getX();
+    const cy = cross.getY();
+    const cz = cross.getZ();
+    return Math.abs(cx) < 0.001 && Math.abs(cy) < 0.001 && Math.abs(cz) < 0.001;
   }
 }
 
