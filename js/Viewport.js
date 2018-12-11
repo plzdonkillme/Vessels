@@ -18,17 +18,14 @@ class Viewport {
     this.d = d;
     this.calcVectors();
 
-    this.mx = null;
-    this.my = null;
-
-    // this.rates = {
-    //   r1: 0,
-    //   r2: 0,
-    //   t1: 0,
-    //   t2: 0,
-    //   t3: 0,
-    // };
-    // this.animation = null;
+    this.rates = {
+      r1: 0,
+      r2: 0,
+      t1: 0,
+      t2: 0,
+      t3: 0,
+    };
+    this.animation = null;
   }
 
   calcVectors() {
@@ -49,11 +46,6 @@ class Viewport {
 
   getNormal() {
     return this.unitNormal;
-  }
-
-  setMouse(x, y) {
-    this.mx = x;
-    this.my = y;
   }
 
   projectFace(face) {
@@ -125,31 +117,31 @@ class Viewport {
     };
   }
 
-  mouseInside(points) {
-    if (this.mx === null && this.my === null) {
-      return false;
-    }
-    let zPos = null;
-    for (let i = 0; i < points.length; i += 1) {
-      const p = points[i];
-      const np = i === points.length - 1 ? points[0] : points[i + 1];
-      const v1 = {
-        x: np.getX() - p.getX(),
-        y: np.getY() - p.getY(),
-      };
-      const v2 = {
-        x: this.mx - p.getX(),
-        y: this.my - p.getY(),
-      };
-      const cross = (v1.x * v2.y) - (v1.y * v2.x);
-      if (zPos === null) {
-        zPos = cross > 0;
-      } else if ((cross > 0) !== zPos) {
-        return false;
-      }
-    }
-    return true;
-  }
+  // mouseInside(points) {
+  //   if (this.mx === null && this.my === null) {
+  //     return false;
+  //   }
+  //   let zPos = null;
+  //   for (let i = 0; i < points.length; i += 1) {
+  //     const p = points[i];
+  //     const np = i === points.length - 1 ? points[0] : points[i + 1];
+  //     const v1 = {
+  //       x: np.getX() - p.getX(),
+  //       y: np.getY() - p.getY(),
+  //     };
+  //     const v2 = {
+  //       x: this.mx - p.getX(),
+  //       y: this.my - p.getY(),
+  //     };
+  //     const cross = (v1.x * v2.y) - (v1.y * v2.x);
+  //     if (zPos === null) {
+  //       zPos = cross > 0;
+  //     } else if ((cross > 0) !== zPos) {
+  //       return false;
+  //     }
+  //   }
+  //   return true;
+  // }
 
   // projectPoint(point) {
   //   let viewVector; let pointVector; let
@@ -175,108 +167,82 @@ class Viewport {
   //   return null;
   // }
 
-  // translateAlongBasis(s1, s2, s3) {
-  //   const xDist = this.basis1.x * s1 + this.basis2.x * s2 + this.unitNormal.x * s3;
-  //   const yDist = this.basis1.y * s1 + this.basis2.y * s2 + this.unitNormal.y * s3;
-  //   const zDist = this.basis1.z * s1 + this.basis2.z * s2 + this.unitNormal.z * s3;
-  //   this.translate(xDist, yDist, zDist);
-  // }
+  translateAlongBasis(s1, s2, s3) {
+    const xDist = this.basis1.x * s1 + this.basis2.x * s2 + this.unitNormal.x * s3;
+    const yDist = this.basis1.y * s1 + this.basis2.y * s2 + this.unitNormal.y * s3;
+    const zDist = this.basis1.z * s1 + this.basis2.z * s2 + this.unitNormal.z * s3;
+    this.translate(xDist, yDist, zDist);
+  }
 
-  // translate(x, y, z, calc = true) {
-  //   this.p1.translate(x, y, z);
-  //   this.p2.translate(x, y, z);
-  //   this.p3.translate(x, y, z);
-  //   this.p4.translate(x, y, z);
-  //   if (calc) {
-  //     this.calcVectors();
-  //   }
-  // }
+  translate(x, y, z, calc = true) {
+    this.p1.translate(x, y, z);
+    this.p2.translate(x, y, z);
+    this.p3.translate(x, y, z);
+    this.p4.translate(x, y, z);
+    if (calc) {
+      this.calcVectors();
+    }
+  }
 
-  // rotateByBasis(theta1, theta2, theta3) {
-  //   const xDist = this.midpoint.getX();
-  //   const yDist = this.midpoint.getY();
-  //   const zDist = this.midpoint.getZ();
-  //   const rad1 = theta1 / 360 * Math.PI;
-  //   const rad2 = theta2 / 360 * Math.PI;
-  //   const rad3 = theta3 / 360 * Math.PI;
+  rotateByBasis(theta1, theta2, theta3) {
+    const xDist = this.midpoint.getX();
+    const yDist = this.midpoint.getY();
+    const zDist = this.midpoint.getZ();
+    const rad1 = theta1 / 360 * Math.PI;
+    const rad2 = theta2 / 360 * Math.PI;
+    const rad3 = theta3 / 360 * Math.PI;
 
-  //   this.translate(-xDist, -yDist, -zDist, false);
-  //   this.p1.rotate(this.basis1, rad1);
-  //   this.p1.rotate(this.basis2, rad2);
-  //   this.p1.rotate(this.unitNormal, rad3);
-  //   this.p2.rotate(this.basis1, rad1);
-  //   this.p2.rotate(this.basis2, rad2);
-  //   this.p2.rotate(this.unitNormal, rad3);
-  //   this.p3.rotate(this.basis1, rad1);
-  //   this.p3.rotate(this.basis2, rad2);
-  //   this.p3.rotate(this.unitNormal, rad3);
-  //   this.p4.rotate(this.basis1, rad1);
-  //   this.p4.rotate(this.basis2, rad2);
-  //   this.p4.rotate(this.unitNormal, rad3);
-  //   this.translate(xDist, yDist, zDist, true);
-  // }
+    this.translate(-xDist, -yDist, -zDist, false);
+    this.p1.rotate(this.basis1, rad1);
+    this.p1.rotate(this.basis2, rad2);
+    this.p1.rotate(this.unitNormal, rad3);
+    this.p2.rotate(this.basis1, rad1);
+    this.p2.rotate(this.basis2, rad2);
+    this.p2.rotate(this.unitNormal, rad3);
+    this.p3.rotate(this.basis1, rad1);
+    this.p3.rotate(this.basis2, rad2);
+    this.p3.rotate(this.unitNormal, rad3);
+    this.p4.rotate(this.basis1, rad1);
+    this.p4.rotate(this.basis2, rad2);
+    this.p4.rotate(this.unitNormal, rad3);
+    this.translate(xDist, yDist, zDist, true);
+  }
 
-  // updatePosition() {
-  //   if (this.animation !== null) {
-  //     if (this.animation.rate === null) {
-  //       this.animation.rate = {
-  //         x: (this.animation.endpoint.getX() - this.p1.getX()) / this.animation.frames,
-  //         y: (this.animation.endpoint.getY() - this.p1.getY()) / this.animation.frames,
-  //         z: (this.animation.endpoint.getZ() - this.p1.getZ()) / this.animation.frames,
-  //       };
-  //     }
-  //     const dx = this.animation.rate.x;
-  //     const dy = this.animation.rate.y;
-  //     const dz = this.animation.rate.z;
-  //     this.translate(dx, dy, dz);
-  //     this.animation.frames -= 1;
-  //     if (this.animation.frames === 0) {
-  //       this.animation.resolve();
-  //       this.animation = null;
-  //     }
-  //   } else {
-  //     if (this.rates.r1 || this.rates.r2) {
-  //       this.rotateByBasis(this.rates.r1, this.rates.r2, 0);
-  //     }
-  //     if (this.rates.t1 || this.rates.t2 || this.rates.t3) {
-  //       this.translateAlongBasis(this.rates.t1, this.rates.t2, this.rates.t3);
-  //     }
-  //   }
-  // }
+  updatePosition() {
+    if (this.animation !== null) {
+      if (this.animation.rate === null) {
+        this.animation.rate = {
+          x: (this.animation.endpoint.getX() - this.p1.getX()) / this.animation.frames,
+          y: (this.animation.endpoint.getY() - this.p1.getY()) / this.animation.frames,
+          z: (this.animation.endpoint.getZ() - this.p1.getZ()) / this.animation.frames,
+        };
+      }
+      const dx = this.animation.rate.x;
+      const dy = this.animation.rate.y;
+      const dz = this.animation.rate.z;
+      this.translate(dx, dy, dz);
+      this.animation.frames -= 1;
+      if (this.animation.frames === 0) {
+        this.animation.resolve();
+        this.animation = null;
+      }
+    } else {
+      if (this.rates.r1 || this.rates.r2) {
+        this.rotateByBasis(this.rates.r1, this.rates.r2, 0);
+      }
+      if (this.rates.t1 || this.rates.t2 || this.rates.t3) {
+        this.translateAlongBasis(this.rates.t1, this.rates.t2, this.rates.t3);
+      }
+    }
+  }
 
-  // updateRates(rates) {
-  //   this.rates.r1 += (rates.r1 || 0);
-  //   this.rates.r2 += (rates.r2 || 0);
-  //   this.rates.t1 += (rates.t1 || 0);
-  //   this.rates.t2 += (rates.t2 || 0);
-  //   this.rates.t3 += (rates.t3 || 0);
-  // }
-
-  // mouseInside(points) {
-  //   if (this.mx === null && this.my === null) {
-  //     return false;
-  //   }
-  //   let zPos = null;
-  //   for (let i = 0; i < points.length; i++) {
-  //     const p = points[i];
-  //     const np = i === points.length - 1 ? points[0] : points[i + 1];
-  //     const v1 = {
-  //       x: np.getX() - p.getX(),
-  //       y: np.getY() - p.getY(),
-  //     };
-  //     const v2 = {
-  //       x: this.mx - p.getX(),
-  //       y: this.my - p.getY(),
-  //     };
-  //     const cross = (v1.x * v2.y) - (v1.y * v2.x);
-  //     if (zPos === null) {
-  //       zPos = cross > 0;
-  //     } else if ((cross > 0) !== zPos) {
-  //       return false;
-  //     }
-  //   }
-  //   return true;
-  // }
+  updateRates(rates) {
+    this.rates.r1 += (rates.r1 || 0);
+    this.rates.r2 += (rates.r2 || 0);
+    this.rates.t1 += (rates.t1 || 0);
+    this.rates.t2 += (rates.t2 || 0);
+    this.rates.t3 += (rates.t3 || 0);
+  }
 
   // getViewDir(point, n) {
   //   let dot;

@@ -1,17 +1,18 @@
-import { MapScreen } from './MapScreen';
 import DefaultMap from './DefaultMap';
+import GameMapScreen from './GameMapScreen';
 
 export default class Game {
-  constructor(width, height) {
+  constructor() {
     this.canvas = document.createElement('canvas');
-    this.canvas.width = width;
-    this.canvas.height = height;
+    this.canvas.style.border = '1px solid black';
+    this.screen = new GameMapScreen(this.canvas, DefaultMap);
+
+    // Debug
+    window.dmap = DefaultMap;
   }
 
   start() {
-    window.dmap = DefaultMap;
     document.body.appendChild(this.canvas);
-    this.screen = new MapScreen(this.canvas, DefaultMap);
     this.screen.start();
 
     this.canvas.addEventListener('click', (e) => {
@@ -34,7 +35,7 @@ export default class Game {
       this.screen.handleMouseUp(e.clientX - rect.left, e.clientY - rect.top);
     });
 
-    this.canvas.addEventListener('mouseleave', (e) => {
+    this.canvas.addEventListener('mouseleave', () => {
       this.screen.handleMouseLeave();
     });
 

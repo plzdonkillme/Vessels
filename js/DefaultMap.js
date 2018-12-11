@@ -1,7 +1,6 @@
-import { deserialize } from "./MapSerializer";
+import { deserialize } from './MapSerializer';
 
-var exampleMapString = 
-`p-1 p-2 p-3
+const exampleMapString = `p-1 p-2 p-3
 p-2 p-3 p-2
 p-3 p-1 p-1
 p-1 e-1 p-1
