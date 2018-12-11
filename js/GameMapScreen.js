@@ -3,25 +3,42 @@ import Viewport from './Viewport';
 import FaceRasterizer from './FaceRasterizer';
 import Face from './Face';
 
+let face1;
+let face2;
+
+const R_RATE = 3;
+const T_RATE = 5;
+
 class GameMapScreen {
   constructor(canvas, map) {
     this.canvas = canvas;
     this.map = map;
     this.viewport = new Viewport(
-      new Point(0, 0, 500),
-      new Point(this.canvas.width, 0, 500),
-      new Point(0, this.canvas.height, 500),
-      new Point(this.canvas.width, this.canvas.height, 500),
+      new Point(0, 0, 200),
+      new Point(this.canvas.width, 0, 200),
+      new Point(0, this.canvas.height, 200),
+      new Point(this.canvas.width, this.canvas.height, 200),
       500,
     );
 
-    const face = Face.createFromBuffer([
-      0, 0, 0,
-      100, 0, 0,
-      100, 100, 0,
-      0, 100, 0,
+    window.v = this.viewport;
+
+    const w = this.canvas.width / 2;
+    const h = this.canvas.height / 2;
+    face1 = Face.createFromBuffer([
+      w, h - 50, 50,
+      w, h + 50, 50,
+      w, h + 50, -50,
+      w, h - 50, -50,
     ]);
-    this.rasterizer = new FaceRasterizer([face]);
+    face2 = Face.createFromBuffer([
+      w - 50, h - 50, 0,
+      w + 50, h - 50, 0,
+      w + 50, h + 50, 0,
+      w - 50, h + 50, 0,
+    ]);
+
+    this.rasterizer = new FaceRasterizer([face1]);
 
     this.pressed = {};
   }
@@ -32,7 +49,7 @@ class GameMapScreen {
 
   renderLoop() {
     this.viewport.updatePosition();
-    const rasterFaces = this.rasterizer.rasterize(this.viewport, []);
+    const rasterFaces = this.rasterizer.rasterize(this.viewport, [face2]);
 
     const ctx = this.canvas.getContext('2d');
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
@@ -40,6 +57,11 @@ class GameMapScreen {
     ctx.strokeStyle = '#000000';
     for (let i = 0; i < rasterFaces.length; i += 1) {
       const rasterFace = rasterFaces[i];
+      if (rasterFace.getFace() === face1) {
+        ctx.fillStyle = '#66ccff';
+      } else {
+        ctx.fillStyle = '#CCCCCC';
+      }
       const points = rasterFace.getPoints();
       ctx.beginPath();
       for (let k = 0; k < points.length; k += 1) {
@@ -89,34 +111,34 @@ class GameMapScreen {
       const updateRates = {};
       switch (code) { // eslint-disable-line default-case
         case 'KeyA':
-          updateRates.t1 = -20;
+          updateRates.t1 = -T_RATE;
           break;
         case 'KeyW':
-          updateRates.t3 = 20;
+          updateRates.t3 = T_RATE;
           break;
         case 'KeyD':
-          updateRates.t1 = 20;
+          updateRates.t1 = T_RATE;
           break;
         case 'KeyS':
-          updateRates.t3 = -20;
+          updateRates.t3 = -T_RATE;
           break;
         case 'Space':
-          updateRates.t2 = -20;
+          updateRates.t2 = -T_RATE;
           break;
         case 'ShiftLeft':
-          updateRates.t2 = 20;
+          updateRates.t2 = T_RATE;
           break;
         case 'ArrowUp':
-          updateRates.r1 = -3;
+          updateRates.r1 = -R_RATE;
           break;
         case 'ArrowDown':
-          updateRates.r1 = 3;
+          updateRates.r1 = R_RATE;
           break;
         case 'ArrowLeft':
-          updateRates.r2 = 3;
+          updateRates.r2 = R_RATE;
           break;
         case 'ArrowRight':
-          updateRates.r2 = -3;
+          updateRates.r2 = -R_RATE;
           break;
       }
       this.viewport.updateRates(updateRates);
@@ -129,34 +151,34 @@ class GameMapScreen {
       const updateRates = {};
       switch (code) { // eslint-disable-line default-case
         case 'KeyA':
-          updateRates.t1 = 20;
+          updateRates.t1 = T_RATE;
           break;
         case 'KeyW':
-          updateRates.t3 = -20;
+          updateRates.t3 = -T_RATE;
           break;
         case 'KeyD':
-          updateRates.t1 = -20;
+          updateRates.t1 = -T_RATE;
           break;
         case 'KeyS':
-          updateRates.t3 = 20;
+          updateRates.t3 = T_RATE;
           break;
         case 'Space':
-          updateRates.t2 = 20;
+          updateRates.t2 = T_RATE;
           break;
         case 'ShiftLeft':
-          updateRates.t2 = -20;
+          updateRates.t2 = -T_RATE;
           break;
         case 'ArrowUp':
-          updateRates.r1 = 3;
+          updateRates.r1 = R_RATE;
           break;
         case 'ArrowDown':
-          updateRates.r1 = -3;
+          updateRates.r1 = -R_RATE;
           break;
         case 'ArrowLeft':
-          updateRates.r2 = -3;
+          updateRates.r2 = -R_RATE;
           break;
         case 'ArrowRight':
-          updateRates.r2 = 3;
+          updateRates.r2 = R_RATE;
           break;
       }
       this.viewport.updateRates(updateRates);

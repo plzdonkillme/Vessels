@@ -60,8 +60,13 @@ class Point {
     return new Point(this.x, this.y, this.z);
   }
 
-  equals(p) {
-    return this.x === p.getX() && this.y === p.getY() && this.z === p.getZ();
+  equals(p, strict = true) {
+    if (strict) {
+      return this.x === p.getX() && this.y === p.getY() && this.z === p.getZ();
+    }
+    return Math.abs(this.x - p.getX()) < 0.001
+      && Math.abs(this.y - p.getY()) < 0.001
+      && Math.abs(this.z - p.getZ()) < 0.001;
   }
 
   static createFromBuffer(buffer) {
@@ -75,12 +80,12 @@ class Point {
     return points;
   }
 
-  static arrayEquals(points1, points2) {
+  static arrayEquals(points1, points2, strict = true) {
     if (points1.length !== points2.length) {
       return false;
     }
     for (let i = 0; i < points1.length; i += 1) {
-      if (!points1[i].equals(points2[i])) {
+      if (!points1[i].equals(points2[i], strict)) {
         return false;
       }
     }
