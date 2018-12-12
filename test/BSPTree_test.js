@@ -155,7 +155,13 @@ describe('BSPTree', () => {
   });
 
   describe('addFaces', () => {
-    const dir = new Vector(0, 0, 1);
+    const p = new Point(1, 0, -2);
+    function traverse(bsp) {
+      const sortedFaces = [];
+      const fn = face => sortedFaces.push(face);
+      bsp.traverse(fn, p);
+      return sortedFaces;
+    }
 
     it('should properly add faces without splitting', () => {
       const faces = [
@@ -164,9 +170,7 @@ describe('BSPTree', () => {
         [0, 0, -1, 1, 0, -1, 0, 1, -1],
       ].map(buff => Face.createFromBuffer(buff));
       const bsp = new BSPTree(faces);
-      const sortedFaces = [];
-      const fn = face => sortedFaces.push(face);
-      bsp.traverse(fn, dir);
+      const sortedFaces = traverse(bsp);
       const expSortedFaces = [
         [0, 0, 1, 1, 0, 1, 0, 1, 1],
         [0, 0, 0, 1, 0, 0, 0, 1, 0],
@@ -182,9 +186,7 @@ describe('BSPTree', () => {
         [0, 0, -1, 1, 0, -1, 0, 1, -1],
       ].map(buff => Face.createFromBuffer(buff));
       const bsp = new BSPTree(faces);
-      const sortedFaces = [];
-      const fn = face => sortedFaces.push(face);
-      bsp.traverse(fn, dir);
+      const sortedFaces = traverse(bsp);
       const expSortedFaces = [
         [0, 1, 0, 0, 1, 1, 0, -1, 1, 0, -1, 0],
         [0, 0, 0, 1, 0, 0, 0, 1, 0],
@@ -198,7 +200,13 @@ describe('BSPTree', () => {
   });
 
   describe('removeFaces', () => {
-    const dir = new Vector(0, 0, 1);
+    const p = new Point(1, 0, -2);
+    function traverse(bsp) {
+      const sortedFaces = [];
+      const fn = face => sortedFaces.push(face);
+      bsp.traverse(fn, p);
+      return sortedFaces;
+    }
 
     it('should properly remove leaf', () => {
       const faces = [
@@ -208,9 +216,7 @@ describe('BSPTree', () => {
       ].map(buff => Face.createFromBuffer(buff));
       let bsp = new BSPTree(faces);
       bsp = BSPTree.removeFaces(bsp, [faces[1]]);
-      const sortedFaces = [];
-      const fn = face => sortedFaces.push(face);
-      bsp.traverse(fn, dir);
+      const sortedFaces = traverse(bsp);
       const expSortedFaces = [
         [0, 0, 0, 1, 0, 0, 0, 1, 0],
         [0, 0, -1, 1, 0, -1, 0, 1, -1],
@@ -226,9 +232,7 @@ describe('BSPTree', () => {
       ].map(buff => Face.createFromBuffer(buff));
       let bsp = new BSPTree(faces);
       bsp = BSPTree.removeFaces(bsp, [faces[1]]);
-      const sortedFaces = [];
-      const fn = face => sortedFaces.push(face);
-      bsp.traverse(fn, dir);
+      const sortedFaces = traverse(bsp);
       const expSortedFaces = [
         [0, 0, 1, 1, 0, 1, 0, 1, 1],
         [0, 0, -1, 1, 0, -1, 0, 1, -1],
@@ -244,9 +248,7 @@ describe('BSPTree', () => {
       ].map(buff => Face.createFromBuffer(buff));
       let bsp = new BSPTree(faces);
       bsp = BSPTree.removeFaces(bsp, [faces[0]]);
-      const sortedFaces = [];
-      const fn = face => sortedFaces.push(face);
-      bsp.traverse(fn, dir);
+      const sortedFaces = traverse(bsp);
       const expSortedFaces = [
         [0, 0, 1, 1, 0, 1, 0, 1, 1],
         [0, 0, -1, 1, 0, -1, 0, 1, -1],
@@ -262,9 +264,7 @@ describe('BSPTree', () => {
       ].map(buff => Face.createFromBuffer(buff));
       let bsp = new BSPTree(faces);
       bsp = BSPTree.removeFaces(bsp, [faces[1]]);
-      const sortedFaces = [];
-      const fn = face => sortedFaces.push(face);
-      bsp.traverse(fn, dir);
+      const sortedFaces = traverse(bsp);
       const expSortedFaces = [
         [0, 0, 0, 1, 0, 0, 0, 1, 0],
         [0, 0, -1, 1, 0, -1, 0, 1, -1],
@@ -282,9 +282,7 @@ describe('BSPTree', () => {
       ].map(buff => Face.createFromBuffer(buff));
       let bsp = new BSPTree(faces);
       bsp = BSPTree.removeFaces(bsp, [faces[0]]);
-      const sortedFaces = [];
-      const fn = face => sortedFaces.push(face);
-      bsp.traverse(fn, dir);
+      const sortedFaces = traverse(bsp);
       const expSortedFaces = [
         [0, 1, 0, 0, 1, 1, 0, -1, 1, 0, -1, 0],
         [0, 1, -1, 0, 1, 0, 0, -1, 0, 0, -1, -1],

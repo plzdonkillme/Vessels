@@ -5,6 +5,7 @@ import Face from './Face';
 
 let face1;
 let face2;
+let face3;
 
 const R_RATE = 3;
 const T_RATE = 5;
@@ -37,6 +38,12 @@ class GameMapScreen {
       w + 50, h + 50, 0,
       w - 50, h + 50, 0,
     ]);
+    face3 = Face.createFromBuffer([
+      w - 50, h - 50, -100,
+      w + 50, h - 50, -100,
+      w + 50, h + 50, -100,
+      w - 50, h + 50, -100,
+    ]);
 
     this.rasterizer = new FaceRasterizer([face1]);
 
@@ -49,7 +56,7 @@ class GameMapScreen {
 
   renderLoop() {
     this.viewport.updatePosition();
-    const rasterFaces = this.rasterizer.rasterize(this.viewport, [face2]);
+    const rasterFaces = this.rasterizer.rasterize(this.viewport, [face2, face3]);
 
     const ctx = this.canvas.getContext('2d');
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);

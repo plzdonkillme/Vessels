@@ -264,12 +264,13 @@ class BSPTree {
     };
   }
 
-  traverse(fn, dir) {
-    const { n } = this.getPlane();
-    const d = n.dot(dir);
+  // TODO: Add optional view vector and angle for hidden surface culling
+  traverse(fn, p) {
+    const { p0, n } = this.getPlane();
+    const d = n.dot(Vector.createFromPoints(p0, p));
     if (d > 0) {
-      if (this.front !== null) {
-        this.front.traverse(fn, dir);
+      if (this.back !== null) {
+        this.back.traverse(fn, p);
       }
       for (let i = 0; i < this.nodes.length; i += 1) {
         const face = this.nodes[i];
@@ -279,12 +280,12 @@ class BSPTree {
         }
         fn(face, parentFace);
       }
-      if (this.back !== null) {
-        this.back.traverse(fn, dir);
+      if (this.front !== null) {
+        this.front.traverse(fn, p);
       }
     } else {
-      if (this.back !== null) {
-        this.back.traverse(fn, dir);
+      if (this.front !== null) {
+        this.front.traverse(fn, p);
       }
       for (let i = 0; i < this.nodes.length; i += 1) {
         const face = this.nodes[i];
@@ -294,8 +295,8 @@ class BSPTree {
         }
         fn(face, parentFace);
       }
-      if (this.front !== null) {
-        this.front.traverse(fn, dir);
+      if (this.back !== null) {
+        this.back.traverse(fn, p);
       }
     }
   }

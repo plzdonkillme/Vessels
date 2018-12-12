@@ -44,7 +44,7 @@ class FaceRasterizer {
         const rasterFace = new RasterFace(visiblePoints, mappedParentEdges, parentFace);
         rasterFaces.push(rasterFace);
       }
-    }, viewport.getNormal());
+    }, viewport.getPoint());
     this.bsp = BSPTree.removeFaces(this.bsp, faces);
     return rasterFaces;
   }
@@ -56,13 +56,14 @@ class FaceRasterizer {
       let m = mapping[i];
       let nm = mapping[j];
       if (Array.isArray(m) && Array.isArray(nm)) {
+        // edges.push([i, j]);    uncomment to draw clipped edges
         continue; // eslint-disable-line no-continue
       }
       if (Array.isArray(m)) {
-        m = m[1]; // eslint-disable-line prefer-destructuring
+        m = m[0]; // eslint-disable-line prefer-destructuring
       }
       if (Array.isArray(nm)) {
-        nm = nm[0]; // eslint-disable-line prefer-destructuring
+        nm = nm[1]; // eslint-disable-line prefer-destructuring
       }
       for (let k = 0; k < parentEdges.length; k += 1) {
         if ((parentEdges[k][0] === m && parentEdges[k][1] === nm)

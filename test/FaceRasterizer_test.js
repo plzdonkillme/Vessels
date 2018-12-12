@@ -88,4 +88,19 @@ describe('FaceRasterizer', () => {
       expect(rasterFace3.getEdges()).to.deep.equal([[1, 2], [2, 3], [3, 0]]);
     });
   });
+  describe('getMappedParentEdges', () => {
+    it('should correctly get mapped parent edges 1', () => {
+      expect(FaceRasterizer.getMappedParentEdges(
+        [0, 1, 2, 3],
+        [[0, 1], [1, 2], [2, 3], [0, 3]],
+      )).to.deep.equal([[0, 1], [1, 2], [2, 3], [3, 0]]);
+    });
+
+    it('should correctly get mapped parent edges 2', () => {
+      expect(FaceRasterizer.getMappedParentEdges(
+        [0, [0, 1], [1, 2], 2, 3],
+        [[0, 1], [1, 2], [2, 3]],
+      )).to.deep.equal([[0, 1], [2, 3], [3, 4]]);
+    });
+  });
 });

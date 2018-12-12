@@ -48,6 +48,13 @@ class Viewport {
     return this.unitNormal;
   }
 
+  getPoint() {
+    if (this.d === -1) {
+      return this.midpoint;
+    }
+    return this.p5;
+  }
+
   projectFace(face) {
     const points = face.getPoints();
     const visiblePoints = [];
