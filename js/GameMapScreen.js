@@ -22,8 +22,6 @@ class GameMapScreen {
       500,
     );
 
-    window.v = this.viewport;
-
     const w = this.canvas.width / 2;
     const h = this.canvas.height / 2;
     face1 = Face.createFromBuffer([

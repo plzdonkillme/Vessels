@@ -1,15 +1,15 @@
-import { serialize } from './MapSerializer';
+import { serialize } from './GameMapSerializer'; // eslint-disable-line import/no-cycle
 import { TileFactory } from './Tile';
 import { ObjectiveFactory } from './Objective';
 import { MapObjectFactory } from './MapObject';
 
-class Map {
+class GameMap {
   constructor(state) {
     this.tiles = [];
     this.tileMap = {};
-    for (let y = 0; y < state.tiles.length; y++) {
+    for (let y = 0; y < state.tiles.length; y += 1) {
       const tileRow = [];
-      for (let x = 0; x < state.tiles[y].length; x++) {
+      for (let x = 0; x < state.tiles[y].length; x += 1) {
         const tile = TileFactory.create(state.tiles[y][x]);
         this.tileMap[tile.getKey()] = tile;
         if (state.tiles[y][x].mapObject !== undefined) {
@@ -135,4 +135,4 @@ class Map {
   }
 }
 
-export { Map };
+export default GameMap;

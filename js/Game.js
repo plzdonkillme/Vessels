@@ -1,14 +1,16 @@
-import DefaultMap from './DefaultMap';
+import GameMapDefault from './GameMapDefault';
 import GameMapScreen from './GameMapScreen';
 
 export default class Game {
   constructor() {
     this.canvas = document.createElement('canvas');
     this.canvas.style.border = '1px solid black';
-    this.screen = new GameMapScreen(this.canvas, DefaultMap);
+    this.canvas.width = window.innerWidth - 20;
+    this.canvas.height = window.innerHeight - 20;
+    this.screen = new GameMapScreen(this.canvas, GameMapDefault);
 
     // Debug
-    window.dmap = DefaultMap;
+    window.dmap = GameMapDefault;
   }
 
   start() {

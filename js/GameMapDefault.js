@@ -1,6 +1,7 @@
-import { deserialize } from './MapSerializer';
+import { deserialize } from './GameMapSerializer';
 
-const exampleMapString = `p-1 p-2 p-3
+const exampleMapString = `
+p-1 p-2 p-3
 p-2 p-3 p-2
 p-3 p-1 p-1
 p-1 e-1 p-1
@@ -16,7 +17,8 @@ p-1 p-1 p-1
 ===
 0
 0-1
-1-1-1`;
+1-1-1
+`;
 
 const defaultMap = deserialize(exampleMapString);
 
