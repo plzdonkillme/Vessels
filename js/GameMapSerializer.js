@@ -1,84 +1,64 @@
 import { TileFactory } from './Tile';
 import { MapObjectFactory } from './MapObject';
-import { ObjectiveFactory } from './Objective';
-import GameMap from './GameMap';
 
-export function serialize(map) {
-  const state = map.toJSON();
-  let mapString = '';
-  const { tiles } = state;
-  const mapObjects = [];
+export function serialize(json) {
+  const { tiles, state } = json;
+  let maxLen = 0;
   for (let i = 0; i < tiles.length; i += 1) {
-    const tileRow = tiles[i];
-    for (let j = 0; j < tileRow.length; j += 1) {
-      const tile = tileRow[j];
-      if (tile.mapObject !== undefined) {
-        mapObjects.push(tile.mapObject);
-      }
-      const tileString = TileFactory.getPropString(tile);
-      mapString += tileString;
-      if (j !== tileRow.length - 1) {
-        mapString += ' ';
+    for (let j = 0; j < tiles[i].length; j += 1) {
+      if (tiles[i][j].mapObject !== undefined) {
+        maxLen = Math.max(maxLen, MapObjectFactory.getPropString(tiles[i][j].mapObject).length);
       }
     }
-    mapString += '\n';
   }
-  mapString += '===\n';
-  for (let i = 0; i < mapObjects.length; i += 1) {
-    const mapObject = mapObjects[i];
-    const mapObjectString = MapObjectFactory.getPropString(mapObject);
-    mapString += mapObjectString;
-    mapString += '\n';
+  let tileString = '';
+  for (let i = 0; i < tiles.length; i += 1) {
+    for (let j = 0; j < tiles[i].length; j += 1) {
+      const tstring = TileFactory.getPropString(tiles[i][j]);
+      let mstring = ' '.repeat(maxLen);
+      if (tiles[i][j].mapObject !== undefined) {
+        mstring = MapObjectFactory.getPropString(tiles[i][j].mapObject);
+        mstring = `${mstring}${' '.repeat(maxLen - mstring.length)}`;
+      }
+      tileString = `${tileString}${tstring}{${mstring}}`;
+      if (j !== tiles[i].length - 1) {
+        tileString = `${tileString} `;
+      }
+    }
+    tileString = `${tileString}\n`;
   }
-  mapString += '===\n';
-  mapString += ObjectiveFactory.getPropString(state.objective);
-  mapString += '\n';
-  mapString += state.turnPlayers.join('-');
-  mapString += '\n';
-  mapString += `${state.actions.move}-${state.actions.transfer}-${state.actions.attack}`;
-  return mapString;
+  const stateString = JSON.stringify(state, null, 2);
+  return `${tileString}===\n${stateString}`;
 }
 
 export function deserialize(mapString) {
-  const state = {};
-  const splitString = mapString.trim().split('\n===\n');
-  const tileArrayString = splitString[0];
-  const mapObjectArrayString = splitString[1];
-  const settings = splitString[2].split('\n');
+  const splitString = mapString.trim().split('===');
 
+  const tileReg = /(\w+?){\s*(\w*?)\s*}/g;
+  const tileStrings = splitString[0].trim().split('\n');
   const tiles = [];
-  const tileRowStrings = tileArrayString.split('\n');
-  for (let y = 0; y < tileRowStrings.length; y += 1) {
+  for (let y = 0; y < tileStrings.length; y += 1) {
     const tileRow = [];
-    const tileStrings = tileRowStrings[y].split(' ');
-    for (let x = 0; x < tileStrings.length; x += 1) {
-      const json = TileFactory.getJSON(tileStrings[x]);
-      json.x = x;
+    let match = tileReg.exec(tileStrings[y]);
+    while (match !== null) {
+      const json = TileFactory.getJSON(match[1]);
+      json.x = tileRow.length;
       json.y = y;
+      if (match[2] !== '') {
+        const mapJson = MapObjectFactory.getJSON(match[2]);
+        mapJson.x = tileRow.length;
+        mapJson.y = y;
+        json.mapObject = mapJson;
+      }
       tileRow.push(json);
+      match = tileReg.exec(tileStrings[y]);
     }
     tiles.push(tileRow);
   }
 
-  const mapObjectStrings = mapObjectArrayString.split('\n');
-  for (let i = 0; i < mapObjectStrings.length; i += 1) {
-    const props = mapObjectStrings[i].split('-');
-    const x = parseInt(props[0], 10);
-    const y = parseInt(props[1], 10);
-    const json = MapObjectFactory.getJSON(props.slice(2, props.length).join('-'));
-    json.x = x;
-    json.y = y;
-    tiles[y][x].mapObject = json;
-  }
-
-  state.objective = ObjectiveFactory.getJSON(settings[0]);
-  state.turnPlayers = settings[1].split('-');
-  const s = settings[2].split('-');
-  state.actions = {
-    move: parseInt(s[0], 10),
-    transfer: parseInt(s[1], 10),
-    attack: parseInt(s[2], 10),
+  const state = JSON.parse(splitString[1]);
+  return {
+    tiles,
+    state,
   };
-  state.tiles = tiles;
-  return new GameMap(state);
 }

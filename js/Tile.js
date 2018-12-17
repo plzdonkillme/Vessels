@@ -93,14 +93,14 @@ const TileFactory = {
     return new TileClass(json.x, json.y, json.h);
   },
   getJSON(propString) {
-    const props = propString.split('-');
+    const props = propString.split('_');
     return {
       type: props[0],
       h: parseInt(props[1], 10),
     };
   },
   getPropString(json) {
-    return `${json.type}-${json.h}`;
+    return `${json.type}_${json.h}`;
   },
 };
 

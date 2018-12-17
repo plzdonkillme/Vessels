@@ -1,58 +1,30 @@
-class Objective {
+const EliminationObjective = {
+  check(map) {
+    const players = map.getMapObjects().map(m => m.getPlayer()).filter(p => p !== null);
+    const player = players.filter(p => p === '0');
+    const enemies = players.filter(p => p !== '0');
+    return player.length === 0 || enemies.length === 0;
+  },
 
-    serialize() {
-        return this.constructor.name();
-    }
+  success(map) {
+    const players = map.getMapObjects().map(m => m.getPlayer());
+    const enemies = players.filter(p => p !== '0' && p !== null);
+    return enemies.length === 0;
+  },
 
-    toJSON() {
-        return this.constructor.name();
-    }
-
-    check(map) {
-        throw Error('Unimplemented');
-    }
-
-    success(map) {
-        throw Error('Unimplemented');
-    }
-
-}
-
-class Objective1 extends Objective {
-
-    static name() {
-        return 0;
-    }
-
-    check(map) {
-        let players = map.getMapObjects().map(m => m.getPlayer()).filter(p => p !== null);
-        let player = players.filter(p => p === '0');
-        let enemies =  players.filter(p => p !== '0');
-        return player.length === 0 || enemies.length === 0;
-    }
-
-    success(map) {
-        let players = map.getMapObjects().map(m => m.getPlayer());
-        let enemies =  players.filter(p => p !== '0' && p !== null);
-        return enemies.length === 0;
-    }
-}
+  toJSON() {
+    return 'elimination';
+  },
+};
 
 
 const ObjectiveFactory = {
-    map: {
-        0: Objective1,
-    },
-    create: function(json) {
-        const cls = this.map[json];
-        return new cls();
-    },
-    getJSON: function(propString) {
-        return parseInt(propString);
-    },
-    getPropString: function(json) {
-        return `${json}`;
-    }
+  map: {
+    elimination: EliminationObjective,
+  },
+  create(json) {
+    return this.map[json];
+  },
 };
 
-export { ObjectiveFactory }
+export default ObjectiveFactory;

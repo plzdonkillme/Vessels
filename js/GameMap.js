@@ -1,19 +1,20 @@
-import { serialize } from './GameMapSerializer'; // eslint-disable-line import/no-cycle
+import { serialize } from './GameMapSerializer';
 import { TileFactory } from './Tile';
-import { ObjectiveFactory } from './Objective';
+import ObjectiveFactory from './Objective';
 import { MapObjectFactory } from './MapObject';
 
 class GameMap {
-  constructor(state) {
+  constructor(json) {
+    const { tiles, state } = json;
     this.tiles = [];
     this.tileMap = {};
-    for (let y = 0; y < state.tiles.length; y += 1) {
+    for (let y = 0; y < tiles.length; y += 1) {
       const tileRow = [];
-      for (let x = 0; x < state.tiles[y].length; x += 1) {
-        const tile = TileFactory.create(state.tiles[y][x]);
+      for (let x = 0; x < tiles[y].length; x += 1) {
+        const tile = TileFactory.create(tiles[y][x]);
         this.tileMap[tile.getKey()] = tile;
-        if (state.tiles[y][x].mapObject !== undefined) {
-          const m = MapObjectFactory.create(state.tiles[y][x].mapObject);
+        if (tiles[y][x].mapObject !== undefined) {
+          const m = MapObjectFactory.create(tiles[y][x].mapObject);
           m.setTile(tile);
         }
         if (y > 0) {
@@ -29,19 +30,21 @@ class GameMap {
       this.tiles.push(tileRow);
     }
     this.objective = ObjectiveFactory.create(state.objective);
-    this.turnPlayers = state.turnPlayers;
-    this.actions = state.actions;
+    this.turnOrder = state.turnOrder;
+    this.actionCounter = state.actionCounter;
     this.listeners = [];
     this.cachedActions = null;
   }
 
   toJSON() {
-    const state = {};
-    state.tiles = this.tiles.map(tileRow => tileRow.map(tile => tile.toJSON()));
-    state.objective = this.objective.toJSON();
-    state.turnPlayers = this.turnPlayers;
-    state.actions = this.actions;
-    return state;
+    const json = {};
+    json.tiles = this.tiles.map(tileRow => tileRow.map(tile => tile.toJSON()));
+    json.state = {
+      objective: this.objective.toJSON(),
+      turnPlayers: this.turnOrder,
+      actions: this.actionCounter,
+    };
+    return json;
   }
 
   static transition(state, action) {
@@ -50,12 +53,18 @@ class GameMap {
     return map.toJSON();
   }
 
+  // TODO: REVISIT
   doAction(action) {
     // TODO: Validate actions is in available actions
     const validActions = this.getActions();
     if (validActions.indexOf(action) === -1) {
       throw Error('Invalid Action');
     }
+    switch (action.name) {
+      case 'end':
+        
+    }
+
     const name = action.name;
     if (this.actions[name] > 0) {
       const src = this.tileMap[action.src].getMapObject();
@@ -82,6 +91,7 @@ class GameMap {
     }
   }
 
+  // TODO: REVISIT
   getActions() {
     if (this.cachedActions !== null) {
       return this.cachedActions;
@@ -118,20 +128,12 @@ class GameMap {
     return mapObjects;
   }
 
-  getObjective() {
-    return this.objective;
-  }
-
-  getTurnPlayer() {
-    return this.turnPlayer;
-  }
-
   isResolved() {
     return this.objective.check(this);
   }
 
   serialize() {
-    return serialize(this);
+    return serialize(this.toJSON());
   }
 }
 

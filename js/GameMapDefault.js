@@ -1,25 +1,24 @@
 import { deserialize } from './GameMapSerializer';
+import GameMap from './GameMap';
 
 const exampleMapString = `
-p-1 p-2 p-3
-p-2 p-3 p-2
-p-3 p-1 p-1
-p-1 e-1 p-1
-p-1 p-1 p-1
+p_1{w_0} p_2{w_0} p_3{w_1}
+p_2{bs } p_3{   } p_2{w_1}
+p_3{rs } p_1{   } p_1{   }
+p_1{ys } e_1{   } p_1{   }
+p_1{   } p_1{   } p_1{   }
 ===
-0-0-w-0
-1-0-w-0
-2-0-w-1
-0-1-bs
-2-1-w-1
-0-2-rs
-0-3-ys
-===
-0
-0-1
-1-1-1
+{
+  "turnOrder": ["0", "1"],
+  "actionCounter": {
+    "move": 1,
+    "attack": 1,
+    "transfer": 1
+  },
+  "objective": "elimination"
+}
 `;
 
-const defaultMap = deserialize(exampleMapString);
+const defaultMap = new GameMap(deserialize(exampleMapString));
 
 export default defaultMap;
