@@ -7,12 +7,10 @@ class GameMap {
   constructor(json) {
     const { tiles, state } = json;
     this.tiles = [];
-    this.tileMap = {};
     for (let y = 0; y < tiles.length; y += 1) {
       const tileRow = [];
       for (let x = 0; x < tiles[y].length; x += 1) {
         const tile = TileFactory.create(tiles[y][x]);
-        this.tileMap[tile.getKey()] = tile;
         if (tiles[y][x].mapObject !== undefined) {
           const m = MapObjectFactory.create(tiles[y][x].mapObject);
           m.setTile(tile);
@@ -32,8 +30,6 @@ class GameMap {
     this.objective = ObjectiveFactory.create(state.objective);
     this.turnOrder = state.turnOrder;
     this.actionCounter = state.actionCounter;
-    this.listeners = [];
-    this.cachedActions = null;
   }
 
   toJSON() {
@@ -41,8 +37,8 @@ class GameMap {
     json.tiles = this.tiles.map(tileRow => tileRow.map(tile => tile.toJSON()));
     json.state = {
       objective: this.objective.toJSON(),
-      turnPlayers: this.turnOrder,
-      actions: this.actionCounter,
+      turnOrder: this.turnOrder,
+      actionCounter: this.actionCounter,
     };
     return json;
   }
@@ -59,10 +55,6 @@ class GameMap {
     const validActions = this.getActions();
     if (validActions.indexOf(action) === -1) {
       throw Error('Invalid Action');
-    }
-    switch (action.name) {
-      case 'end':
-        
     }
 
     const name = action.name;
@@ -91,28 +83,23 @@ class GameMap {
     }
   }
 
+  //TODO: Undo action
+
   // TODO: REVISIT
   getActions() {
-    if (this.cachedActions !== null) {
-      return this.cachedActions;
-    }
     let actions = [{ name: 'end' }];
-    const objs = this.getMapObjects().filter(m => m.getPlayer() === this.turnPlayers[0]);
-    if (this.actions.move > 0) {
+    const objs = this.getMapObjects().filter(m => m.getPlayer() === this.turnOrder[0]);
+    if (this.actionCounter.move > 0) {
       actions = objs.reduce((a, b) => a.concat(b.getMoveActions()), actions);
     }
-    if (this.actions.transfer > 0) {
+    if (this.actionCounter.transfer > 0) {
       actions = objs.reduce((a, b) => a.concat(b.getTransferActions(objs)), actions);
     }
-    if (this.actions.attack > 0) {
+    if (this.actionCounter.attack > 0) {
       actions = objs.reduce((a, b) => a.concat(b.getAttackActions()), actions);
     }
     this.cachedActions = actions;
     return actions;
-  }
-
-  addListener(l) {
-    this.listeners.push(l);
   }
 
   getMapObjects() {

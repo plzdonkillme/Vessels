@@ -38,17 +38,12 @@ class Tile {
     return this.mapObject;
   }
 
-  getKey() {
-    return `${this.constructor.name()}-${this.x}-${this.y}`;
-  }
-
   toJSON() {
     const json = {
       x: this.x,
       y: this.y,
       h: this.h,
       type: this.constructor.name(),
-      key: this.getKey(),
     };
     if (this.mapObject !== null) {
       json.mapObject = this.mapObject.toJSON();

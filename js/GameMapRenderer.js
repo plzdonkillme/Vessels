@@ -21,8 +21,15 @@ class GameMapRenderer {
     let faces = [];
     for (let i = 0; i < tiles.length; i += 1) {
       for (let j = 0; j < tiles[i].length; j += 1) {
-        if (tiles.types === 'p') {
-          faces = faces.concat(getCube(tiles.x, tiles.y, tiles.h, TLEN));
+        if (tiles[i][j].type === 'p') {
+          faces = faces.concat(getCube(
+            tiles[i][j].x * TLEN,
+            tiles[i][j].y * TLEN,
+            0,
+            TLEN,
+            TLEN,
+            tiles[i][j].h * TLEN,
+          ));
         }
       }
     }
