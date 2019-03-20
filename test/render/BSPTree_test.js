@@ -1,6 +1,6 @@
-import BSPTree from '../js/BSPTree';
-import { Point, Vector } from '../js/Vector';
-import Face from '../js/Face';
+import BSPTree from '../../js/render/BSPTree';
+import { Point, Vector } from '../../js/render/Vector';
+import Face from '../../js/render/Face';
 
 describe('BSPTree', () => {
   describe('sortPoints', () => {

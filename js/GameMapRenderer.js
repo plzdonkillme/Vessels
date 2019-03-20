@@ -3,8 +3,6 @@ import getCube from './FaceGroup';
 import Viewport from './Viewport';
 import FaceRasterizer from './FaceRasterizer';
 
-const TLEN = 100;
-
 class GameMapRenderer {
   constructor(canvas, map) {
     this.canvas = canvas;
@@ -16,6 +14,8 @@ class GameMapRenderer {
       new Point(this.canvas.width, this.canvas.height, 0),
       Math.max(this.canvas.width, this.canvas.height) / 2,
     );
+
+    const TLEN = Math.min(this.canvas.width, this.canvas.height);
     // convert map into faces;
     const { tiles } = map.toJSON();
     let faces = [];

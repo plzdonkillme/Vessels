@@ -1,6 +1,6 @@
-import Viewport from '../js/Viewport';
-import { Point } from '../js/Vector';
-import Face from '../js/Face';
+import Viewport from '../../js/render/Viewport';
+import { Point } from '../../js/render/Vector';
+import Face from '../../js/render/Face';
 
 describe('Viewport', () => {
   describe('projectFace', () => {

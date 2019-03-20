@@ -9,7 +9,7 @@ export default class Game {
     this.canvas.height = window.innerHeight - 20;
     this.screen = new GameMapScreen(this.canvas, GameMapDefault);
 
-    // Debug
+    // TODO: Remove debug
     window.dmap = GameMapDefault;
   }
 

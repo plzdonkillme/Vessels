@@ -1,4 +1,4 @@
-import Face from '../js/Face';
+import Face from '../../js/render/Face';
 
 describe('Face', () => {
   describe('findParentEdges', () => {

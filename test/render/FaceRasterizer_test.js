@@ -1,7 +1,7 @@
-import FaceRasterizer from '../js/FaceRasterizer';
-import Viewport from '../js/Viewport';
-import Face from '../js/Face';
-import { Point } from '../js/Vector';
+import FaceRasterizer from '../../js/render/FaceRasterizer';
+import Viewport from '../../js/render/Viewport';
+import Face from '../../js/render/Face';
+import { Point } from '../../js/render/Vector';
 
 describe('FaceRasterizer', () => {
   describe('rasterize', () => {
