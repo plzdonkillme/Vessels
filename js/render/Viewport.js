@@ -124,56 +124,6 @@ class Viewport {
     };
   }
 
-  // mouseInside(points) {
-  //   if (this.mx === null && this.my === null) {
-  //     return false;
-  //   }
-  //   let zPos = null;
-  //   for (let i = 0; i < points.length; i += 1) {
-  //     const p = points[i];
-  //     const np = i === points.length - 1 ? points[0] : points[i + 1];
-  //     const v1 = {
-  //       x: np.getX() - p.getX(),
-  //       y: np.getY() - p.getY(),
-  //     };
-  //     const v2 = {
-  //       x: this.mx - p.getX(),
-  //       y: this.my - p.getY(),
-  //     };
-  //     const cross = (v1.x * v2.y) - (v1.y * v2.x);
-  //     if (zPos === null) {
-  //       zPos = cross > 0;
-  //     } else if ((cross > 0) !== zPos) {
-  //       return false;
-  //     }
-  //   }
-  //   return true;
-  // }
-
-  // projectPoint(point) {
-  //   let viewVector; let pointVector; let
-  //     threshold;
-  //   if (this.d !== -1) {
-  //     viewVector = Vector.createFromPoints(this.p5, point);
-  //     threshold = this.d;
-  //   } else {
-  //     viewVector = Vector.createFromPoints(this.midpoint, point);
-  //     threshold = 0;
-  //   }
-
-  //   const pz = viewVector.dot(this.unitNormal);
-  //   if (pz >= threshold) {
-  //     if (this.d !== -1) {
-  //       const midpoint = this.p5.midpoint(point, this.d / pz);
-  //       pointVector = Vector.createFromPoints(this.p1, midpoint);
-  //     } else {
-  //       pointVector = Vector.createFromPoints(this.p1, point);
-  //     }
-  //     return new Point(pointVector.dot(this.basis1), pointVector.dot(this.basis2), 0);
-  //   }
-  //   return null;
-  // }
-
   translateAlongBasis(s1, s2, s3) {
     const xDist = this.basis1.x * s1 + this.basis2.x * s2 + this.unitNormal.x * s3;
     const yDist = this.basis1.y * s1 + this.basis2.y * s2 + this.unitNormal.y * s3;
@@ -250,26 +200,6 @@ class Viewport {
     this.rates.t2 += (rates.t2 || 0);
     this.rates.t3 += (rates.t3 || 0);
   }
-
-  // getViewDir(point, n) {
-  //   let dot;
-  //   if (this.d === -1) {
-  //     dot = n.dot(this.unitNormal);
-  //   } else {
-  //     dot = n.dot(Vector.createFromPoints(this.p5, point));
-  //   }
-  //   return dot <= 0 ? 'towards' : 'away';
-  // }
-
-  // getCenteredP1(point, dist) {
-  //   const px = point.getX() - dist * this.unitNormal.getX();
-  //   const py = point.getY() - dist * this.unitNormal.getY();
-  //   const pz = point.getZ() - dist * this.unitNormal.getZ();
-  //   const dx = px - this.midpoint.getX();
-  //   const dy = py - this.midpoint.getY();
-  //   const dz = pz - this.midpoint.getZ();
-  //   return new Point(this.p1.getX() + dx, this.p1.getY() + dy, this.p1.getZ() + dz);
-  // }
 }
 
 export default Viewport;
