@@ -1,38 +1,14 @@
 import { Point } from './render/Vector';
-import getCube from './render/FaceGroup';
 import Viewport from './render/Viewport';
+import GameMapEntityFactory from './GameMapEntityFactory';
 import GameMapRenderer from './GameMapRenderer';
 
 const R_RATE = 3;
 const T_RATE = 5;
-const TLEN = 100;
-
-class TileEntity3D {
-  constructor(faces) {
-    this.faces = faces;
-  }
-
-  getFaces() {
-    return this.faces;
-  }
-
-  getFillStyle(face) {
-    return '#CCCCCC';
-  }
-
-  getStrokeStyle(face) {
-    return '#000000';
-  }
-
-  isHoverable() {
-    return true;
-  }
-}
 
 class GameMapScreen {
   constructor(canvas, map) {
     this.pressed = {};
-
     this.viewport = new Viewport(
       new Point(0, 0, 0),
       new Point(canvas.width, 0, 0),
@@ -41,29 +17,13 @@ class GameMapScreen {
       Math.max(canvas.width, canvas.height) / 2,
     );
 
-    const staticEntities3D = this.createStaticEntities3D(map);
-    this.gameMapRenderer = new GameMapRenderer(canvas, staticEntities3D);
-  }
+    this.staticEntities3D = GameMapEntityFactory.createStaticEntities3D(map);
+    this.dynamicEntities3D = GameMapEntityFactory.createDynamicEntities3D(map);
 
-  createStaticEntities3D(map) {
-    const staticEntities3D = [];
-    const { tiles } = map.toJSON();
-    for (let i = 0; i < tiles.length; i += 1) {
-      for (let j = 0; j < tiles[i].length; j += 1) {
-        if (tiles[i][j].type === 'p') {
-          const faces = getCube(
-            tiles[i][j].x * TLEN,
-            tiles[i][j].y * TLEN,
-            0,
-            TLEN,
-            TLEN,
-            tiles[i][j].h * TLEN,
-          );
-          staticEntities3D.push(new TileEntity3D(faces));
-        }
-      }
-    }
-    return staticEntities3D;
+    this.gameMapRenderer = new GameMapRenderer(canvas, this.staticEntities3D);
+
+    // Render state
+    this.hoveredEntity = null;
   }
 
   start() {
@@ -74,12 +34,14 @@ class GameMapScreen {
     // Read inputs
 
     // Update dynamic stuff accordingly
-
-    // Draw stuff
     this.viewport.updatePosition();
 
+    // Handle hovered entity
+    const hoveredEntity = this.gameMapRenderer.getHoveredEntity();
+    this.handleHoveredEntity(hoveredEntity);
+
     // render entities
-    this.gameMapRenderer.render(this.viewport);
+    this.gameMapRenderer.render(this.viewport, this.dynamicEntities3D);
 
     window.requestAnimationFrame(() => {
       this.renderLoop();
@@ -93,12 +55,14 @@ class GameMapScreen {
   }
 
   handleMouseMove(x, y) {
+    this.gameMapRenderer.setMouse(x, y);
   }
 
   handleMouseUp(x, y) {
   }
 
   handleMouseLeave() {
+    this.gameMapRenderer.setMouse(null, null);
   }
 
   handleKeyDown(code) {
@@ -178,6 +142,16 @@ class GameMapScreen {
           break;
       }
       this.viewport.updateRates(updateRates);
+    }
+  }
+
+  handleHoveredEntity(entity) {
+    if (this.hoveredEntity !== null) {
+      this.hoveredEntity.hovered = false;
+    }
+    this.hoveredEntity = entity;
+    if (this.hoveredEntity !== null) {
+      this.hoveredEntity.hovered = true;
     }
   }
 }

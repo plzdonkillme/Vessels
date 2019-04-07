@@ -115,6 +115,10 @@ class GameMap {
     return mapObjects;
   }
 
+  getTiles() {
+    return [].concat(...this.tiles);
+  }
+
   isResolved() {
     return this.objective.check(this);
   }

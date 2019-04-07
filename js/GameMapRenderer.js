@@ -58,7 +58,7 @@ class GameMapRenderer {
     const faceToEntity = new Map(this.staticFaceToEntity);
     for (let i = 0; i < entities.length; i += 1) {
       const faces = entities[i].getFaces();
-      for (let k = 0; k < faces.length; i += 1) {
+      for (let k = 0; k < faces.length; k += 1) {
         faceToEntity.set(faces[k], entities[i]);
       }
       entityFaces = entityFaces.concat(faces);
@@ -73,6 +73,7 @@ class GameMapRenderer {
 
   render(viewport, entities3D = [], entities2D = []) {
     this.clearCanvas();
+    this.hoveredEntity = null;
     this.render3D(viewport, entities3D);
     this.render2D(entities2D);
   }

@@ -84,7 +84,7 @@ class BSPTree {
       if (this.back === null) {
         this.back = new BSPTree(backFaces, this.splitFacesMap);
       } else {
-        this.back.addFace(backFaces);
+        this.back.addFaces(backFaces);
       }
     }
   }
