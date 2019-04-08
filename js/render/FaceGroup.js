@@ -84,3 +84,36 @@ export function getIcosahedron(x, y, z, scale) {
 
   return faces;
 }
+
+export function getTetrahedron(x, y, z, scale) {
+  const t = 1 / Math.sqrt(2);
+  const v = [
+    new Point(1, 0, -t),
+    new Point(-1, 0, -t),
+    new Point(0, 1, t),
+    new Point(0, -1, t),
+  ];
+
+  v.forEach((p) => {
+    p.scale(scale);
+    p.translate(x, y, z);
+  });
+
+  const faces = [
+    [0, 2, 3],
+    [1, 3, 2],
+    [2, 0, 1],
+    [3, 1, 0],
+  ].map((idx) => {
+    const p1 = v[idx[0]].copy();
+    const p2 = v[idx[1]].copy();
+    const p3 = v[idx[2]].copy();
+    const v1 = Vector.createFromPoints(p1, p2);
+    const v2 = Vector.createFromPoints(p1, p3);
+    const n = v1.cross(v2);
+    n.normalize();
+    return new Face([p1, p2, p3], n);
+  });
+
+  return faces;
+}

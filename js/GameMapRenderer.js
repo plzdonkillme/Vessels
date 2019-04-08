@@ -135,6 +135,19 @@ class GameMapRenderer {
       }
 
       ctx.strokeStyle = '#000000';
+      ctx.fillStyle = '#FFFFFF';
+      ctx.beginPath();
+      for (let k = 0; k < points.length; k += 1) {
+        if (k === 0) {
+          ctx.moveTo(points[k].getX(), points[k].getY());
+        }
+        if (k === points.length - 1) {
+          ctx.lineTo(points[0].getX(), points[0].getY());
+        } else {
+          ctx.lineTo(points[k + 1].getX(), points[k + 1].getY());
+        }
+      }
+      ctx.fill();
       ctx.beginPath();
       for (let k = 0; k < points.length; k += 1) {
         if (k === 0) {
@@ -147,6 +160,14 @@ class GameMapRenderer {
         }
       }
       ctx.stroke();
+
+      const textInfos = entity.getTextInfos();
+      for (let k = 0; k < textInfos.length; k += 1) {
+        ctx.textBaseline = textInfos[k].textBaseline;
+        ctx.fillStyle = textInfos[k].fillStyle;
+        ctx.font = textInfos[k].font;
+        ctx.fillText(textInfos[k].text, textInfos[k].x, textInfos[k].y);
+      }
     }
   }
 }

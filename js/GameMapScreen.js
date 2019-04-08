@@ -19,11 +19,13 @@ class GameMapScreen {
 
     this.staticEntities3D = GameMapEntityFactory.createStaticEntities3D(map);
     this.dynamicEntities3D = GameMapEntityFactory.createDynamicEntities3D(map);
+    this.entities2D = GameMapEntityFactory.createEntities2D();
 
     this.gameMapRenderer = new GameMapRenderer(canvas, this.staticEntities3D);
 
     // Render state
     this.hoveredEntity = null;
+    // this.validActions = map.getActions();
   }
 
   start() {
@@ -41,7 +43,7 @@ class GameMapScreen {
     this.handleHoveredEntity(hoveredEntity);
 
     // render entities
-    this.gameMapRenderer.render(this.viewport, this.dynamicEntities3D);
+    this.gameMapRenderer.render(this.viewport, this.dynamicEntities3D, this.entities2D);
 
     window.requestAnimationFrame(() => {
       this.renderLoop();

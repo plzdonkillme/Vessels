@@ -1,5 +1,4 @@
-import { Color } from './Color';
-import { Tile, EmptyTile, TileGroup } from './Tile';
+import { EmptyTile, TileGroup } from './Tile';
 
 class MapObject {
   constructor(props, tile = null) {
@@ -368,26 +367,6 @@ class YellowVessel extends Vessel {
   }
 }
 
-const NAME_MAP = {
-  bs: BlueShard,
-  rs: RedShard,
-  ys: YellowShard,
-  w: WhiteVessel,
-  b: BlueVessel,
-  r: RedVessel,
-  y: YellowVessel,
-};
-
-const POLYGON_MAP = {
-  bs: 'tetrahedron',
-  rs: 'tetrahedron',
-  ys: 'tetrahedron',
-  w: 'icosahedron',
-  b: 'icosahedron',
-  r: 'icosahedron',
-  y: 'icosahedron',
-};
-
 const MapObjectFactory = {
   map: {
     bs: BlueShard,
@@ -421,4 +400,8 @@ const MapObjectFactory = {
   },
 };
 
-export { MapObject, MapObjectFactory };
+export {
+  MapObjectFactory,
+  Shard,
+  Vessel,
+};

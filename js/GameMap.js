@@ -57,7 +57,7 @@ class GameMap {
       throw Error('Invalid Action');
     }
 
-    const name = action.name;
+    const { name } = action;
     if (this.actions[name] > 0) {
       const src = this.tileMap[action.src].getMapObject();
       let dst;

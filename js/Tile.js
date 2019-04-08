@@ -100,5 +100,9 @@ const TileFactory = {
 };
 
 export {
-  Tile, EmptyTile, PlainTile, TileGroup, TileFactory,
+  Tile,
+  TileFactory,
+  EmptyTile,
+  PlainTile,
+  TileGroup,
 };
