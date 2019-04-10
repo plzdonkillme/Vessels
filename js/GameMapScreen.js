@@ -1,4 +1,4 @@
-import { Point } from './render/Vector';
+import { Point, Vector } from './render/Vector';
 import Viewport from './render/Viewport';
 import GameMapEntityFactory from './GameMapEntityFactory';
 import GameMapRenderer from './GameMapRenderer';
@@ -16,6 +16,7 @@ class GameMapScreen {
       new Point(canvas.width, canvas.height, 0),
       Math.max(canvas.width, canvas.height) / 2,
     );
+    this.viewport.translateAlongBasis(0, 0, -1000);
 
     this.staticEntities3D = GameMapEntityFactory.createStaticEntities3D(map);
     this.dynamicEntities3D = GameMapEntityFactory.createDynamicEntities3D(map);
@@ -24,8 +25,27 @@ class GameMapScreen {
     this.gameMapRenderer = new GameMapRenderer(canvas, this.staticEntities3D);
 
     // Render state
-    this.hoveredEntity = null;
-    // this.validActions = map.getActions();
+    this.viewState = {
+      showMove: false,
+      showTransfer: false,
+      showAttack: false,
+      showEnd: false,
+      showDebug: true,
+      hoveredEntity: null,
+    };
+
+    this.validActions = map.getActions();
+    this.validActions.forEach((action) => {
+      if (action.name === 'move') {
+        this.viewState.showMove = true;
+      } else if (action.name === 'transfer') {
+        this.viewState.showTransfer = true;
+      } else if (action.name === 'attack') {
+        this.viewState.showAttack = true;
+      } else if (action.name === 'end') {
+        this.viewState.showEnd = true;
+      }
+    });
   }
 
   start() {
@@ -37,13 +57,34 @@ class GameMapScreen {
 
     // Update dynamic stuff accordingly
     this.viewport.updatePosition();
+    this.dynamicEntities3D.forEach((entity) => {
+      entity.rotate(new Vector(0, 0, 1), 0.05);
+    });
+
 
     // Handle hovered entity
     const hoveredEntity = this.gameMapRenderer.getHoveredEntity();
     this.handleHoveredEntity(hoveredEntity);
 
+    const entities2D = [];
+    if (this.viewState.showMove) {
+      entities2D.push(this.entities2D.move);
+    }
+    if (this.viewState.showTransfer) {
+      entities2D.push(this.entities2D.transfer);
+    }
+    if (this.viewState.showAttack) {
+      entities2D.push(this.entities2D.attack);
+    }
+    if (this.viewState.showEnd) {
+      entities2D.push(this.entities2D.end);
+    }
+    if (this.viewState.showDebug) {
+      entities2D.push(this.entities2D.debug);
+    }
+
     // render entities
-    this.gameMapRenderer.render(this.viewport, this.dynamicEntities3D, this.entities2D);
+    this.gameMapRenderer.render(this.viewport, this.dynamicEntities3D, entities2D);
 
     window.requestAnimationFrame(() => {
       this.renderLoop();
@@ -148,12 +189,24 @@ class GameMapScreen {
   }
 
   handleHoveredEntity(entity) {
-    if (this.hoveredEntity !== null) {
-      this.hoveredEntity.hovered = false;
+    // Don't update if new hovered entity same as old
+    if (entity === this.viewState.hoveredEntity) {
+      return;
     }
-    this.hoveredEntity = entity;
-    if (this.hoveredEntity !== null) {
-      this.hoveredEntity.hovered = true;
+    // Unset Hover Logic
+    if (this.viewState.hoveredEntity !== null) {
+      if (this.viewState.hoveredEntity === this.entities2D.move) {
+        this.entities2D.move.fillStyle = '#FFFFFF';
+      }
+      this.entities2D.debug.textInfos[0].text = 'null';
+    }
+    this.viewState.hoveredEntity = entity;
+    // Set Hover Logic
+    if (this.viewState.hoveredEntity !== null) {
+      if (this.viewState.hoveredEntity === this.entities2D.move) {
+        this.entities2D.move.fillStyle = '#CCCCCC';
+      }
+      this.entities2D.debug.textInfos[0].text = this.viewState.hoveredEntity.constructor.name;
     }
   }
 }

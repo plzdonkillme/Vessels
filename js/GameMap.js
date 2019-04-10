@@ -30,6 +30,12 @@ class GameMap {
     this.objective = ObjectiveFactory.create(state.objective);
     this.turnOrder = state.turnOrder;
     this.actionCounter = state.actionCounter;
+
+    // TODO: Should this be part of the state json?
+    this.actionHistory = [];
+
+    // cache
+    this.cachedActions = null;
   }
 
   toJSON() {
@@ -43,15 +49,8 @@ class GameMap {
     return json;
   }
 
-  static transition(state, action) {
-    const map = new Map(state);
-    map.doAction(action);
-    return map.toJSON();
-  }
-
   // TODO: REVISIT
   doAction(action) {
-    // TODO: Validate actions is in available actions
     const validActions = this.getActions();
     if (validActions.indexOf(action) === -1) {
       throw Error('Invalid Action');
@@ -83,20 +82,25 @@ class GameMap {
     }
   }
 
-  //TODO: Undo action
+  undoAction(action) {
+    this.cachedActions = null;
+  }
 
   // TODO: REVISIT
   getActions() {
+    if (this.cachedActions !== null) {
+      return this.cachedActions;
+    }
     let actions = [{ name: 'end' }];
     const objs = this.getMapObjects().filter(m => m.getPlayer() === this.turnOrder[0]);
     if (this.actionCounter.move > 0) {
-      actions = objs.reduce((a, b) => a.concat(b.getMoveActions()), actions);
+      actions = actions.concat(...objs.map(obj => obj.getMoveActions()));
     }
     if (this.actionCounter.transfer > 0) {
-      actions = objs.reduce((a, b) => a.concat(b.getTransferActions(objs)), actions);
+      actions = actions.concat(...objs.map(obj => obj.getTransferActions(objs)));
     }
     if (this.actionCounter.attack > 0) {
-      actions = objs.reduce((a, b) => a.concat(b.getAttackActions()), actions);
+      actions = actions.concat(...objs.map(obj => obj.getAttackActions()));
     }
     this.cachedActions = actions;
     return actions;

@@ -28,7 +28,7 @@ export function serialize(json) {
     tileString = `${tileString}\n`;
   }
   const stateString = JSON.stringify(state, null, 2);
-  return `${tileString}===\n${stateString}`;
+  return `\n${tileString}===\n${stateString}\n`;
 }
 
 export function deserialize(mapString) {

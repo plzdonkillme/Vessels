@@ -64,20 +64,6 @@ class EmptyTile extends Tile {
   }
 }
 
-class TileGroup {
-  constructor(tiles) {
-    this.tiles = tiles;
-  }
-
-  getMapObjects() {
-    return this.tiles.map(t => t.getMapObject()).filter(m => m !== null);
-  }
-
-  getTiles() {
-    return this.tiles;
-  }
-}
-
 const TileFactory = {
   map: {
     p: PlainTile,
@@ -104,5 +90,4 @@ export {
   TileFactory,
   EmptyTile,
   PlainTile,
-  TileGroup,
 };

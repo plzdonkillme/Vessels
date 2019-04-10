@@ -1,4 +1,6 @@
-import { EmptyTile, TileGroup } from './Tile';
+/* eslint-disable class-methods-use-this */
+
+import { EmptyTile } from './Tile';
 
 class MapObject {
   constructor(props, tile = null) {
@@ -92,16 +94,15 @@ class Vessel extends MapObject {
 
   getMoveActions() {
     const paths = this.getMoveablePaths();
-    const srcKey = this.tile.getKey();
     const actions = [];
-    for (const key in paths) {
+    paths.forEach((dstTile, dstPath) => {
       actions.push({
         name: 'move',
-        src: srcKey,
-        dst: key,
-        path: paths[key],
+        src: this.tile,
+        dst: dstTile,
+        path: dstPath,
       });
-    }
+    });
     return actions;
   }
 
@@ -111,18 +112,24 @@ class Vessel extends MapObject {
     }
     return objs.filter(o => o !== this && o.getShard() === null).map(o => ({
       name: 'transfer',
-      src: this.tile.getKey(),
-      dst: o.tile.getKey(),
+      src: this.tile,
+      dst: o.getTile(),
     }));
   }
 
   getAttackActions() {
-    let tileGroups = this.getAttackableTileGroups();
-    tileGroups = tileGroups.filter(t => t.getMapObjects().length > 0);
-    return tileGroups.map(t => ({
+    const tileGroups = this.getAttackableTileGroups();
+    return tileGroups.filter((tileGroup) => {
+      for (let i = 0; i < tileGroup.length; i += 1) {
+        if (tileGroup[i].getMapObject() !== null) {
+          return true;
+        }
+      }
+      return false;
+    }).map(tileGroup => ({
       name: 'attack',
-      src: this.tile.getKey(),
-      dst: t.getTiles().map(tile => tile.getKey()),
+      src: this.tile,
+      dst: tileGroup,
     }));
   }
 
@@ -158,54 +165,53 @@ class Vessel extends MapObject {
     const dirs = ['left', 'right', 'top', 'down'];
     let queue = new Set([this.tile]);
     let nextQueue;
-    const tileSet = new Set();
-    for (let i = 0; i < this.range; i++) {
+    const visited = new Set([this.tile]);
+    for (let i = 0; i < this.range; i += 1) {
       nextQueue = new Set();
-      queue.forEach((tile) => {
+      queue.forEach((tile) => { /* eslint-disable-line no-loop-func */
         dirs.forEach((dir) => {
-          const t = tile[dir];
-          if (t !== null && t !== this.tile) {
-            nextQueue.add(t);
-            tileSet.add(t);
+          const nextTile = tile[dir];
+          if (nextTile !== null && !visited.has(nextTile)) {
+            nextQueue.add(nextTile);
+            visited.add(nextTile);
           }
         });
       });
       queue = nextQueue;
     }
-    return Array.from(tileSet).map(t => new TileGroup([t]));
+    const attackableTileGroups = [];
+    visited.forEach(tile => attackableTileGroups.push([tile]));
+    return attackableTileGroups;
   }
 
   getMoveablePaths() {
     const dirs = ['left', 'right', 'top', 'down'];
     let queue = new Set([this.tile]);
     let nextQueue;
-    const paths = {};
-    const startKey = this.tile.getKey();
-    paths[startKey] = [startKey];
-    const keysToDelete = [startKey];
-    for (let i = 0; i < this.movement; i++) {
+    const paths = new Map();
+    paths.set(this.tile, [this.tile]);
+    const pathsToDelete = new Set([this.tile]);
+    for (let i = 0; i < this.movement; i += 1) {
       nextQueue = new Set();
-      queue.forEach((tile) => {
-        const key = tile.getKey();
+      queue.forEach((tile) => { /* eslint-disable-line no-loop-func */
         dirs.forEach((dir) => {
-          const t = tile[dir];
-          if (t !== null && t !== this.tile) {
-            if (this.canMoveThrough(t) && Math.abs(t.getH() - tile.getH()) < 2) {
-              const tkey = t.getKey();
-              if (paths[tkey] === undefined) {
-                nextQueue.add(t);
-                paths[tkey] = paths[key].concat(tkey);
-                if (!this.canMoveTo(t)) {
-                  keysToDelete.push(tkey);
-                }
-              }
+          const nextTile = tile[dir];
+          if (nextTile !== null
+            && paths.get(nextTile) === undefined
+            && this.canMoveThrough(nextTile)
+            && Math.abs(nextTile.getH() - tile.getH()) < 2
+          ) {
+            nextQueue.add(nextTile);
+            paths.set(nextTile, paths.get(tile).concat(nextTile));
+            if (!this.canMoveTo(nextTile)) {
+              pathsToDelete.add(nextTile);
             }
           }
         });
       });
       queue = nextQueue;
     }
-    keysToDelete.forEach(key => delete paths[key]);
+    pathsToDelete.forEach(tile => paths.delete(tile));
     return paths;
   }
 
@@ -402,6 +408,11 @@ const MapObjectFactory = {
 
 export {
   MapObjectFactory,
-  Shard,
-  Vessel,
+  BlueShard,
+  RedShard,
+  YellowShard,
+  WhiteVessel,
+  BlueVessel,
+  RedVessel,
+  YellowVessel,
 };

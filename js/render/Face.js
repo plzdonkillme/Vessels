@@ -43,6 +43,15 @@ class Face {
     return edges;
   }
 
+  translate(x, y, z) {
+    this.points.forEach(point => point.translate(x, y, z));
+  }
+
+  rotate(v, rad) {
+    this.points.forEach(point => point.rotate(v, rad));
+    this.normal.rotate(v, rad);
+  }
+
   static createFromBuffer(buffer) {
     if (buffer.length % 3 !== 0 && buffer.length < 9) {
       throw Error('createFromBuffer recieved a bad length buffer');

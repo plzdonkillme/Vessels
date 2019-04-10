@@ -24,7 +24,7 @@ class GameMapRenderer {
   }
 
   mouseInside(points) {
-    if (this.mx === null || this.my === null) {
+    if (this.mx === null || this.my === null || points.length === 0) {
       return false;
     }
     let zPos = null;
@@ -134,8 +134,8 @@ class GameMapRenderer {
         this.hoveredEntity = entity;
       }
 
-      ctx.strokeStyle = '#000000';
-      ctx.fillStyle = '#FFFFFF';
+      ctx.fillStyle = entity.getFillStyle();
+      ctx.strokeStyle = entity.getStrokeStyle();
       ctx.beginPath();
       for (let k = 0; k < points.length; k += 1) {
         if (k === 0) {
