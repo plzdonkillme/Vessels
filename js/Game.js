@@ -6,7 +6,6 @@ export default class Game {
     // TODO: Remove debug
     window.dmap = GameMapDefault;
 
-
     this.canvas = document.createElement('canvas');
     this.canvas.style.border = '1px solid black';
     this.canvas.width = window.innerWidth - 20;

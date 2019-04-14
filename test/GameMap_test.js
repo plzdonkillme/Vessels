@@ -195,4 +195,213 @@ describe('GameMap', () => {
       expect(actions1).to.equal(actions2);
     });
   });
+
+  describe('doAction and undoAction', () => {
+    it('should properly do and undo end action', () => {
+      const m = new GameMap(deserialize(state1String));
+      const actions = m.getActions();
+      const endAction = actions.filter(action => action.name === 'end')[0];
+      m.doAction(endAction);
+      expect(m.toJSON().state).to.deep.equal({
+        objective: 'elimination',
+        turnOrder: ['1', '0'],
+        actionCounter: { move: 1, attack: 1, transfer: 1 },
+      });
+      m.undoAction(endAction);
+      expect(m.toJSON().state).to.deep.equal({
+        objective: 'elimination',
+        turnOrder: ['0', '1'],
+        actionCounter: { move: 1, attack: 1, transfer: 1 },
+      });
+    });
+
+    it('should properly do and undo move action', () => {
+      const m = new GameMap(deserialize(state1String));
+      const moveAction = m.getActions()[2];
+      m.doAction(moveAction);
+      expect(m.serialize()).to.equal(`
+p_1{   } p_2{w_0} p_3{w_1} 
+p_2{bs } p_3{w_0} p_2{w_1} 
+p_3{rs } p_1{   } p_1{   } 
+p_1{ys }          p_1{   } 
+p_1{   } p_1{   } p_1{   } 
+===
+{
+  "objective": "elimination",
+  "turnOrder": [
+    "0",
+    "1"
+  ],
+  "actionCounter": {
+    "move": 0,
+    "attack": 1,
+    "transfer": 1
+  }
+}
+`);
+      m.undoAction(moveAction);
+      expect(m.serialize()).to.equal(`
+p_1{w_0} p_2{w_0} p_3{w_1} 
+p_2{bs } p_3{   } p_2{w_1} 
+p_3{rs } p_1{   } p_1{   } 
+p_1{ys }          p_1{   } 
+p_1{   } p_1{   } p_1{   } 
+===
+{
+  "objective": "elimination",
+  "turnOrder": [
+    "0",
+    "1"
+  ],
+  "actionCounter": {
+    "move": 1,
+    "attack": 1,
+    "transfer": 1
+  }
+}
+`);
+    });
+
+    it('should properly do and undo move action 2', () => {
+      const m = new GameMap(deserialize(state1String));
+      const moveAction = m.getActions()[1];
+      m.doAction(moveAction);
+      expect(m.serialize()).to.equal(`
+p_1{   } p_2{w_0} p_3{w_1} 
+p_2{b_0} p_3{   } p_2{w_1} 
+p_3{rs } p_1{   } p_1{   } 
+p_1{ys }          p_1{   } 
+p_1{   } p_1{   } p_1{   } 
+===
+{
+  "objective": "elimination",
+  "turnOrder": [
+    "0",
+    "1"
+  ],
+  "actionCounter": {
+    "move": 0,
+    "attack": 1,
+    "transfer": 1
+  }
+}
+`);
+      m.undoAction(moveAction);
+      expect(m.serialize()).to.equal(`
+p_1{w_0} p_2{w_0} p_3{w_1} 
+p_2{bs } p_3{   } p_2{w_1} 
+p_3{rs } p_1{   } p_1{   } 
+p_1{ys }          p_1{   } 
+p_1{   } p_1{   } p_1{   } 
+===
+{
+  "objective": "elimination",
+  "turnOrder": [
+    "0",
+    "1"
+  ],
+  "actionCounter": {
+    "move": 1,
+    "attack": 1,
+    "transfer": 1
+  }
+}
+`);
+    });
+
+    it('should properly do and undo transfer action', () => {
+      const state = `
+p_1{b_0} p_2{w_0} p_3{w_1} 
+p_2{bs } p_3{   } p_2{w_1} 
+p_3{rs } p_1{   } p_1{   } 
+p_1{ys }          p_1{   } 
+p_1{   } p_1{   } p_1{   } 
+===
+{
+  "objective": "elimination",
+  "turnOrder": [
+    "0",
+    "1"
+  ],
+  "actionCounter": {
+    "move": 1,
+    "attack": 1,
+    "transfer": 1
+  }
+}
+`;
+      const m = new GameMap(deserialize(state));
+      const transferAction = m.getActions()[7];
+      m.doAction(transferAction);
+      expect(m.serialize()).to.equal(`
+p_1{w_0} p_2{b_0} p_3{w_1} 
+p_2{bs } p_3{   } p_2{w_1} 
+p_3{rs } p_1{   } p_1{   } 
+p_1{ys }          p_1{   } 
+p_1{   } p_1{   } p_1{   } 
+===
+{
+  "objective": "elimination",
+  "turnOrder": [
+    "0",
+    "1"
+  ],
+  "actionCounter": {
+    "move": 1,
+    "attack": 1,
+    "transfer": 0
+  }
+}
+`);
+      m.undoAction(transferAction);
+      expect(m.serialize()).to.equal(state);
+    });
+
+    it('should properly do and undo attack action', () => {
+      const m = new GameMap(deserialize(state1String));
+      const moveAction = m.getActions()[7];
+      m.doAction(moveAction);
+      expect(m.serialize()).to.equal(`
+p_1{w_0} p_2{   } p_3{w_1} 
+p_2{bs } p_3{   } p_2{w_1} 
+p_3{rs } p_1{   } p_1{   } 
+p_1{ys }          p_1{   } 
+p_1{   } p_1{   } p_1{   } 
+===
+{
+  "objective": "elimination",
+  "turnOrder": [
+    "0",
+    "1"
+  ],
+  "actionCounter": {
+    "move": 1,
+    "attack": 0,
+    "transfer": 1
+  }
+}
+`);
+      m.undoAction(moveAction);
+      expect(m.serialize()).to.equal(`
+p_1{w_0} p_2{w_0} p_3{w_1} 
+p_2{bs } p_3{   } p_2{w_1} 
+p_3{rs } p_1{   } p_1{   } 
+p_1{ys }          p_1{   } 
+p_1{   } p_1{   } p_1{   } 
+===
+{
+  "objective": "elimination",
+  "turnOrder": [
+    "0",
+    "1"
+  ],
+  "actionCounter": {
+    "move": 1,
+    "attack": 1,
+    "transfer": 1
+  }
+}
+`);
+    });
+  });
 });

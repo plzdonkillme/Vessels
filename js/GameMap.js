@@ -86,12 +86,17 @@ class GameMap {
     return this.mapObjects;
   }
 
-  // TODO: REVISIT
   getActions() {
     if (this.cachedActions !== null) {
       return this.cachedActions;
     }
-    let actions = [{ name: 'end' }];
+
+    let actions = [{
+      name: 'end',
+      move: this.actionCounter.move,
+      transfer: this.actionCounter.transfer,
+      attack: this.actionCounter.attack,
+    }];
     if (this.actionCounter.move > 0) {
       actions = actions.concat(this.getMoveActions());
     }
@@ -100,7 +105,6 @@ class GameMap {
     }
     if (this.actionCounter.attack > 0) {
       actions = actions.concat(this.getAttackActions());
-      // actions = actions.concat(...objs.map(obj => obj.getAttackActions()));
     }
     this.cachedActions = actions;
     return actions;
@@ -152,55 +156,196 @@ class GameMap {
     return actions;
   }
 
-  // TODO: REVISIT
   doAction(action) {
     const validActions = this.getActions();
     if (validActions.indexOf(action) === -1) {
       throw Error('Invalid Action');
     }
 
-    // if (action.name === 'move') {
+    if (action.name === 'move') {
+      this.doMoveAction(action);
+    } else if (action.name === 'transfer') {
+      this.doTransferAction(action);
+    } else if (action.name === 'attack') {
+      this.doAttackAction(action);
+    } else if (action.name === 'end') {
+      this.doEndAction();
+    }
 
-    // } else if (action.name === 'transfer') {
+    this.cachedActions = null;
+    this.turnObjs = this.mapObjects.filter(m => m.getPlayer() === this.turnOrder[0]);
+    this.actionHistory.push(action);
+  }
 
-    // } else if (action.name === 'attack') {
+  doMoveAction(action) {
+    const sx = action.src.x;
+    const sy = action.src.y;
+    const dx = action.dst.x;
+    const dy = action.dst.y;
+    const srcTile = this.tiles.filter(t => t.getX() === sx && t.getY() === sy)[0];
+    const dstTile = this.tiles.filter(t => t.getX() === dx && t.getY() === dy)[0];
+    const srcObj = srcTile.getMapObject();
+    const dstObj = dstTile.getMapObject();
+    if (dstObj === null) {
+      srcObj.setTile(dstTile);
+      dstTile.setMapObject(srcObj);
+      srcTile.setMapObject(null);
+    } else {
+      const newObj = srcObj.mergeWith(dstObj);
+      this.mapObjects.splice(this.mapObjects.indexOf(srcObj), 1);
+      this.mapObjects.splice(this.mapObjects.indexOf(dstObj), 1);
+      this.mapObjects.push(newObj);
+      newObj.setTile(dstTile);
+      dstTile.setMapObject(newObj);
+      srcTile.setMapObject(null);
+    }
+    this.actionCounter.move -= 1;
+  }
 
-    // } else if (action.name === 'end') {
-    //   this.actionCounter = {
-    //     move: 1,
-    //     transfer: 1,
-    //     attack: 1,
-    //   }
-    // }
+  doTransferAction(action) {
+    const sx = action.src.x;
+    const sy = action.src.y;
+    const dx = action.dst.x;
+    const dy = action.dst.y;
+    const srcTile = this.tiles.filter(t => t.getX() === sx && t.getY() === sy)[0];
+    const dstTile = this.tiles.filter(t => t.getX() === dx && t.getY() === dy)[0];
+    const srcObj = srcTile.getMapObject();
+    const dstObj = dstTile.getMapObject();
+    const { newSrcObj, newDstObj } = srcObj.transferTo(dstObj);
+    this.mapObjects.splice(this.mapObjects.indexOf(srcObj), 1);
+    this.mapObjects.splice(this.mapObjects.indexOf(dstObj), 1);
+    this.mapObjects.push(newSrcObj);
+    this.mapObjects.push(newDstObj);
+    srcTile.setMapObject(newSrcObj);
+    newSrcObj.setTile(srcTile);
+    dstTile.setMapObject(newDstObj);
+    newDstObj.setTile(dstTile);
+    this.actionCounter.transfer -= 1;
+  }
 
-    const { name } = action;
-    if (this.actions[name] > 0) {
-      const src = this.tileMap[action.src].getMapObject();
-      let dst;
-      if (name === 'attack') {
-        dst = action.dst.map(d => this.tileMap[d]);
-      } else {
-        dst = this.tileMap[action.dst];
+  doAttackAction(action) {
+    const sx = action.src.x;
+    const sy = action.src.y;
+    const srcTile = this.tiles.filter(t => t.getX() === sx && t.getY() === sy)[0];
+    const srcObj = srcTile.getMapObject();
+    for (let i = 0; i < action.dst.length; i += 1) {
+      const dx = action.dst[i].x;
+      const dy = action.dst[i].y;
+      const dstTile = this.tiles.filter(t => t.getX() === dx && t.getY() === dy)[0];
+      const dstObj = dstTile.getMapObject();
+      const newDstObj = srcObj.attack(dstObj);
+      this.mapObjects.splice(this.mapObjects.indexOf(dstObj), 1);
+      if (newDstObj !== null) {
+        this.mapObjects.push(newDstObj);
+        newDstObj.setTile(dstTile);
       }
-      src[name](dst);
-      this.actions[name] -= 1;
+      dstTile.setMapObject(newDstObj);
+    }
+    this.actionCounter.attack -= 1;
+  }
 
-      this.listeners.forEach(l => l.trigger(action));
-    } else if (name !== 'end') {
-      throw Error('Invalid action');
-    }
-    if (name === 'end' || Object.values(this.actions).reduce((a, b) => a + b, 0) === 0) {
-      this.turnPlayers.push(this.turnPlayers.shift());
-      this.actions = {
-        move: 1,
-        transfer: 1,
-        attack: 1,
-      };
-    }
+  doEndAction() {
+    this.actionCounter = {
+      move: 1,
+      transfer: 1,
+      attack: 1,
+    };
+    this.turnOrder.push(this.turnOrder.shift());
   }
 
   undoAction(action) {
+    const prevAction = this.actionHistory[this.actionHistory.length - 1];
+    if (action !== prevAction) {
+      throw Error('Invalid Action');
+    }
     this.cachedActions = null;
+    this.actionHistory.pop();
+
+    if (action.name === 'move') {
+      this.undoMoveAction(action);
+    } else if (action.name === 'transfer') {
+      this.undoTransferAction(action);
+    } else if (action.name === 'attack') {
+      this.undoAttackAction(action);
+    } else if (action.name === 'end') {
+      this.undoEndAction(action);
+    }
+
+    this.cachedActions = null;
+    this.turnObjs = this.mapObjects.filter(m => m.getPlayer() === this.turnOrder[0]);
+    this.actionHistory.pop();
+  }
+
+  undoMoveAction(action) {
+    const sx = action.src.x;
+    const sy = action.src.y;
+    const dx = action.dst.x;
+    const dy = action.dst.y;
+    const srcTile = this.tiles.filter(t => t.getX() === sx && t.getY() === sy)[0];
+    const dstTile = this.tiles.filter(t => t.getX() === dx && t.getY() === dy)[0];
+    const dstObj = dstTile.getMapObject();
+    if (action.dst.mapObject === undefined) {
+      dstObj.setTile(srcTile);
+      srcTile.setMapObject(dstObj);
+      dstTile.setMapObject(null);
+    } else {
+      const oldDstObj = MapObjectFactory.create(action.dst.mapObject);
+      const oldSrcObj = MapObjectFactory.create(action.src.mapObject);
+      this.mapObjects.splice(this.mapObjects.indexOf(dstObj), 1);
+      this.mapObjects.push(oldDstObj);
+      this.mapObjects.push(oldSrcObj);
+      srcTile.setMapObject(oldSrcObj);
+      oldSrcObj.setTile(srcTile);
+      dstTile.setMapObject(oldDstObj);
+      oldDstObj.setTile(dstTile);
+    }
+    this.actionCounter.move += 1;
+  }
+
+  undoTransferAction(action) {
+    const sx = action.src.x;
+    const sy = action.src.y;
+    const dx = action.dst.x;
+    const dy = action.dst.y;
+    const srcTile = this.tiles.filter(t => t.getX() === sx && t.getY() === sy)[0];
+    const dstTile = this.tiles.filter(t => t.getX() === dx && t.getY() === dy)[0];
+    const srcObj = srcTile.getMapObject();
+    const dstObj = dstTile.getMapObject();
+    const oldDstObj = MapObjectFactory.create(action.dst.mapObject);
+    const oldSrcObj = MapObjectFactory.create(action.src.mapObject);
+    this.mapObjects.splice(this.mapObjects.indexOf(srcObj), 1);
+    this.mapObjects.splice(this.mapObjects.indexOf(dstObj), 1);
+    this.mapObjects.push(oldSrcObj);
+    this.mapObjects.push(oldDstObj);
+    srcTile.setMapObject(oldSrcObj);
+    oldSrcObj.setTile(srcTile);
+    dstTile.setMapObject(oldDstObj);
+    oldDstObj.setTile(dstTile);
+    this.actionCounter.transfer += 1;
+  }
+
+  undoAttackAction(action) {
+    for (let i = 0; i < action.dst.length; i += 1) {
+      const dx = action.dst[i].x;
+      const dy = action.dst[i].y;
+      const dstTile = this.tiles.filter(t => t.getX() === dx && t.getY() === dy)[0];
+      const dstObj = dstTile.getMapObject();
+      const oldDstObj = MapObjectFactory.create(action.dst[i].mapObject);
+      this.mapObjects.splice(this.mapObjects.indexOf(dstObj), 1);
+      this.mapObjects.push(oldDstObj);
+      oldDstObj.setTile(dstTile);
+      dstTile.setMapObject(oldDstObj);
+    }
+    this.actionCounter.attack += 1;
+  }
+
+  undoEndAction(action) {
+    this.actionCounter = {
+      move: action.move,
+      transfer: action.transfer,
+      attack: action.attack,
+    };
+    this.turnOrder.unshift(this.turnOrder.pop());
   }
 }
 

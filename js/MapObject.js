@@ -1,4 +1,4 @@
-/* eslint-disable class-methods-use-this */
+/* eslint-disable class-methods-use-this, no-unused-vars */
 
 class MapObject {
   constructor(props) {
@@ -76,30 +76,6 @@ class Vessel extends MapObject {
     const json = super.toJSON();
     json.player = this.player;
     return json;
-  }
-
-  transfer(tile) {
-    const target = tile.getMapObject();
-    const cls = target.consumeShard(this.getShard());
-    const newObj = new cls(target.toJSON(), tile);
-    const origObj = new WhiteVessel(this.toJSON(), this.tile);
-  }
-
-  attack(tiles) {
-    tiles.map(t => t.getMapObject()).filter(m => m !== null).forEach(m => m.attackedBy(this));
-  }
-
-  move(tile) {
-    const mO = tile.getMapObject();
-    if (mO === null) {
-      this.tile.unsetMapObject();
-      tile.setMapObject(this);
-      this.tile = tile;
-    } else if (mO instanceof Shard) {
-      const cls = this.consumeShard(mO);
-      const newObj = new cls(this.toJSON(), tile);
-      this.tile.unsetMapObject();
-    }
   }
 
   getShard() {
@@ -184,27 +160,41 @@ class Vessel extends MapObject {
     });
     return attackableTargets;
   }
+
+  mergeWith(mapObject) {
+    if (mapObject instanceof BlueShard) {
+      return new BlueVessel({ player: this.player });
+    }
+    if (mapObject instanceof RedShard) {
+      return new RedVessel({ player: this.player });
+    }
+    if (mapObject instanceof YellowShard) {
+      return new YellowVessel({ player: this.player });
+    }
+    return this;
+  }
+
+  transferTo(mapObject) {
+    return {
+      newSrcObj: mapObject,
+      newDstObj: this,
+    };
+  }
+
+  attack(mapObject) {
+    return null;
+  }
 }
 
 class WhiteVessel extends Vessel {
-  consumeShard(shard) {
-    if (shard instanceof BlueShard) {
-      return BlueVessel;
-    } if (shard instanceof RedShard) {
-      return RedVessel;
-    } if (shard instanceof YellowShard) {
-      return YellowVessel;
-    }
-  }
-
   typeString() {
     return 'w';
   }
 }
 
 class BlueVessel extends Vessel {
-  constructor() {
-    super(...arguments);
+  constructor(props) {
+    super(props);
     this.range = 2;
   }
 
@@ -213,7 +203,7 @@ class BlueVessel extends Vessel {
   }
 
   getShard() {
-    return new BlueShard();
+    return 'bs';
   }
 
   attackedBy(vessel) {
@@ -233,7 +223,7 @@ class RedVessel extends Vessel {
   }
 
   getShard() {
-    return new RedShard();
+    return 'rs';
   }
 
   attackedBy(vessel) {
@@ -289,8 +279,8 @@ class RedVessel extends Vessel {
 }
 
 class YellowVessel extends Vessel {
-  constructor() {
-    super(...arguments);
+  constructor(props) {
+    super(props);
     this.movement = 5;
   }
 
@@ -299,7 +289,7 @@ class YellowVessel extends Vessel {
   }
 
   getShard() {
-    return new YellowShard();
+    return 'ys';
   }
 
   attackedBy(vessel) {
