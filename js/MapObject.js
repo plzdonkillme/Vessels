@@ -1,19 +1,13 @@
 /* eslint-disable class-methods-use-this */
 
-import { EmptyTile } from './Tile';
-
 class MapObject {
-  constructor(props, tile = null) {
+  constructor(props) {
     this.player = null;
-    this.tile = tile;
-    if (tile !== null) {
-      tile.setMapObject(this);
-    }
+    this.tile = null;
   }
 
   setTile(tile) {
     this.tile = tile;
-    tile.setMapObject(this);
   }
 
   getTile() {
@@ -38,51 +32,43 @@ class MapObject {
 
   toJSON() {
     return {
-      type: this.constructor.name(),
-      x: this.tile.getX(),
-      y: this.tile.getY(),
+      type: this.typeString(),
     };
   }
 
-  static name() {
+  typeString() {
     throw Error('Unimplemented');
   }
 }
 
 class Shard extends MapObject {
-  attackedBy(vessel) {
-    this.tile.unsetMapObject();
-    return {
-      key: this.getKey(),
-      color: null,
-    };
-  }
 }
 
 class BlueShard extends Shard {
-  static name() {
+  typeString() {
     return 'bs';
   }
 }
 
 class RedShard extends Shard {
-  static name() {
+  typeString() {
     return 'rs';
   }
 }
 
 class YellowShard extends Shard {
-  static name() {
+  typeString() {
     return 'ys';
   }
 }
 
 
 class Vessel extends MapObject {
-  constructor(props, tile = null) {
-    super(...arguments);
+  constructor(props) {
+    super(props);
     this.player = props.player;
     this.movement = 4;
+    this.jump = 1;
     this.range = 1;
   }
 
@@ -90,47 +76,6 @@ class Vessel extends MapObject {
     const json = super.toJSON();
     json.player = this.player;
     return json;
-  }
-
-  getMoveActions() {
-    const paths = this.getMoveablePaths();
-    const actions = [];
-    paths.forEach((dstTile, dstPath) => {
-      actions.push({
-        name: 'move',
-        src: this.tile,
-        dst: dstTile,
-        path: dstPath,
-      });
-    });
-    return actions;
-  }
-
-  getTransferActions(objs) {
-    if (this.getShard() === null) {
-      return [];
-    }
-    return objs.filter(o => o !== this && o.getShard() === null).map(o => ({
-      name: 'transfer',
-      src: this.tile,
-      dst: o.getTile(),
-    }));
-  }
-
-  getAttackActions() {
-    const tileGroups = this.getAttackableTileGroups();
-    return tileGroups.filter((tileGroup) => {
-      for (let i = 0; i < tileGroup.length; i += 1) {
-        if (tileGroup[i].getMapObject() !== null) {
-          return true;
-        }
-      }
-      return false;
-    }).map(tileGroup => ({
-      name: 'attack',
-      src: this.tile,
-      dst: tileGroup,
-    }));
   }
 
   transfer(tile) {
@@ -161,31 +106,7 @@ class Vessel extends MapObject {
     return null;
   }
 
-  getAttackableTileGroups() {
-    const dirs = ['left', 'right', 'top', 'down'];
-    let queue = new Set([this.tile]);
-    let nextQueue;
-    const visited = new Set([this.tile]);
-    for (let i = 0; i < this.range; i += 1) {
-      nextQueue = new Set();
-      queue.forEach((tile) => { /* eslint-disable-line no-loop-func */
-        dirs.forEach((dir) => {
-          const nextTile = tile[dir];
-          if (nextTile !== null && !visited.has(nextTile)) {
-            nextQueue.add(nextTile);
-            visited.add(nextTile);
-          }
-        });
-      });
-      queue = nextQueue;
-    }
-    const attackableTileGroups = [];
-    visited.forEach(tile => attackableTileGroups.push([tile]));
-    return attackableTileGroups;
-  }
-
-  getMoveablePaths() {
-    const dirs = ['left', 'right', 'top', 'down'];
+  getMoveableTargets() {
     let queue = new Set([this.tile]);
     let nextQueue;
     const paths = new Map();
@@ -194,12 +115,9 @@ class Vessel extends MapObject {
     for (let i = 0; i < this.movement; i += 1) {
       nextQueue = new Set();
       queue.forEach((tile) => { /* eslint-disable-line no-loop-func */
-        dirs.forEach((dir) => {
-          const nextTile = tile[dir];
-          if (nextTile !== null
-            && paths.get(nextTile) === undefined
-            && this.canMoveThrough(nextTile)
-            && Math.abs(nextTile.getH() - tile.getH()) < 2
+        tile.getNeighbors().forEach((nextTile) => {
+          if (paths.get(nextTile) === undefined
+            && this.canMoveThrough(tile, nextTile)
           ) {
             nextQueue.add(nextTile);
             paths.set(nextTile, paths.get(tile).concat(nextTile));
@@ -215,11 +133,11 @@ class Vessel extends MapObject {
     return paths;
   }
 
-  canMoveThrough(tile) {
-    if (tile instanceof EmptyTile) {
+  canMoveThrough(tile, nextTile) {
+    if (Math.abs(nextTile.getH() - tile.getH()) > this.jump) {
       return false;
     }
-    const mO = tile.getMapObject();
+    const mO = nextTile.getMapObject();
     if (mO === null || mO instanceof Shard || mO.getPlayer() === this.player) {
       return true;
     }
@@ -227,9 +145,6 @@ class Vessel extends MapObject {
   }
 
   canMoveTo(tile) {
-    if (tile instanceof EmptyTile) {
-      return false;
-    }
     const mO = tile.getMapObject();
     if (mO === null || mO instanceof Shard) {
       return true;
@@ -237,12 +152,37 @@ class Vessel extends MapObject {
     return false;
   }
 
-  attackedBy(vessel) {
-    this.tile.unsetMapObject();
-    return {
-      key: this.getKey(),
-      color: null,
-    };
+  getTransferableTargets(mapObjects) {
+    if (this.getShard() === null) {
+      return [];
+    }
+    return mapObjects.filter(m => m !== this && m.getShard !== null);
+  }
+
+  getAttackableTargets() {
+    let queue = new Set([this.tile]);
+    let nextQueue;
+    const visited = new Set([this.tile]);
+    for (let i = 0; i < this.range; i += 1) {
+      nextQueue = new Set();
+      queue.forEach((tile) => { /* eslint-disable-line no-loop-func */
+        tile.getNeighbors().forEach((nextTile) => {
+          if (!visited.has(nextTile)) {
+            nextQueue.add(nextTile);
+            visited.add(nextTile);
+          }
+        });
+      });
+      queue = nextQueue;
+    }
+    const attackableTargets = [];
+    visited.forEach((tile) => {
+      const mO = tile.getMapObject();
+      if (mO !== null && mO !== this) {
+        attackableTargets.push([tile]);
+      }
+    });
+    return attackableTargets;
   }
 }
 
@@ -257,7 +197,7 @@ class WhiteVessel extends Vessel {
     }
   }
 
-  static name() {
+  typeString() {
     return 'w';
   }
 }
@@ -268,7 +208,7 @@ class BlueVessel extends Vessel {
     this.range = 2;
   }
 
-  static name() {
+  typeString() {
     return 'b';
   }
 
@@ -288,7 +228,7 @@ class BlueVessel extends Vessel {
 }
 
 class RedVessel extends Vessel {
-  static name() {
+  typeString() {
     return 'r';
   }
 
@@ -354,7 +294,7 @@ class YellowVessel extends Vessel {
     this.movement = 5;
   }
 
-  static name() {
+  typeString() {
     return 'y';
   }
 
@@ -388,7 +328,7 @@ const MapObjectFactory = {
     return new MapObjectClass(json);
   },
   getJSON(propString) {
-    const props = propString.split('_');
+    const props = propString.trim().split('_');
     const json = {
       type: props[0],
     };
@@ -402,7 +342,11 @@ const MapObjectFactory = {
     if (json.player !== undefined) {
       propString = `${propString}_${json.player}`;
     }
-    return propString;
+    const padding = ' '.repeat(3 - propString.length);
+    return `${propString}${padding}`;
+  },
+  getPropStringWidth() {
+    return 3;
   },
 };
 

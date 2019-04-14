@@ -5,7 +5,7 @@ const exampleMapString = `
 p_1{w_0} p_2{w_0} p_3{w_1}
 p_2{bs } p_3{   } p_2{w_1}
 p_3{rs } p_1{   } p_1{   }
-p_1{ys } e_1{   } p_1{   }
+p_1{ys }          p_1{   }
 p_1{   } p_1{   } p_1{   }
 ===
 {

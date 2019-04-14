@@ -3,14 +3,15 @@ import GameMapScreen from './GameMapScreen';
 
 export default class Game {
   constructor() {
+    // TODO: Remove debug
+    window.dmap = GameMapDefault;
+
+
     this.canvas = document.createElement('canvas');
     this.canvas.style.border = '1px solid black';
     this.canvas.width = window.innerWidth - 20;
     this.canvas.height = window.innerHeight - 20;
     this.screen = new GameMapScreen(this.canvas, GameMapDefault);
-
-    // TODO: Remove debug
-    window.dmap = GameMapDefault;
   }
 
   start() {
