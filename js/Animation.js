@@ -1,91 +1,59 @@
 class Animation {
-    
-    constructor(transitions, frames, destroy = false) {
-        this.frame = 0;
-        this.frames = frames;
-        this.destroy= destroy;
-        this.transitions = transitions;
-    }
+  constructor(entity, transitions, frames) {
+    this.entity = entity;
+    this.frame = 0;
+    this.frames = frames;
+    this.transitions = transitions;
+  }
 
-    initialize(state) {
-        for (let key in state) {
-            if (this.transitions[key] === undefined) {
-                this.transitions[key] = new TransitionNoop(state[key]);
-            } else if (!this.transitions[key].isInitialized()) {
-                this.transitions[key].initialize(state[key]);
-            }
-        }
-    }
+  getEntity() {
+    return this.entity;
+  }
 
-    isInitialized() {
-        return this.frame !== 0;
+  // Step animation one frame;
+  step() {
+    this.frame += 1;
+    let dx = 0;
+    let dy = 0;
+    let dz = 0;
+    if (this.transitions.x !== undefined) {
+      dx = this.transitions.x.evaluate(this.frame / this.frames) - this.entity.getCenter().getX();
     }
-
-    finished() {
-        return this.frame === this.frames;
+    if (this.transitions.y !== undefined) {
+      dy = this.transitions.y.evaluate(this.frame / this.frames) - this.entity.getCenter().getY();
     }
-
-    destroyAfter() {
-        return this.destroy;
+    if (this.transitions.z !== undefined) {
+      dz = this.transitions.z.evaluate(this.frame / this.frames) - this.entity.getCenter().getZ();
     }
+    this.entity.translate(dx, dy, dz);
+  }
 
-    getNextState() {
-        this.frame += 1;
-        const nextState = {};
-        for (let key in this.transitions) {
-            nextState[key] = this.transitions[key].evaluate(this.frame / this.frames);
-        }
-        return nextState;
-    }
-}
-
-class TransitionNoop {
-
-    constructor(start) {
-        this.start = start;
-    }
-
-    evaluate(t) {
-        return this.start;
-    }
+  isFinished() {
+    return this.frame === this.frames;
+  }
 }
 
 class TransitionLinear {
+  constructor(start, end) {
+    this.start = start;
+    this.end = end;
+  }
 
-    constructor(start, end) {
-        this.start = start;
-        this.end = end;
-    }
-
-    isInitialized() {
-        return this.start !== null;
-    }
-
-    initialize(start) {
-        this.start = start;
-    }
-
-    evaluate(t) {
-        return this.start + (this.end - this.start) * t;
-    }
+  evaluate(t) {
+    return this.start + (this.end - this.start) * t;
+  }
 }
 
 class TransitionQuadraticBezier {
-    constructor(p0, p1, p2) {
-        this.p0 = p0;
-        this.p1 = p1;
-        this.p2 = p2;
-    }
+  constructor(p0, p1, p2) {
+    this.p0 = p0;
+    this.p1 = p1;
+    this.p2 = p2;
+  }
 
-    isInitialized() {
-        return true;
-    }
-
-    evaluate(t) {
-        return (1 - t) * (1 - t) * this.p0 + 2 * (1 - t) * t * this.p1 + t * t * this.p2;
-    }
+  evaluate(t) {
+    return (1 - t) * (1 - t) * this.p0 + 2 * (1 - t) * t * this.p1 + t * t * this.p2;
+  }
 }
 
-export { Animation, TransitionNoop, TransitionLinear, TransitionQuadraticBezier }
-
-
+export { Animation, TransitionLinear, TransitionQuadraticBezier };

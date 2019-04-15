@@ -12,6 +12,8 @@ import {
   RedVessel,
   YellowVessel,
 } from './MapObject';
+import { Animation, TransitionLinear, TransitionQuadraticBezier } from './Animation';
+
 
 const TLEN = 100;
 const MLEN = 20;
@@ -20,6 +22,7 @@ const MENU_HEIGHT = 50;
 const MENU_TOP_MARGIN = 50;
 const MENU_LEFT_MARGIN = 50;
 const MENU_ITEM_MARGIN = 10;
+const ANIMATION_LEN = 30;
 
 class Entity3D {
   constructor(faces, center = null) {
@@ -30,6 +33,10 @@ class Entity3D {
 
   getFaces() {
     return this.faces;
+  }
+
+  getCenter() {
+    return this.center;
   }
 
   getFillStyle(face) {
@@ -299,6 +306,30 @@ class GameMapEntityFactory {
     }]);
 
     return entities2D;
+  }
+
+  static createAnimation(entity, startJSON, endJSON) {
+    const transitions = {};
+    const ax = (startJSON.x + 0.5) * TLEN;
+    const ay = (startJSON.y + 0.5) * TLEN;
+    const az = (startJSON.h + 0.5) * TLEN;
+    const bx = (endJSON.x + 0.5) * TLEN;
+    const by = (endJSON.y + 0.5) * TLEN;
+    const bz = (endJSON.h + 0.5) * TLEN;
+    if (az === bz) {
+      transitions.x = new TransitionLinear(ax, bx);
+      transitions.y = new TransitionLinear(ay, by);
+      transitions.z = new TransitionLinear(az, bz);
+    } else {
+      transitions.x = new TransitionQuadraticBezier(ax, az > bz ? bx : ax, bx);
+      transitions.y = new TransitionQuadraticBezier(ay, az > bz ? by : ay, by);
+      transitions.z = new TransitionQuadraticBezier(az, Math.max(az, bz), bz);
+    }
+    return new Animation(entity, transitions, ANIMATION_LEN);
+  }
+
+  static createNoopAnimation(entity) {
+    return new Animation(entity, {}, ANIMATION_LEN);
   }
 }
 

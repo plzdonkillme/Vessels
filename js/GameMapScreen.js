@@ -9,6 +9,8 @@ const T_RATE = 10;
 class GameMapScreen {
   constructor(canvas, map) {
     this.map = map;
+    this.map.addListener(this);
+
     this.viewport = new Viewport(
       new Point(0, 0, 0),
       new Point(canvas.width, 0, 0),
@@ -53,28 +55,47 @@ class GameMapScreen {
     };
 
     // Initial phase state
-    this.setupPhaseState();
+    this.setupChooseActionState();
   }
 
-  setupPhaseState() {
-    this.viewState.phase = 'chooseAction';
-    this.viewState.phaseState = {
-      actionMap: new Map(),
-      prevActionMap: [],
-    };
-    this.viewState.phaseState.actionMap.set(this.entities2D.move, []);
-    this.viewState.phaseState.actionMap.set(this.entities2D.transfer, []);
-    this.viewState.phaseState.actionMap.set(this.entities2D.attack, []);
+  setupChooseActionState() {
+    this.entities2D.move.fillStyle = '#CCCCCC';
+    this.entities2D.transfer.fillStyle = '#CCCCCC';
+    this.entities2D.attack.fillStyle = '#CCCCCC';
+
+    const actionMap = new Map();
     const validActions = this.map.getActions();
     validActions.forEach((action) => {
       if (action.name === 'move') {
-        this.viewState.phaseState.actionMap.get(this.entities2D.move).push(action);
+        this.entities2D.move.fillStyle = '#FFFFFF';
+        if (!actionMap.has(this.entities2D.move)) {
+          actionMap.set(this.entities2D.move, [action]);
+        } else {
+          actionMap.get(this.entities2D.move).push(action);
+        }
       } else if (action.name === 'transfer') {
-        this.viewState.phaseState.actionMap.get(this.entities2D.transfer).push(action);
+        this.entities2D.transfer.fillStyle = '#FFFFFF';
+        if (!actionMap.has(this.entities2D.transfer)) {
+          actionMap.set(this.entities2D.transfer, [action]);
+        } else {
+          actionMap.get(this.entities2D.transfer).push(action);
+        }
       } else if (action.name === 'attack') {
-        this.viewState.phaseState.actionMap.get(this.entities2D.attack).push(action);
+        this.entities2D.attack.fillStyle = '#FFFFFF';
+        if (!actionMap.has(this.entities2D.attack)) {
+          actionMap.set(this.entities2D.attack, [action]);
+        } else {
+          actionMap.get(this.entities2D.attack).push(action);
+        }
       }
     });
+    this.viewState.phase = 'chooseAction';
+    this.viewState.phaseState = {
+      actionMap,
+      actions: validActions,
+      prevActionMap: [],
+      prevActions: [],
+    };
   }
 
   start() {
@@ -83,17 +104,43 @@ class GameMapScreen {
 
   renderLoop() {
     // Handle hovered entity
+    this.unsetHoveredEntity();
     const hoveredEntity = this.gameMapRenderer.getHoveredEntity();
-    this.handleHoveredEntity(hoveredEntity);
+    this.setHoveredEntity(hoveredEntity);
 
     // Consume inputs
     this.consumeInputs();
 
-    // Update dynamic stuff accordingly
-    Object.values(this.dynamicEntities3D).forEach((entity) => {
+    const entities3D = new Set(Object.values(this.dynamicEntities3D));
+
+    // Perform animations
+    if (this.viewState.phase === 'animating') {
+      const currentAnimations = this.viewState.phaseState.animationQueue[0];
+      const updatedAnimations = [];
+      for (let i = 0; i < currentAnimations.length; i += 1) {
+        const animation = currentAnimations[i];
+        entities3D.add(animation.getEntity());
+        animation.step();
+        if (!animation.isFinished()) {
+          updatedAnimations.push(animation);
+        }
+      }
+      if (updatedAnimations.length > 0) {
+        this.viewState.phaseState.animationQueue[0] = updatedAnimations;
+      } else {
+        this.viewState.phaseState.animationQueue.shift();
+      }
+      if (this.viewState.phaseState.animationQueue.length === 0) {
+        this.setupChooseActionState();
+      }
+    }
+
+    // Perform static animations
+    entities3D.forEach((entity) => {
       entity.rotate(new Vector(0, 0, 1), 0.05);
     });
 
+    // Debug purposes
     const dHover = this.viewState.hoveredEntity !== null ? this.viewState.hoveredEntity.constructor.name : 'null';
     const dPhase = this.viewState.phase;
     this.entities2D.debug.textInfos[0].text = `hover: ${dHover} | phase: ${dPhase}`;
@@ -101,7 +148,7 @@ class GameMapScreen {
     const entities2D = this.entities2DToRender();
 
     // render entities
-    this.gameMapRenderer.render(this.viewport, Object.values(this.dynamicEntities3D), entities2D);
+    this.gameMapRenderer.render(this.viewport, Array.from(entities3D), entities2D);
 
     window.requestAnimationFrame(() => {
       this.renderLoop();
@@ -155,126 +202,133 @@ class GameMapScreen {
     this.inputState.pressed[code] = false;
   }
 
-  handleHoveredEntity(entity) {
-    // Don't update if new hovered entity same as old
-    if (entity === this.viewState.hoveredEntity) {
+  unsetHoveredEntity() {
+    const hovered = this.viewState.hoveredEntity;
+    if (hovered === null) {
       return;
     }
-    // Unset Hover Logic
-    if (this.viewState.hoveredEntity !== null) {
-      if (this.viewState.phase === 'chooseAction') {
-        if (this.viewState.hoveredEntity === this.entities2D.end) {
-          this.viewState.hoveredEntity.fillStyle = '#FFFFFF';
-        } else {
-          const actions = this.viewState.phaseState.actionMap.get(this.viewState.hoveredEntity);
-          if (actions !== undefined) {
-            this.viewState.hoveredEntity.fillStyle = '#FFFFFF';
-            actions.forEach((action) => {
-              const key = `${action.src.x}_${action.src.y}`;
-              this.staticEntities3D[key].fillStyle = '#CCCCCC';
-            });
-          }
+    if (this.viewState.phase === 'chooseAction') {
+      if (hovered === this.entities2D.end) {
+        hovered.fillStyle = '#FFFFFF';
+      } else {
+        const actions = this.viewState.phaseState.actionMap.get(hovered);
+        if (actions !== undefined) {
+          hovered.fillStyle = '#FFFFFF';
+          actions.forEach((action) => {
+            const key = `${action.src.x}_${action.src.y}`;
+            this.staticEntities3D[key].fillStyle = '#CCCCCC';
+          });
         }
-      } else if (this.viewState.phase === 'chooseSrc') {
-        if (this.viewState.hoveredEntity === this.entities2D.back) {
-          this.viewState.hoveredEntity.fillStyle = '#FFFFFF';
-        } else {
-          const actions = this.viewState.phaseState.actionMap.get(this.viewState.hoveredEntity);
-          if (actions !== undefined) {
-            actions.forEach((action) => {
-              const dsts = Array.isArray(action.dst) ? action.dst : [action.dst];
-              dsts.forEach((dst) => {
-                const key = `${dst.x}_${dst.y}`;
-                this.staticEntities3D[key].fillStyle = '#CCCCCC';
-              });
-            });
-          }
-        }
-      } else if (this.viewState.phase === 'chooseDst') {
-        if (this.viewState.hoveredEntity === this.entities2D.back) {
-          this.viewState.hoveredEntity.fillStyle = '#FFFFFF';
-        } else {
-          const action = this.viewState.phaseState.actionMap.get(this.viewState.hoveredEntity);
-          if (action !== undefined) {
+      }
+    } else if (this.viewState.phase === 'chooseSrc') {
+      if (hovered === this.entities2D.back) {
+        hovered.fillStyle = '#FFFFFF';
+      } else {
+        const actions = this.viewState.phaseState.actionMap.get(hovered);
+        if (actions !== undefined) {
+          actions.forEach((action) => {
+            const srcKey = `${action.src.x}_${action.src.y}`;
+            this.staticEntities3D[srcKey].fillStyle = '#FFFFFF';
             const dsts = Array.isArray(action.dst) ? action.dst : [action.dst];
             dsts.forEach((dst) => {
-              const key = `${dst.x}_${dst.y}`;
-              this.staticEntities3D[key].fillStyle = '#CCCCCC';
+              const dstKey = `${dst.x}_${dst.y}`;
+              this.staticEntities3D[dstKey].fillStyle = '#CCCCCC';
             });
-          }
+          });
+        }
+      }
+    } else if (this.viewState.phase === 'chooseDst') {
+      if (hovered === this.entities2D.back) {
+        hovered.fillStyle = '#FFFFFF';
+      } else {
+        const action = this.viewState.phaseState.actionMap.get(hovered);
+        if (action !== undefined) {
+          const dsts = Array.isArray(action.dst) ? action.dst : [action.dst];
+          dsts.forEach((dst) => {
+            const dstKey = `${dst.x}_${dst.y}`;
+            this.staticEntities3D[dstKey].fillStyle = '#FFFFFF';
+          });
         }
       }
     }
-    this.viewState.hoveredEntity = entity;
-    // Set Hover Logic
-    if (this.viewState.hoveredEntity !== null) {
-      if (this.viewState.phase === 'chooseAction') {
-        if (this.viewState.hoveredEntity === this.entities2D.end) {
-          this.viewState.hoveredEntity.fillStyle = '#CCCCCC';
-        } else {
-          const actions = this.viewState.phaseState.actionMap.get(this.viewState.hoveredEntity);
-          if (actions !== undefined) {
-            this.viewState.hoveredEntity.fillStyle = '#CCCCCC';
-            actions.forEach((action) => {
-              const key = `${action.src.x}_${action.src.y}`;
-              this.staticEntities3D[key].fillStyle = '#FFFFFF';
-            });
-          }
+    this.viewState.hoveredEntity = null;
+  }
+
+  setHoveredEntity(entity) {
+    const hovered = entity;
+    this.viewState.hoveredEntity = hovered;
+    if (hovered === null) {
+      return;
+    }
+    if (this.viewState.phase === 'chooseAction') {
+      if (hovered === this.entities2D.end) {
+        hovered.fillStyle = '#E6E6E6';
+      } else {
+        const actions = this.viewState.phaseState.actionMap.get(hovered);
+        if (actions !== undefined) {
+          hovered.fillStyle = '#E6E6E6';
+          actions.forEach((action) => {
+            const key = `${action.src.x}_${action.src.y}`;
+            this.staticEntities3D[key].fillStyle = '#FFFFFF';
+          });
         }
-      } else if (this.viewState.phase === 'chooseSrc') {
-        if (this.viewState.hoveredEntity === this.entities2D.back) {
-          this.viewState.hoveredEntity.fillStyle = '#CCCCCC';
-        } else {
-          const actions = this.viewState.phaseState.actionMap.get(this.viewState.hoveredEntity);
-          if (actions !== undefined) {
-            actions.forEach((action) => {
-              const dsts = Array.isArray(action.dst) ? action.dst : [action.dst];
-              dsts.forEach((dst) => {
-                const key = `${dst.x}_${dst.y}`;
-                this.staticEntities3D[key].fillStyle = '#FFFFFF';
-              });
-            });
-          }
-        }
-      } else if (this.viewState.phase === 'chooseDst') {
-        if (this.viewState.hoveredEntity === this.entities2D.back) {
-          this.viewState.hoveredEntity.fillStyle = '#CCCCCC';
-        } else {
-          const action = this.viewState.phaseState.actionMap.get(this.viewState.hoveredEntity);
-          if (action !== undefined) {
+      }
+    } else if (this.viewState.phase === 'chooseSrc') {
+      if (hovered === this.entities2D.back) {
+        hovered.fillStyle = '#E6E6E6';
+      } else {
+        const actions = this.viewState.phaseState.actionMap.get(hovered);
+        if (actions !== undefined) {
+          actions.forEach((action) => {
+            const srcKey = `${action.src.x}_${action.src.y}`;
+            this.staticEntities3D[srcKey].fillStyle = '#E6E6E6';
             const dsts = Array.isArray(action.dst) ? action.dst : [action.dst];
             dsts.forEach((dst) => {
-              const key = `${dst.x}_${dst.y}`;
-              this.staticEntities3D[key].fillStyle = '#FFFFFF';
+              const dstKey = `${dst.x}_${dst.y}`;
+              this.staticEntities3D[dstKey].fillStyle = '#FFFFFF';
             });
-          }
+          });
+        }
+      }
+    } else if (this.viewState.phase === 'chooseDst') {
+      if (hovered === this.entities2D.back) {
+        hovered.fillStyle = '#E6E6E6';
+      } else {
+        const action = this.viewState.phaseState.actionMap.get(hovered);
+        if (action !== undefined) {
+          const dsts = Array.isArray(action.dst) ? action.dst : [action.dst];
+          dsts.forEach((dst) => {
+            const dstKey = `${dst.x}_${dst.y}`;
+            this.staticEntities3D[dstKey].fillStyle = '#E6E6E6';
+          });
         }
       }
     }
   }
 
-  handleClickEntity() {
+  clickHoveredEntity() {
     // Don't do anything if not hovering over anything
-    if (this.viewState.hoveredEntity === null) {
+    const hovered = this.viewState.hoveredEntity;
+    if (hovered === null) {
       return;
     }
+    this.unsetHoveredEntity();
     if (this.viewState.phase === 'chooseAction') {
-      if (this.viewState.hoveredEntity === this.entities2D.end) {
-        this.viewState.hoveredEntity.fillStyle = '#FFFFFF';
-        const endAction = this.map.getActions().filter(action => action.name === 'end')[0];
+      if (hovered === this.entities2D.end) {
+        const endAction = this.viewState.phaseState.actions.filter(action => action.name === 'end')[0];
         this.map.doAction(endAction);
-        this.setupPhaseState();
       } else {
-        const actions = this.viewState.phaseState.actionMap.get(this.viewState.hoveredEntity);
+        const actions = this.viewState.phaseState.actionMap.get(hovered);
         if (actions !== undefined) {
-          this.viewState.hoveredEntity.fillStyle = '#FFFFFF';
           this.viewState.phase = 'chooseSrc';
           this.viewState.phaseState.prevActionMap.push(this.viewState.phaseState.actionMap);
+          this.viewState.phaseState.prevActions.push(this.viewState.phaseState.actions);
           this.viewState.phaseState.actionMap = new Map();
+          this.viewState.phaseState.actions = actions;
           actions.forEach((action) => {
             const key = `${action.src.x}_${action.src.y}`;
             const staticEntity = this.staticEntities3D[key];
-            staticEntity.fillStyle = '#CCCCCC';
+            staticEntity.fillStyle = '#FFFFFF';
             const dynamicEntity = this.dynamicEntities3D[key];
             if (!this.viewState.phaseState.actionMap.has(staticEntity)) {
               this.viewState.phaseState.actionMap.set(staticEntity, []);
@@ -288,22 +342,34 @@ class GameMapScreen {
         }
       }
     } else if (this.viewState.phase === 'chooseSrc') {
-      if (this.viewState.hoveredEntity === this.entities2D.back) {
-        this.viewState.hoveredEntity.fillStyle = '#FFFFFF';
+      if (hovered === this.entities2D.back) {
         this.viewState.phase = 'chooseAction';
+        this.viewState.phaseState.actions.forEach((action) => {
+          const key = `${action.src.x}_${action.src.y}`;
+          this.staticEntities3D[key].fillStyle = '#CCCCCC';
+        });
         this.viewState.phaseState.actionMap = this.viewState.phaseState.prevActionMap.pop();
+        this.viewState.phaseState.actions = this.viewState.phaseState.prevActions.pop();
       } else {
-        const actions = this.viewState.phaseState.actionMap.get(this.viewState.hoveredEntity);
+        const actions = this.viewState.phaseState.actionMap.get(hovered);
         if (actions !== undefined) {
           this.viewState.phase = 'chooseDst';
+          this.viewState.phaseState.actions.forEach((action) => {
+            const key = `${action.src.x}_${action.src.y}`;
+            this.staticEntities3D[key].fillStyle = '#CCCCCC';
+          });
           this.viewState.phaseState.prevActionMap.push(this.viewState.phaseState.actionMap);
+          this.viewState.phaseState.prevActions.push(this.viewState.phaseState.actions);
           this.viewState.phaseState.actionMap = new Map();
+          this.viewState.phaseState.actions = actions;
           actions.forEach((action) => {
+            const srcKey = `${action.src.x}_${action.src.y}`;
+            this.staticEntities3D[srcKey].fillStyle = '#E6E6E6';
             const dsts = Array.isArray(action.dst) ? action.dst : [action.dst];
             dsts.forEach((dst) => {
               const key = `${dst.x}_${dst.y}`;
               const staticEntity = this.staticEntities3D[key];
-              staticEntity.fillStyle = '#CCCCCC';
+              staticEntity.fillStyle = '#FFFFFF';
               const dynamicEntity = this.dynamicEntities3D[key];
               this.viewState.phaseState.actionMap.set(staticEntity, action);
               if (dynamicEntity !== undefined) {
@@ -314,21 +380,34 @@ class GameMapScreen {
         }
       }
     } else if (this.viewState.phase === 'chooseDst') {
-      if (this.viewState.hoveredEntity === this.entities2D.back) {
-        this.viewState.hoveredEntity.fillStyle = '#FFFFFF';
+      if (hovered === this.entities2D.back) {
         this.viewState.phase = 'chooseSrc';
-        this.viewState.phaseState.actionMap = this.viewState.phaseState.prevActionMap.pop();
-      } else {
-        const action = this.viewState.phaseState.actionMap.get(this.viewState.hoveredEntity);
-        if (action !== undefined) {
+        this.viewState.phaseState.actions.forEach((action) => {
           const dsts = Array.isArray(action.dst) ? action.dst : [action.dst];
           dsts.forEach((dst) => {
             const key = `${dst.x}_${dst.y}`;
-            const staticEntity = this.staticEntities3D[key];
-            staticEntity.fillStyle = '#CCCCCC';
+            this.staticEntities3D[key].fillStyle = '#CCCCCC';
+          });
+        });
+        this.viewState.phaseState.actionMap = this.viewState.phaseState.prevActionMap.pop();
+        this.viewState.phaseState.actions = this.viewState.phaseState.prevActions.pop();
+        this.viewState.phaseState.actions.forEach((action) => {
+          const key = `${action.src.x}_${action.src.y}`;
+          this.staticEntities3D[key].fillStyle = '#FFFFFF';
+        });
+      } else {
+        const action = this.viewState.phaseState.actionMap.get(hovered);
+        if (action !== undefined) {
+          this.viewState.phaseState.actions.forEach((a) => {
+            const srcKey = `${a.src.x}_${a.dst.x}`;
+            this.staticEntities3D[srcKey].fillStyle = '#CCCCCC';
+            const dsts = Array.isArray(a.dst) ? a.dst : [a.dst];
+            dsts.forEach((dst) => {
+              const key = `${dst.x}_${dst.y}`;
+              this.staticEntities3D[key].fillStyle = '#CCCCCC';
+            });
           });
           this.map.doAction(action);
-          this.setupPhaseState();
         }
       }
     }
@@ -336,7 +415,7 @@ class GameMapScreen {
 
   consumeInputs() {
     if (this.inputState.click) {
-      this.handleClickEntity();
+      this.clickHoveredEntity();
       this.inputState.click = false;
     }
     this.gameMapRenderer.setMouse(this.inputState.mx, this.inputState.my);
@@ -353,16 +432,16 @@ class GameMapScreen {
       tx += T_RATE;
     }
     if (this.inputState.pressed.KeyW) {
-      ty -= T_RATE;
+      tz += T_RATE;
     }
     if (this.inputState.pressed.KeyS) {
-      ty += T_RATE;
-    }
-    if (this.inputState.pressed.ShiftLeft) {
       tz -= T_RATE;
     }
+    if (this.inputState.pressed.ShiftLeft) {
+      ty += T_RATE;
+    }
     if (this.inputState.pressed.Space) {
-      tz += T_RATE;
+      ty -= T_RATE;
     }
     if (this.inputState.pressed.ArrowLeft) {
       ry += R_RATE;
@@ -378,6 +457,50 @@ class GameMapScreen {
     }
     this.viewport.translateAlongBasis(tx, ty, tz);
     this.viewport.rotateByBasis(rx, ry, 0);
+  }
+
+  triggerDoAction(action) {
+    if (action.name === 'move') {
+      if (this.viewState.phase !== 'animating') {
+        this.viewState.phase = 'animating';
+        this.viewState.phaseState.animationQueue = [];
+      }
+      const srcKey = `${action.src.x}_${action.src.y}`;
+      const dstKey = `${action.dst.x}_${action.dst.y}`;
+      const srcObj = this.dynamicEntities3D[srcKey];
+      const dstObj = this.dynamicEntities3D[dstKey];
+      delete this.dynamicEntities3D[srcKey];
+      this.dynamicEntities3D[dstKey] = srcObj;
+
+      for (let i = 0; i < action.path.length - 1; i += 1) {
+        const animations = [];
+        const srcStartJSON = {
+          x: action.path[i].x,
+          y: action.path[i].y,
+          h: action.path[i].h,
+          type: action.path[0].type,
+        };
+        const srcEndJSON = {
+          x: action.path[i + 1].x,
+          y: action.path[i + 1].y,
+          h: action.path[i + 1].h,
+          type: action.path[0].type,
+        };
+        const srcAnimation = GameMapEntityFactory.createAnimation(srcObj, srcStartJSON, srcEndJSON);
+        animations.push(srcAnimation);
+        if (dstObj !== undefined) {
+          const dstAnimation = GameMapEntityFactory.createNoopAnimation(dstObj);
+          animations.push(dstAnimation);
+        }
+        this.viewState.phaseState.animationQueue.push(animations);
+      }
+    } else if (action.name === 'end') {
+      if (this.viewState.phase !== 'animating') {
+        this.viewState.phase = 'animating';
+        this.viewState.phaseState.animationQueue = [];
+      }
+      this.viewState.phaseState.animationQueue.push([]);
+    }
   }
 }
 

@@ -170,6 +170,8 @@ class GameMap {
     this.cachedActions = null;
     this.turnObjs = this.mapObjects.filter(m => m.getPlayer() === this.turnOrder[0]);
     this.actionHistory.push(action);
+
+    this.listeners.forEach(listener => listener.triggerDoAction(action));
   }
 
   doMoveAction(action) {
@@ -269,6 +271,8 @@ class GameMap {
     this.cachedActions = null;
     this.turnObjs = this.mapObjects.filter(m => m.getPlayer() === this.turnOrder[0]);
     this.actionHistory.pop();
+
+    this.listeners.forEach(listener => listener.triggerUndoAction(action));
   }
 
   undoMoveAction(action) {
