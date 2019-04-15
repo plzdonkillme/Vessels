@@ -61,6 +61,9 @@ class GameMap {
     // cache
     this.turnObjs = this.mapObjects.filter(m => m.getPlayer() === this.turnOrder[0]);
     this.cachedActions = null;
+
+    // Listeners
+    this.listeners = [];
   }
 
   toJSON() {
@@ -76,14 +79,6 @@ class GameMap {
 
   serialize() {
     return serialize(this.toJSON());
-  }
-
-  getTiles() {
-    return this.tiles;
-  }
-
-  getMapObjects() {
-    return this.mapObjects;
   }
 
   getActions() {
@@ -346,6 +341,10 @@ class GameMap {
       attack: action.attack,
     };
     this.turnOrder.unshift(this.turnOrder.pop());
+  }
+
+  addListener(listener) {
+    this.listeners.push(listener);
   }
 }
 

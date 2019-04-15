@@ -25,6 +25,7 @@ class Entity3D {
   constructor(faces, center = null) {
     this.faces = faces;
     this.center = center;
+    this.fillStyle = '#CCCCCC';
   }
 
   getFaces() {
@@ -32,7 +33,7 @@ class Entity3D {
   }
 
   getFillStyle(face) {
-    return '#CCCCCC';
+    return this.fillStyle;
   }
 
   getStrokeStyle(face) {
@@ -132,126 +133,117 @@ class Entity2D {
 }
 
 class GameMapEntityFactory {
-  static createStaticEntities3D(map) {
-    const entities3D = [];
-    const tiles = map.getTiles();
-    for (let i = 0; i < tiles.length; i += 1) {
-      const tile = tiles[i];
-      if (tile instanceof PlainTile) {
-        const faces = getCube(
-          tile.getX() * TLEN,
-          tile.getY() * TLEN,
-          0,
-          TLEN,
-          TLEN,
-          tile.getH() * TLEN,
-        );
-        entities3D.push(new Entity3D(faces));
-      }
+  static createEntity3D(json) {
+    if (json.type === 'p') {
+      const faces = getCube(
+        json.x * TLEN,
+        json.y * TLEN,
+        0,
+        TLEN,
+        TLEN,
+        json.h * TLEN,
+      );
+      return new Entity3D(faces);
     }
-    return entities3D;
-  }
-
-  static createDynamicEntities3D(map) {
-    const entities3D = [];
-    const mapObjects = map.getMapObjects();
-    for (let i = 0; i < mapObjects.length; i += 1) {
-      const mapObject = mapObjects[i];
-      if (mapObject instanceof BlueShard) {
-        const faces = getTetrahedron(
-          (mapObject.getX() + 0.5) * TLEN,
-          (mapObject.getY() + 0.5) * TLEN,
-          (mapObject.getH() + 0.5) * TLEN,
-          MLEN,
-        );
-        const center = new Point(
-          (mapObject.getX() + 0.5) * TLEN,
-          (mapObject.getY() + 0.5) * TLEN,
-          (mapObject.getH() + 0.5) * TLEN,
-        );
-        entities3D.push(new BlueShardEntity3D(faces, center));
-      } else if (mapObject instanceof RedShard) {
-        const faces = getTetrahedron(
-          (mapObject.getX() + 0.5) * TLEN,
-          (mapObject.getY() + 0.5) * TLEN,
-          (mapObject.getH() + 0.5) * TLEN,
-          MLEN,
-        );
-        const center = new Point(
-          (mapObject.getX() + 0.5) * TLEN,
-          (mapObject.getY() + 0.5) * TLEN,
-          (mapObject.getH() + 0.5) * TLEN,
-        );
-        entities3D.push(new RedShardEntity3D(faces, center));
-      } else if (mapObject instanceof YellowShard) {
-        const faces = getTetrahedron(
-          (mapObject.getX() + 0.5) * TLEN,
-          (mapObject.getY() + 0.5) * TLEN,
-          (mapObject.getH() + 0.5) * TLEN,
-          MLEN,
-        );
-        const center = new Point(
-          (mapObject.getX() + 0.5) * TLEN,
-          (mapObject.getY() + 0.5) * TLEN,
-          (mapObject.getH() + 0.5) * TLEN,
-        );
-        entities3D.push(new YellowShardEntity3D(faces, center));
-      } else if (mapObject instanceof WhiteVessel) {
-        const faces = getIcosahedron(
-          (mapObject.getX() + 0.5) * TLEN,
-          (mapObject.getY() + 0.5) * TLEN,
-          (mapObject.getH() + 0.5) * TLEN,
-          MLEN,
-        );
-        const center = new Point(
-          (mapObject.getX() + 0.5) * TLEN,
-          (mapObject.getY() + 0.5) * TLEN,
-          (mapObject.getH() + 0.5) * TLEN,
-        );
-        entities3D.push(new WhiteVesselEntity3D(faces, center));
-      } else if (mapObject instanceof BlueVessel) {
-        const faces = getIcosahedron(
-          (mapObject.getX() + 0.5) * TLEN,
-          (mapObject.getY() + 0.5) * TLEN,
-          (mapObject.getH() + 0.5) * TLEN,
-          MLEN,
-        );
-        const center = new Point(
-          (mapObject.getX() + 0.5) * TLEN,
-          (mapObject.getY() + 0.5) * TLEN,
-          (mapObject.getH() + 0.5) * TLEN,
-        );
-        entities3D.push(new BlueVesselEntity3D(faces, center));
-      } else if (mapObject instanceof RedVessel) {
-        const faces = getIcosahedron(
-          (mapObject.getX() + 0.5) * TLEN,
-          (mapObject.getY() + 0.5) * TLEN,
-          (mapObject.getH() + 0.5) * TLEN,
-          MLEN,
-        );
-        const center = new Point(
-          (mapObject.getX() + 0.5) * TLEN,
-          (mapObject.getY() + 0.5) * TLEN,
-          (mapObject.getH() + 0.5) * TLEN,
-        );
-        entities3D.push(new RedVesselEntity3D(faces, center));
-      } else if (mapObject instanceof YellowVessel) {
-        const faces = getIcosahedron(
-          (mapObject.getX() + 0.5) * TLEN,
-          (mapObject.getY() + 0.5) * TLEN,
-          (mapObject.getH() + 0.5) * TLEN,
-          MLEN,
-        );
-        const center = new Point(
-          (mapObject.getX() + 0.5) * TLEN,
-          (mapObject.getY() + 0.5) * TLEN,
-          (mapObject.getH() + 0.5) * TLEN,
-        );
-        entities3D.push(new YellowVesselEntity3D(faces, center));
-      }
+    if (json.type === 'w') {
+      const faces = getIcosahedron(
+        (json.x + 0.5) * TLEN,
+        (json.y + 0.5) * TLEN,
+        (json.h + 0.5) * TLEN,
+        MLEN,
+      );
+      const center = new Point(
+        (json.x + 0.5) * TLEN,
+        (json.y + 0.5) * TLEN,
+        (json.h + 0.5) * TLEN,
+      );
+      return new WhiteVesselEntity3D(faces, center);
     }
-
-    return entities3D;
+    if (json.type === 'b') {
+      const faces = getIcosahedron(
+        (json.x + 0.5) * TLEN,
+        (json.y + 0.5) * TLEN,
+        (json.h + 0.5) * TLEN,
+        MLEN,
+      );
+      const center = new Point(
+        (json.x + 0.5) * TLEN,
+        (json.y + 0.5) * TLEN,
+        (json.h + 0.5) * TLEN,
+      );
+      return new BlueVesselEntity3D(faces, center);
+    }
+    if (json.type === 'r') {
+      const faces = getIcosahedron(
+        (json.x + 0.5) * TLEN,
+        (json.y + 0.5) * TLEN,
+        (json.h + 0.5) * TLEN,
+        MLEN,
+      );
+      const center = new Point(
+        (json.x + 0.5) * TLEN,
+        (json.y + 0.5) * TLEN,
+        (json.h + 0.5) * TLEN,
+      );
+      return new RedVesselEntity3D(faces, center);
+    }
+    if (json.type === 'y') {
+      const faces = getIcosahedron(
+        (json.x + 0.5) * TLEN,
+        (json.y + 0.5) * TLEN,
+        (json.h + 0.5) * TLEN,
+        MLEN,
+      );
+      const center = new Point(
+        (json.x + 0.5) * TLEN,
+        (json.y + 0.5) * TLEN,
+        (json.h + 0.5) * TLEN,
+      );
+      return new YellowVesselEntity3D(faces, center);
+    }
+    if (json.type === 'bs') {
+      const faces = getTetrahedron(
+        (json.x + 0.5) * TLEN,
+        (json.y + 0.5) * TLEN,
+        (json.h + 0.5) * TLEN,
+        MLEN,
+      );
+      const center = new Point(
+        (json.x + 0.5) * TLEN,
+        (json.y + 0.5) * TLEN,
+        (json.h + 0.5) * TLEN,
+      );
+      return new BlueShardEntity3D(faces, center);
+    }
+    if (json.type === 'rs') {
+      const faces = getTetrahedron(
+        (json.x + 0.5) * TLEN,
+        (json.y + 0.5) * TLEN,
+        (json.h + 0.5) * TLEN,
+        MLEN,
+      );
+      const center = new Point(
+        (json.x + 0.5) * TLEN,
+        (json.y + 0.5) * TLEN,
+        (json.h + 0.5) * TLEN,
+      );
+      return new RedShardEntity3D(faces, center);
+    }
+    if (json.type === 'ys') {
+      const faces = getTetrahedron(
+        (json.x + 0.5) * TLEN,
+        (json.y + 0.5) * TLEN,
+        (json.h + 0.5) * TLEN,
+        MLEN,
+      );
+      const center = new Point(
+        (json.x + 0.5) * TLEN,
+        (json.y + 0.5) * TLEN,
+        (json.h + 0.5) * TLEN,
+      );
+      return new YellowShardEntity3D(faces, center);
+    }
+    throw Error('Unrecognized type');
   }
 
   static createEntities2D() {
@@ -284,6 +276,24 @@ class GameMapEntityFactory {
       x: 5,
       y: 5,
       font: '12px serif',
+      fillStyle: '#000000',
+      textBaseline: 'top',
+    }]);
+
+    const bx = MENU_LEFT_MARGIN;
+    const bw = MENU_WIDTH;
+    const by = MENU_TOP_MARGIN;
+    const bh = MENU_HEIGHT;
+    entities2D.back = new Entity2D(Point.createFromBuffer([
+      bx, by, 0,
+      bx + bw, by, 0,
+      bx + bw, by + bh, 0,
+      bx, by + bh, 0,
+    ]), [{
+      text: 'back',
+      x: bx + 5,
+      y: by + 5,
+      font: '36px serif',
       fillStyle: '#000000',
       textBaseline: 'top',
     }]);

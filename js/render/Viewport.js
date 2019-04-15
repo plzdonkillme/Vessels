@@ -17,15 +17,6 @@ class Viewport {
     this.p4 = p4;
     this.d = d;
     this.calcVectors();
-
-    this.rates = {
-      r1: 0,
-      r2: 0,
-      t1: 0,
-      t2: 0,
-      t3: 0,
-    };
-    this.animation = null;
   }
 
   calcVectors() {
@@ -163,42 +154,6 @@ class Viewport {
     this.p4.rotate(this.basis2, rad2);
     this.p4.rotate(this.unitNormal, rad3);
     this.translate(xDist, yDist, zDist, true);
-  }
-
-  updatePosition() {
-    if (this.animation !== null) {
-      if (this.animation.rate === null) {
-        this.animation.rate = {
-          x: (this.animation.endpoint.getX() - this.p1.getX()) / this.animation.frames,
-          y: (this.animation.endpoint.getY() - this.p1.getY()) / this.animation.frames,
-          z: (this.animation.endpoint.getZ() - this.p1.getZ()) / this.animation.frames,
-        };
-      }
-      const dx = this.animation.rate.x;
-      const dy = this.animation.rate.y;
-      const dz = this.animation.rate.z;
-      this.translate(dx, dy, dz);
-      this.animation.frames -= 1;
-      if (this.animation.frames === 0) {
-        this.animation.resolve();
-        this.animation = null;
-      }
-    } else {
-      if (this.rates.r1 || this.rates.r2) {
-        this.rotateByBasis(this.rates.r1, this.rates.r2, 0);
-      }
-      if (this.rates.t1 || this.rates.t2 || this.rates.t3) {
-        this.translateAlongBasis(this.rates.t1, this.rates.t2, this.rates.t3);
-      }
-    }
-  }
-
-  updateRates(rates) {
-    this.rates.r1 += (rates.r1 || 0);
-    this.rates.r2 += (rates.r2 || 0);
-    this.rates.t1 += (rates.t1 || 0);
-    this.rates.t2 += (rates.t2 || 0);
-    this.rates.t3 += (rates.t3 || 0);
   }
 }
 

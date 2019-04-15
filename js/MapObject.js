@@ -205,16 +205,6 @@ class BlueVessel extends Vessel {
   getShard() {
     return 'bs';
   }
-
-  attackedBy(vessel) {
-    if (vessel instanceof WhiteVessel) {
-      const obj = new WhiteVessel(this.toJSON(), tile);
-      return {
-        key: this.getKey(),
-        color: obj.getColor(),
-      };
-    }
-  }
 }
 
 class RedVessel extends Vessel {
@@ -226,56 +216,46 @@ class RedVessel extends Vessel {
     return 'rs';
   }
 
-  attackedBy(vessel) {
-    if (vessel instanceof WhiteVessel) {
-      const obj = new WhiteVessel([this.player], this.tile, this.getKey());
-      return {
-        key: this.getKey(),
-        color: obj.getColor(),
-      };
-    }
-  }
+  // getAttackableTargets() {
+  //   const dirs1 = ['left', 'right'];
+  //   const dirs2 = ['top', 'down'];
+  //   const tileSet = new Set();
+  //   dirs1.forEach((dir) => {
+  //     const t = this.tile[dir];
+  //     if (t !== null) {
+  //       if (t.getMapObject() !== null) {
+  //         tileSet.add(t);
+  //       }
+  //       dirs2.forEach((dir2) => {
+  //         const t2 = t[dir2];
+  //         if (t2 !== null && t2.getMapObject() !== null) {
+  //           tileSet.add(t2);
+  //         }
+  //       });
+  //     }
+  //   });
+  //   dirs2.forEach((dir) => {
+  //     const t = this.tile[dir];
+  //     if (t !== null) {
+  //       if (t.getMapObject() !== null) {
+  //         tileSet.add(t);
+  //       }
+  //       dirs1.forEach((dir2) => {
+  //         const t2 = t[dir2];
+  //         if (t2 !== null && t2.getMapObject() !== null) {
+  //           tileSet.add(t2);
+  //         }
+  //       });
+  //     }
+  //   });
 
-  getAttackableTargets() {
-    const dirs1 = ['left', 'right'];
-    const dirs2 = ['top', 'down'];
-    const tileSet = new Set();
-    dirs1.forEach((dir) => {
-      const t = this.tile[dir];
-      if (t !== null) {
-        if (t.getMapObject() !== null) {
-          tileSet.add(t);
-        }
-        dirs2.forEach((dir2) => {
-          const t2 = t[dir2];
-          if (t2 !== null && t2.getMapObject() !== null) {
-            tileSet.add(t2);
-          }
-        });
-      }
-    });
-    dirs2.forEach((dir) => {
-      const t = this.tile[dir];
-      if (t !== null) {
-        if (t.getMapObject() !== null) {
-          tileSet.add(t);
-        }
-        dirs1.forEach((dir2) => {
-          const t2 = t[dir2];
-          if (t2 !== null && t2.getMapObject() !== null) {
-            tileSet.add(t2);
-          }
-        });
-      }
-    });
-
-    const tileArray = Array.from(tileSet);
-    const tileKeys = tileArray.map(t => t.getKey());
-    const objKeys = tileArray.map(t => t.getMapObject().getKey());
-    const ret = [];
-    ret.push(tileKeys.concat(objKeys));
-    return ret;
-  }
+  //   const tileArray = Array.from(tileSet);
+  //   const tileKeys = tileArray.map(t => t.getKey());
+  //   const objKeys = tileArray.map(t => t.getMapObject().getKey());
+  //   const ret = [];
+  //   ret.push(tileKeys.concat(objKeys));
+  //   return ret;
+  // }
 }
 
 class YellowVessel extends Vessel {
@@ -290,16 +270,6 @@ class YellowVessel extends Vessel {
 
   getShard() {
     return 'ys';
-  }
-
-  attackedBy(vessel) {
-    if (vessel instanceof WhiteVessel) {
-      const obj = new WhiteVessel([this.player], this.tile, this.getKey());
-      return {
-        key: this.getKey(),
-        color: obj.getColor(),
-      };
-    }
   }
 }
 
