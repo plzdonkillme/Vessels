@@ -1,4 +1,4 @@
-import FaceRasterizer from './render/FaceRasterizer';
+import FaceRasterizer from '../render/FaceRasterizer';
 
 class GameMapRenderer {
   constructor(canvas, staticEntities3D = []) {

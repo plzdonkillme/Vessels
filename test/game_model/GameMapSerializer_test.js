@@ -1,4 +1,4 @@
-import { serialize, deserialize } from '../js/GameMapSerializer';
+import { serialize, deserialize } from '../../js/game_model/GameMapSerializer';
 
 const state1String = `
 p_1{   } p_2{   } 

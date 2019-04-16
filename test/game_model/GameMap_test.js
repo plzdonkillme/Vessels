@@ -1,5 +1,5 @@
-import { deserialize } from '../js/GameMapSerializer';
-import GameMap from '../js/GameMap';
+import { deserialize } from '../../js/game_model/GameMapSerializer';
+import GameMap from '../../js/game_model/GameMap';
 
 const state1String = `
 p_1{w_0} p_2{w_0} p_3{w_1} 

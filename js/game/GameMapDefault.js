@@ -1,5 +1,5 @@
-import { deserialize } from './GameMapSerializer';
-import GameMap from './GameMap';
+import { deserialize } from '../game_model/GameMapSerializer';
+import GameMap from '../game_model/GameMap';
 
 const exampleMapString = `
 p_1{w_0} p_2{w_0} p_3{w_1} 

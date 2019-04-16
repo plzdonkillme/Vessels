@@ -1,5 +1,5 @@
-import { Point, Vector } from './render/Vector';
-import Viewport from './render/Viewport';
+import { Point, Vector } from '../render/Vector';
+import Viewport from '../render/Viewport';
 import GameMapEntityFactory from './GameMapEntityFactory';
 import GameMapRenderer from './GameMapRenderer';
 import GameModeTransitioner from './GameModeTransitioner';

@@ -1,19 +1,8 @@
 /* eslint-disable class-methods-use-this, no-unused-vars */
 
-import { Point } from './render/Vector';
-import { getCube, getIcosahedron, getTetrahedron } from './render/FaceGroup';
-import { PlainTile } from './Tile';
-import {
-  BlueShard,
-  RedShard,
-  YellowShard,
-  WhiteVessel,
-  BlueVessel,
-  RedVessel,
-  YellowVessel,
-} from './MapObject';
+import { Point } from '../render/Vector';
+import { getCube, getIcosahedron, getTetrahedron } from '../render/FaceGroup';
 import { Animation, TransitionLinear, TransitionQuadraticBezier } from './Animation';
-
 
 const TLEN = 100;
 const MLEN = 20;
