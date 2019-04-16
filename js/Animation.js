@@ -16,6 +16,10 @@ class Animation {
     let dx = 0;
     let dy = 0;
     let dz = 0;
+    let dr = 0;
+    let dg = 0;
+    let db = 0;
+    let da = 0;
     if (this.transitions.x !== undefined) {
       dx = this.transitions.x.evaluate(this.frame / this.frames) - this.entity.getCenter().getX();
     }
@@ -25,7 +29,20 @@ class Animation {
     if (this.transitions.z !== undefined) {
       dz = this.transitions.z.evaluate(this.frame / this.frames) - this.entity.getCenter().getZ();
     }
+    if (this.transitions.r !== undefined) {
+      dr = this.transitions.r.evaluate(this.frame / this.frames) - this.entity.getR();
+    }
+    if (this.transitions.g !== undefined) {
+      dg = this.transitions.g.evaluate(this.frame / this.frames) - this.entity.getG();
+    }
+    if (this.transitions.b !== undefined) {
+      db = this.transitions.b.evaluate(this.frame / this.frames) - this.entity.getB();
+    }
+    if (this.transitions.a !== undefined) {
+      da = this.transitions.a.evaluate(this.frame / this.frames) - this.entity.getA();
+    }
     this.entity.translate(dx, dy, dz);
+    this.entity.translateColor(dr, dg, db, da);
   }
 
   isFinished() {

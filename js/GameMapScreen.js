@@ -389,6 +389,84 @@ class GameMapScreen {
         }
         this.viewState.animationQueue.push(animations);
       }
+      if (action.dst.mapObject !== undefined) {
+        const animations = [];
+        const srcStartJSON = {
+          x: action.dst.x,
+          y: action.dst.y,
+          h: action.dst.h,
+          type: action.src.mapObject.type,
+        };
+        const srcEndJSON = {
+          x: action.dst.x,
+          y: action.dst.y,
+          h: action.dst.h,
+          type: action.dst.mapObject.type,
+        };
+        const srcAnimation = GameMapEntityFactory.createAnimation(srcObj, srcStartJSON, srcEndJSON);
+        animations.push(srcAnimation);
+        const dstStartJSON = {
+          x: action.dst.x,
+          y: action.dst.y,
+          h: action.dst.h,
+          type: action.dst.mapObject.type,
+        };
+        const dstEndJSON = {
+          x: action.dst.x,
+          y: action.dst.y,
+          h: action.dst.h,
+          type: action.src.mapObject.type,
+        };
+        const dstAnimation = GameMapEntityFactory.createAnimation(dstObj, dstStartJSON, dstEndJSON);
+        animations.push(dstAnimation);
+        this.viewState.animationQueue.push(animations);
+      }
+    } else if (action.name === 'transfer') {
+      if (this.viewState.mode !== 'animating') {
+        GameModeTransitioner.exit(
+          this.viewState,
+          this.entities2D,
+          this.staticEntities3D,
+          this.dynamicEntities3D,
+        );
+        this.viewState.mode = 'animating';
+      }
+
+      const srcKey = `${action.src.x}_${action.src.y}`;
+      const dstKey = `${action.dst.x}_${action.dst.y}`;
+      const srcObj = this.dynamicEntities3D[srcKey];
+      const dstObj = this.dynamicEntities3D[dstKey];
+
+      const animations = [];
+      const srcStartJSON = {
+        x: action.dst.x,
+        y: action.dst.y,
+        h: action.dst.h,
+        type: action.src.mapObject.type,
+      };
+      const srcEndJSON = {
+        x: action.dst.x,
+        y: action.dst.y,
+        h: action.dst.h,
+        type: action.dst.mapObject.type,
+      };
+      const srcAnimation = GameMapEntityFactory.createAnimation(srcObj, srcStartJSON, srcEndJSON);
+      animations.push(srcAnimation);
+      const dstStartJSON = {
+        x: action.dst.x,
+        y: action.dst.y,
+        h: action.dst.h,
+        type: action.dst.mapObject.type,
+      };
+      const dstEndJSON = {
+        x: action.dst.x,
+        y: action.dst.y,
+        h: action.dst.h,
+        type: action.src.mapObject.type,
+      };
+      const dstAnimation = GameMapEntityFactory.createAnimation(dstObj, dstStartJSON, dstEndJSON);
+      animations.push(dstAnimation);
+      this.viewState.animationQueue.push(animations);
     } else if (action.name === 'end') {
       if (this.viewState.mode !== 'animating') {
         GameModeTransitioner.exit(

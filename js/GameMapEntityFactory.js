@@ -69,45 +69,80 @@ class Entity3D {
   }
 }
 
-class BlueShardEntity3D extends Entity3D {
+class PlainTileEntity3D extends Entity3D {
+}
+
+class ShardEntity3D extends Entity3D {
+  constructor(face, center, r, g, b, a) {
+    super(face, center);
+    this.r = r;
+    this.g = g;
+    this.b = b;
+    this.a = a;
+  }
+
   getFillStyle(face) {
-    return '#0000FF';
+    return `rgba(${this.r}, ${this.g}, ${this.b}, ${this.a})`;
+  }
+
+  getR() {
+    return this.r;
+  }
+
+  getG() {
+    return this.g;
+  }
+
+  getB() {
+    return this.b;
+  }
+
+  getA() {
+    return this.a;
+  }
+
+  translateColor(r, g, b, a) {
+    this.r += r;
+    this.g += g;
+    this.b += b;
+    this.a += a;
   }
 }
 
-class RedShardEntity3D extends Entity3D {
-  getFillStyle(face) {
-    return '#FF0000';
+class VesselEntity3D extends Entity3D {
+  constructor(face, center, r, g, b, a) {
+    super(face, center);
+    this.r = r;
+    this.g = g;
+    this.b = b;
+    this.a = a;
   }
-}
 
-class YellowShardEntity3D extends Entity3D {
   getFillStyle(face) {
-    return '#FFFF00';
+    return `rgba(${this.r}, ${this.g}, ${this.b}, ${this.a})`;
   }
-}
 
-class WhiteVesselEntity3D extends Entity3D {
-  getFillStyle(face) {
-    return '#FFFFFF';
+  getR() {
+    return this.r;
   }
-}
 
-class BlueVesselEntity3D extends Entity3D {
-  getFillStyle(face) {
-    return '#0000FF';
+  getG() {
+    return this.g;
   }
-}
 
-class RedVesselEntity3D extends Entity3D {
-  getFillStyle(face) {
-    return '#FF0000';
+  getB() {
+    return this.b;
   }
-}
 
-class YellowVesselEntity3D extends Entity3D {
-  getFillStyle(face) {
-    return '#FFFF00';
+  getA() {
+    return this.a;
+  }
+
+  translateColor(r, g, b, a) {
+    this.r += r;
+    this.g += g;
+    this.b += b;
+    this.a += a;
   }
 }
 
@@ -150,7 +185,7 @@ class GameMapEntityFactory {
         TLEN,
         json.h * TLEN,
       );
-      return new Entity3D(faces);
+      return new PlainTileEntity3D(faces);
     }
     if (json.type === 'w') {
       const faces = getIcosahedron(
@@ -164,7 +199,7 @@ class GameMapEntityFactory {
         (json.y + 0.5) * TLEN,
         (json.h + 0.5) * TLEN,
       );
-      return new WhiteVesselEntity3D(faces, center);
+      return new VesselEntity3D(faces, center, 255, 255, 255, 1);
     }
     if (json.type === 'b') {
       const faces = getIcosahedron(
@@ -178,7 +213,7 @@ class GameMapEntityFactory {
         (json.y + 0.5) * TLEN,
         (json.h + 0.5) * TLEN,
       );
-      return new BlueVesselEntity3D(faces, center);
+      return new VesselEntity3D(faces, center, 0, 0, 255, 1);
     }
     if (json.type === 'r') {
       const faces = getIcosahedron(
@@ -192,7 +227,7 @@ class GameMapEntityFactory {
         (json.y + 0.5) * TLEN,
         (json.h + 0.5) * TLEN,
       );
-      return new RedVesselEntity3D(faces, center);
+      return new VesselEntity3D(faces, center, 255, 0, 0, 1);
     }
     if (json.type === 'y') {
       const faces = getIcosahedron(
@@ -206,7 +241,7 @@ class GameMapEntityFactory {
         (json.y + 0.5) * TLEN,
         (json.h + 0.5) * TLEN,
       );
-      return new YellowVesselEntity3D(faces, center);
+      return new VesselEntity3D(faces, center, 255, 255, 0, 1);
     }
     if (json.type === 'bs') {
       const faces = getTetrahedron(
@@ -220,7 +255,7 @@ class GameMapEntityFactory {
         (json.y + 0.5) * TLEN,
         (json.h + 0.5) * TLEN,
       );
-      return new BlueShardEntity3D(faces, center);
+      return new ShardEntity3D(faces, center, 0, 0, 255, 1);
     }
     if (json.type === 'rs') {
       const faces = getTetrahedron(
@@ -234,7 +269,7 @@ class GameMapEntityFactory {
         (json.y + 0.5) * TLEN,
         (json.h + 0.5) * TLEN,
       );
-      return new RedShardEntity3D(faces, center);
+      return new ShardEntity3D(faces, center, 255, 0, 0, 1);
     }
     if (json.type === 'ys') {
       const faces = getTetrahedron(
@@ -248,7 +283,7 @@ class GameMapEntityFactory {
         (json.y + 0.5) * TLEN,
         (json.h + 0.5) * TLEN,
       );
-      return new YellowShardEntity3D(faces, center);
+      return new ShardEntity3D(faces, center, 255, 255, 0, 1);
     }
     throw Error('Unrecognized type');
   }
@@ -310,20 +345,37 @@ class GameMapEntityFactory {
 
   static createAnimation(entity, startJSON, endJSON) {
     const transitions = {};
-    const ax = (startJSON.x + 0.5) * TLEN;
-    const ay = (startJSON.y + 0.5) * TLEN;
-    const az = (startJSON.h + 0.5) * TLEN;
-    const bx = (endJSON.x + 0.5) * TLEN;
-    const by = (endJSON.y + 0.5) * TLEN;
-    const bz = (endJSON.h + 0.5) * TLEN;
-    if (az === bz) {
-      transitions.x = new TransitionLinear(ax, bx);
-      transitions.y = new TransitionLinear(ay, by);
+    if (startJSON.type === endJSON.type) {
+      const ax = (startJSON.x + 0.5) * TLEN;
+      const ay = (startJSON.y + 0.5) * TLEN;
+      const az = (startJSON.h + 0.5) * TLEN;
+      const bx = (endJSON.x + 0.5) * TLEN;
+      const by = (endJSON.y + 0.5) * TLEN;
+      const bz = (endJSON.h + 0.5) * TLEN;
+      if (az === bz) {
+        transitions.x = new TransitionLinear(ax, bx);
+        transitions.y = new TransitionLinear(ay, by);
+        transitions.z = new TransitionLinear(az, bz);
+      } else {
+        transitions.x = new TransitionQuadraticBezier(ax, az > bz ? bx : ax, bx);
+        transitions.y = new TransitionQuadraticBezier(ay, az > bz ? by : ay, by);
+        transitions.z = new TransitionQuadraticBezier(az, Math.max(az, bz), bz);
+      }
+    } else if (['bs', 'rs', 'ys'].includes(startJSON.type) && endJSON.type === 'w') {
+      const az = (startJSON.h + 0.5) * TLEN;
+      const bz = (startJSON.h + 1.5) * TLEN;
       transitions.z = new TransitionLinear(az, bz);
-    } else {
-      transitions.x = new TransitionQuadraticBezier(ax, az > bz ? bx : ax, bx);
-      transitions.y = new TransitionQuadraticBezier(ay, az > bz ? by : ay, by);
-      transitions.z = new TransitionQuadraticBezier(az, Math.max(az, bz), bz);
+      transitions.a = new TransitionLinear(1, 0);
+    } else if (['w', 'b', 'r', 'y'].includes(startJSON.type)) {
+      const ar = ['w', 'r', 'y'].includes(startJSON.type) ? 255 : 0;
+      const ag = ['w', 'y'].includes(startJSON.type) ? 255 : 0;
+      const ab = ['w', 'b'].includes(startJSON.type) ? 255 : 0;
+      const br = ['w', 'r', 'y', 'rs', 'ys'].includes(endJSON.type) ? 255 : 0;
+      const bg = ['w', 'y', 'ys'].includes(endJSON.type) ? 255 : 0;
+      const bb = ['w', 'b', 'bs'].includes(endJSON.type) ? 255 : 0;
+      transitions.r = new TransitionLinear(ar, br);
+      transitions.g = new TransitionLinear(ag, bg);
+      transitions.b = new TransitionLinear(ab, bb);
     }
     return new Animation(entity, transitions, ANIMATION_LEN);
   }
