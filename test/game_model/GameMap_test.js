@@ -402,5 +402,16 @@ p_1{   } p_1{   } p_1{   }
 }
 `);
     });
+
+    it('should properly undo multiple actions', () => {
+      const m = new GameMap(deserialize(state1String));
+      const moveAction = m.getActions()[2];
+      m.doAction(moveAction);
+      const attackAction = m.getActions()[1];
+      m.doAction(attackAction);
+      m.undoAction(attackAction);
+      m.undoAction(moveAction);
+      expect(m.serialize()).to.equal(state1String);
+    });
   });
 });

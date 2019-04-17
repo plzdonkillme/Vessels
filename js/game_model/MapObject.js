@@ -1,4 +1,4 @@
-/* eslint-disable class-methods-use-this, no-unused-vars */
+/* eslint-disable class-methods-use-this, no-unused-vars, no-use-before-define */
 
 class MapObject {
   constructor(props) {
@@ -216,46 +216,26 @@ class RedVessel extends Vessel {
     return 'rs';
   }
 
-  // getAttackableTargets() {
-  //   const dirs1 = ['left', 'right'];
-  //   const dirs2 = ['top', 'down'];
-  //   const tileSet = new Set();
-  //   dirs1.forEach((dir) => {
-  //     const t = this.tile[dir];
-  //     if (t !== null) {
-  //       if (t.getMapObject() !== null) {
-  //         tileSet.add(t);
-  //       }
-  //       dirs2.forEach((dir2) => {
-  //         const t2 = t[dir2];
-  //         if (t2 !== null && t2.getMapObject() !== null) {
-  //           tileSet.add(t2);
-  //         }
-  //       });
-  //     }
-  //   });
-  //   dirs2.forEach((dir) => {
-  //     const t = this.tile[dir];
-  //     if (t !== null) {
-  //       if (t.getMapObject() !== null) {
-  //         tileSet.add(t);
-  //       }
-  //       dirs1.forEach((dir2) => {
-  //         const t2 = t[dir2];
-  //         if (t2 !== null && t2.getMapObject() !== null) {
-  //           tileSet.add(t2);
-  //         }
-  //       });
-  //     }
-  //   });
-
-  //   const tileArray = Array.from(tileSet);
-  //   const tileKeys = tileArray.map(t => t.getKey());
-  //   const objKeys = tileArray.map(t => t.getMapObject().getKey());
-  //   const ret = [];
-  //   ret.push(tileKeys.concat(objKeys));
-  //   return ret;
-  // }
+  getAttackableTargets() {
+    const targetTiles = new Set(this.tile.getNeighbors());
+    let hasTarget = false;
+    targetTiles.forEach((n1) => {
+      hasTarget = hasTarget || n1.getMapObject() !== null;
+      n1.getNeighbors().forEach((n2) => {
+        if (n2 !== this.tile
+          && Math.abs(n2.getX() - this.tile.getX()) === 1
+          && Math.abs(n2.getY() - this.tile.getY()) === 1
+        ) {
+          hasTarget = hasTarget || n1.getMapObject() !== null;
+          targetTiles.add(n2);
+        }
+      });
+    });
+    if (hasTarget) {
+      return [Array.from(targetTiles)];
+    }
+    return [];
+  }
 }
 
 class YellowVessel extends Vessel {

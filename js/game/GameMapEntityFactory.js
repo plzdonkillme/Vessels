@@ -332,9 +332,73 @@ class GameMapEntityFactory {
     return entities2D;
   }
 
+  static createAnimations(srcObj, dstObj, action) {
+    const animations = [];
+    if (action.name === 'move') {
+      for (let i = 0; i < action.path.length - 1; i += 1) {
+        const currState = { ...action.path[i], mapObject: action.src.mapObject };
+        const nextState = { ...action.path[i + 1], mapObject: action.src.mapObject };
+        const stepAnimation = [];
+        const srcAnimation = GameMapEntityFactory.createAnimation(
+          srcObj,
+          currState,
+          nextState,
+        );
+        stepAnimation.push(srcAnimation);
+        if (action.dst.mapObject !== undefined) {
+          const dstAnimation = GameMapEntityFactory.createNoopAnimation(dstObj);
+          stepAnimation.push(dstAnimation);
+        }
+        animations.push(stepAnimation);
+      }
+      if (action.dst.mapObject !== undefined) {
+        const srcAnimation = GameMapEntityFactory.createAnimation(
+          srcObj,
+          action.src,
+          action.dst,
+        );
+        const dstAnimation = GameMapEntityFactory.createAnimation(
+          dstObj,
+          action.dst,
+          { mapObject: { type: null } },
+        );
+        animations.push([srcAnimation, dstAnimation]);
+      }
+    } else if (action.name === 'transfer') {
+      const srcAnimation = GameMapEntityFactory.createAnimation(
+        srcObj,
+        action.src,
+        action.dst,
+      );
+      const dstAnimation = GameMapEntityFactory.createAnimation(
+        dstObj,
+        action.dst,
+        action.src,
+      );
+      animations.push([srcAnimation, dstAnimation]);
+    } else if (action.name === 'attack') {
+      const animation = [];
+      action.dst.forEach((dst) => {
+        const dstKey = `${dst.x}_${dst.y}`;
+        const obj = dstObj[dstKey];
+        if (obj !== undefined) {
+          animation.push(GameMapEntityFactory.createAnimation(
+            obj,
+            dst,
+            { mapObject: { type: null } },
+          ));
+        }
+      });
+      animations.push(animation);
+    }
+    return animations;
+  }
+
   static createAnimation(entity, startJSON, endJSON) {
     const transitions = {};
-    if (startJSON.type === endJSON.type) {
+    const stype = startJSON.mapObject.type;
+    const etype = endJSON.mapObject.type;
+    if (stype === etype) {
       const ax = (startJSON.x + 0.5) * TLEN;
       const ay = (startJSON.y + 0.5) * TLEN;
       const az = (startJSON.h + 0.5) * TLEN;
@@ -350,18 +414,18 @@ class GameMapEntityFactory {
         transitions.y = new TransitionQuadraticBezier(ay, az > bz ? by : ay, by);
         transitions.z = new TransitionQuadraticBezier(az, Math.max(az, bz), bz);
       }
-    } else if (['bs', 'rs', 'ys'].includes(startJSON.type) && endJSON.type === 'w') {
+    } else if (etype === null) {
       const az = (startJSON.h + 0.5) * TLEN;
       const bz = (startJSON.h + 1.5) * TLEN;
       transitions.z = new TransitionLinear(az, bz);
       transitions.a = new TransitionLinear(1, 0);
-    } else if (['w', 'b', 'r', 'y'].includes(startJSON.type)) {
-      const ar = ['w', 'r', 'y'].includes(startJSON.type) ? 255 : 0;
-      const ag = ['w', 'y'].includes(startJSON.type) ? 255 : 0;
-      const ab = ['w', 'b'].includes(startJSON.type) ? 255 : 0;
-      const br = ['w', 'r', 'y', 'rs', 'ys'].includes(endJSON.type) ? 255 : 0;
-      const bg = ['w', 'y', 'ys'].includes(endJSON.type) ? 255 : 0;
-      const bb = ['w', 'b', 'bs'].includes(endJSON.type) ? 255 : 0;
+    } else if (['w', 'b', 'r', 'y'].includes(stype)) {
+      const ar = ['w', 'r', 'y'].includes(stype) ? 255 : 0;
+      const ag = ['w', 'y'].includes(stype) ? 255 : 0;
+      const ab = ['w', 'b'].includes(stype) ? 255 : 0;
+      const br = ['w', 'r', 'y', 'rs', 'ys'].includes(etype) ? 255 : 0;
+      const bg = ['w', 'y', 'ys'].includes(etype) ? 255 : 0;
+      const bb = ['w', 'b', 'bs'].includes(etype) ? 255 : 0;
       transitions.r = new TransitionLinear(ar, br);
       transitions.g = new TransitionLinear(ag, bg);
       transitions.b = new TransitionLinear(ab, bb);

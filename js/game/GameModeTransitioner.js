@@ -110,12 +110,20 @@ class GameModeTransitioner {
       } else {
         actions.forEach((action) => {
           const dsts = Array.isArray(action.dst) ? action.dst : [action.dst];
+          let match = false;
           dsts.forEach((dst) => {
             const dstKey = `${dst.x}_${dst.y}`;
             if (s3D[dstKey] === hoveredEntity || d3D[dstKey] === hoveredEntity) {
+              match = true;
               s3D[dstKey].fillStyle = '#E6E6E6';
             }
           });
+          if (match) {
+            dsts.forEach((dst) => {
+              const dstKey = `${dst.x}_${dst.y}`;
+              s3D[dstKey].fillStyle = '#E6E6E6';
+            });
+          }
         });
       }
     }
@@ -179,12 +187,20 @@ class GameModeTransitioner {
       } else {
         actions.forEach((action) => {
           const dsts = Array.isArray(action.dst) ? action.dst : [action.dst];
+          let match = false;
           dsts.forEach((dst) => {
             const dstKey = `${dst.x}_${dst.y}`;
             if (s3D[dstKey] === hoveredEntity || d3D[dstKey] === hoveredEntity) {
+              match = true;
               s3D[dstKey].fillStyle = '#FFFFFF';
             }
           });
+          if (match) {
+            dsts.forEach((dst) => {
+              const dstKey = `${dst.x}_${dst.y}`;
+              s3D[dstKey].fillStyle = '#FFFFFF';
+            });
+          }
         });
       }
     }

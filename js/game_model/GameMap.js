@@ -230,8 +230,10 @@ class GameMap {
       const dy = action.dst[i].y;
       const dstTile = this.tiles.filter(t => t.getX() === dx && t.getY() === dy)[0];
       const dstObj = dstTile.getMapObject();
+      if (dstObj !== null) {
+        this.mapObjects.splice(this.mapObjects.indexOf(dstObj), 1);
+      }
       const newDstObj = srcObj.attack(dstObj);
-      this.mapObjects.splice(this.mapObjects.indexOf(dstObj), 1);
       if (newDstObj !== null) {
         this.mapObjects.push(newDstObj);
         newDstObj.setTile(dstTile);
@@ -255,8 +257,6 @@ class GameMap {
     if (action !== prevAction) {
       throw Error('Invalid Action');
     }
-    this.cachedActions = null;
-    this.actionHistory.pop();
 
     if (action.name === 'move') {
       this.undoMoveAction(action);
