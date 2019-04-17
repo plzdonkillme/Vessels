@@ -43,7 +43,9 @@ class Entity3D {
 
   translate(x, y, z) {
     this.faces.forEach(face => face.translate(x, y, z));
-    this.center.translate(x, y, z);
+    if (this.center !== null) {
+      this.center.translate(x, y, z);
+    }
   }
 
   rotate(v, rad) {
@@ -63,20 +65,12 @@ class PlainTileEntity3D extends Entity3D {
 }
 
 class ShardEntity3D extends Entity3D {
-  constructor(face, center, r, g, b, a) {
-    super(face, center);
+  constructor(faces, center, r, g, b, a) {
+    super(faces, center);
     this.r = r;
     this.g = g;
     this.b = b;
     this.a = a;
-  }
-
-  getFillStyle(face) {
-    return `rgba(${this.r}, ${this.g}, ${this.b}, ${this.a})`;
-  }
-
-  getStrokeStyle(face) {
-    return `rgba(0, 0, 0, ${this.a})`;
   }
 
   getR() {
@@ -93,6 +87,14 @@ class ShardEntity3D extends Entity3D {
 
   getA() {
     return this.a;
+  }
+
+  getFillStyle(face) {
+    return `rgba(${this.r}, ${this.g}, ${this.b}, ${this.a})`;
+  }
+
+  getStrokeStyle(face) {
+    return `rgba(0, 0, 0, ${this.a})`;
   }
 
   translateColor(r, g, b, a) {
@@ -104,20 +106,12 @@ class ShardEntity3D extends Entity3D {
 }
 
 class VesselEntity3D extends Entity3D {
-  constructor(face, center, r, g, b, a) {
-    super(face, center);
+  constructor(faces, center, r, g, b, a) {
+    super(faces, center);
     this.r = r;
     this.g = g;
     this.b = b;
     this.a = a;
-  }
-
-  getFillStyle(face) {
-    return `rgba(${this.r}, ${this.g}, ${this.b}, ${this.a})`;
-  }
-
-  getStrokeStyle(face) {
-    return `rgba(0, 0, 0, ${this.a})`;
   }
 
   getR() {
@@ -134,6 +128,55 @@ class VesselEntity3D extends Entity3D {
 
   getA() {
     return this.a;
+  }
+
+  getFillStyle(face) {
+    return `rgba(${this.r}, ${this.g}, ${this.b}, ${this.a})`;
+  }
+
+  getStrokeStyle(face) {
+    return `rgba(0, 0, 0, ${this.a})`;
+  }
+
+  translateColor(r, g, b, a) {
+    this.r += r;
+    this.g += g;
+    this.b += b;
+    this.a += a;
+  }
+}
+
+class AttackEffect3D extends Entity3D {
+  constructor(faces, center, r, g, b, a) {
+    super(faces, center);
+    this.r = r;
+    this.g = g;
+    this.b = b;
+    this.a = a;
+  }
+
+  getR() {
+    return this.r;
+  }
+
+  getG() {
+    return this.g;
+  }
+
+  getB() {
+    return this.b;
+  }
+
+  getA() {
+    return this.a;
+  }
+
+  getFillStyle(face) {
+    return `rgba(${this.r}, ${this.g}, ${this.b}, ${this.a})`;
+  }
+
+  getStrokeStyle(face) {
+    return `rgba(0, 0, 0, ${this.a})`;
   }
 
   translateColor(r, g, b, a) {
@@ -336,6 +379,26 @@ class GameMapEntityFactory {
             { mapObject: { type: null } },
           ));
         }
+        const faces = getTetrahedron(
+          (dst.x + 0.5) * TLEN,
+          (dst.y + 0.5) * TLEN,
+          (dst.h + 1.5) * TLEN,
+          MLEN,
+        );
+        const center = new Point(
+          (dst.x + 0.5) * TLEN,
+          (dst.y + 0.5) * TLEN,
+          (dst.h + 1.5) * TLEN,
+        );
+        const r = ['w', 'r', 'y'].includes(action.src.mapObject.type) ? 255 : 0;
+        const g = ['w', 'y'].includes(action.src.mapObject.type) ? 255 : 0;
+        const b = ['w', 'b'].includes(action.src.mapObject.type) ? 255 : 0;
+        const attackObj = new AttackEffect3D(faces, center, r, g, b, 1);
+        animation.push(new Animation(
+          attackObj,
+          { z: new TransitionLinear((dst.h + 1.5) * TLEN, (dst.h + 0.5) * TLEN) },
+          ANIMATION_LEN,
+        ));
       });
       animations.push(animation);
     }
