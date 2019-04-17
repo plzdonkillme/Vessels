@@ -28,15 +28,12 @@ class GameMapScreen {
     this.dynamicEntities3D = {};
     for (let i = 0; i < tiles.length; i += 1) {
       const key = `${tiles[i].x}_${tiles[i].y}`;
-      this.staticEntities3D[key] = GameMapEntityFactory.createEntity3D(tiles[i]);
-      if (tiles[i].mapObject !== undefined) {
-        const json = {
-          ...tiles[i].mapObject,
-          x: tiles[i].x,
-          y: tiles[i].y,
-          h: tiles[i].h,
-        };
-        this.dynamicEntities3D[key] = GameMapEntityFactory.createEntity3D(json);
+      const { staticEntity, dynamicEntity } = GameMapEntityFactory.createEntity3D(tiles[i]);
+      if (staticEntity !== null) {
+        this.staticEntities3D[key] = staticEntity;
+      }
+      if (dynamicEntity !== null) {
+        this.dynamicEntities3D[key] = dynamicEntity;
       }
     }
     this.entities2D = GameMapEntityFactory.createEntities2D();
@@ -412,14 +409,9 @@ class GameMapScreen {
     this.dynamicEntities3D = {};
     for (let i = 0; i < tiles.length; i += 1) {
       const key = `${tiles[i].x}_${tiles[i].y}`;
-      if (tiles[i].mapObject !== undefined) {
-        const json = {
-          ...tiles[i].mapObject,
-          x: tiles[i].x,
-          y: tiles[i].y,
-          h: tiles[i].h,
-        };
-        this.dynamicEntities3D[key] = GameMapEntityFactory.createEntity3D(json);
+      const { staticEntity, dynamicEntity } = GameMapEntityFactory.createEntity3D(tiles[i]);
+      if (dynamicEntity !== null) {
+        this.dynamicEntities3D[key] = dynamicEntity;
       }
     }
     this.viewState.animationQueue.push([]);

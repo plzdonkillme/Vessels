@@ -165,6 +165,8 @@ class Entity2D {
 
 class GameMapEntityFactory {
   static createEntity3D(json) {
+    let staticEntity = null;
+    let dynamicEntity = null;
     if (json.type === 'p') {
       const faces = getCube(
         json.x * TLEN,
@@ -174,107 +176,44 @@ class GameMapEntityFactory {
         TLEN,
         json.h * TLEN,
       );
-      return new PlainTileEntity3D(faces);
+      staticEntity = new PlainTileEntity3D(faces);
+    } else {
+      throw Error('Unknown tile type');
     }
-    if (json.type === 'w') {
-      const faces = getIcosahedron(
-        (json.x + 0.5) * TLEN,
-        (json.y + 0.5) * TLEN,
-        (json.h + 0.5) * TLEN,
-        MLEN,
-      );
+    if (json.mapObject !== undefined) {
+      let faces = [];
       const center = new Point(
         (json.x + 0.5) * TLEN,
         (json.y + 0.5) * TLEN,
         (json.h + 0.5) * TLEN,
       );
-      return new VesselEntity3D(faces, center, 255, 255, 255, 1);
+      if (['w', 'b', 'r', 'y'].includes(json.mapObject.type)) {
+        faces = getIcosahedron(
+          (json.x + 0.5) * TLEN,
+          (json.y + 0.5) * TLEN,
+          (json.h + 0.5) * TLEN,
+          MLEN,
+        );
+        const r = ['w', 'r', 'y'].includes(json.mapObject.type) ? 255 : 0;
+        const g = ['w', 'y'].includes(json.mapObject.type) ? 255 : 0;
+        const b = ['w', 'b'].includes(json.mapObject.type) ? 255 : 0;
+        dynamicEntity = new VesselEntity3D(faces, center, r, g, b, 1);
+      } else if (['bs', 'ys', 'rs', 'ys'].includes(json.mapObject.type)) {
+        faces = getTetrahedron(
+          (json.x + 0.5) * TLEN,
+          (json.y + 0.5) * TLEN,
+          (json.h + 0.5) * TLEN,
+          MLEN,
+        );
+        const r = ['rs', 'ys'].includes(json.mapObject.type) ? 255 : 0;
+        const g = ['ys'].includes(json.mapObject.type) ? 255 : 0;
+        const b = ['bs'].includes(json.mapObject.type) ? 255 : 0;
+        dynamicEntity = new ShardEntity3D(faces, center, r, g, b, 1);
+      } else {
+        throw Error('Unkown mapObject type');
+      }
     }
-    if (json.type === 'b') {
-      const faces = getIcosahedron(
-        (json.x + 0.5) * TLEN,
-        (json.y + 0.5) * TLEN,
-        (json.h + 0.5) * TLEN,
-        MLEN,
-      );
-      const center = new Point(
-        (json.x + 0.5) * TLEN,
-        (json.y + 0.5) * TLEN,
-        (json.h + 0.5) * TLEN,
-      );
-      return new VesselEntity3D(faces, center, 0, 0, 255, 1);
-    }
-    if (json.type === 'r') {
-      const faces = getIcosahedron(
-        (json.x + 0.5) * TLEN,
-        (json.y + 0.5) * TLEN,
-        (json.h + 0.5) * TLEN,
-        MLEN,
-      );
-      const center = new Point(
-        (json.x + 0.5) * TLEN,
-        (json.y + 0.5) * TLEN,
-        (json.h + 0.5) * TLEN,
-      );
-      return new VesselEntity3D(faces, center, 255, 0, 0, 1);
-    }
-    if (json.type === 'y') {
-      const faces = getIcosahedron(
-        (json.x + 0.5) * TLEN,
-        (json.y + 0.5) * TLEN,
-        (json.h + 0.5) * TLEN,
-        MLEN,
-      );
-      const center = new Point(
-        (json.x + 0.5) * TLEN,
-        (json.y + 0.5) * TLEN,
-        (json.h + 0.5) * TLEN,
-      );
-      return new VesselEntity3D(faces, center, 255, 255, 0, 1);
-    }
-    if (json.type === 'bs') {
-      const faces = getTetrahedron(
-        (json.x + 0.5) * TLEN,
-        (json.y + 0.5) * TLEN,
-        (json.h + 0.5) * TLEN,
-        MLEN,
-      );
-      const center = new Point(
-        (json.x + 0.5) * TLEN,
-        (json.y + 0.5) * TLEN,
-        (json.h + 0.5) * TLEN,
-      );
-      return new ShardEntity3D(faces, center, 0, 0, 255, 1);
-    }
-    if (json.type === 'rs') {
-      const faces = getTetrahedron(
-        (json.x + 0.5) * TLEN,
-        (json.y + 0.5) * TLEN,
-        (json.h + 0.5) * TLEN,
-        MLEN,
-      );
-      const center = new Point(
-        (json.x + 0.5) * TLEN,
-        (json.y + 0.5) * TLEN,
-        (json.h + 0.5) * TLEN,
-      );
-      return new ShardEntity3D(faces, center, 255, 0, 0, 1);
-    }
-    if (json.type === 'ys') {
-      const faces = getTetrahedron(
-        (json.x + 0.5) * TLEN,
-        (json.y + 0.5) * TLEN,
-        (json.h + 0.5) * TLEN,
-        MLEN,
-      );
-      const center = new Point(
-        (json.x + 0.5) * TLEN,
-        (json.y + 0.5) * TLEN,
-        (json.h + 0.5) * TLEN,
-      );
-      return new ShardEntity3D(faces, center, 255, 255, 0, 1);
-    }
-    throw Error('Unrecognized type');
+    return { staticEntity, dynamicEntity };
   }
 
   static createEntities2D() {
