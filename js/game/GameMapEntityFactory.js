@@ -18,6 +18,7 @@ class Entity3D {
     this.faces = faces;
     this.center = center;
     this.fillStyle = '#CCCCCC';
+    this.strokeStyle = '#000000';
   }
 
   getFaces() {
@@ -33,7 +34,7 @@ class Entity3D {
   }
 
   getStrokeStyle(face) {
-    return '#000000';
+    return this.strokeStyle;
   }
 
   isHoverable() {
@@ -74,6 +75,10 @@ class ShardEntity3D extends Entity3D {
     return `rgba(${this.r}, ${this.g}, ${this.b}, ${this.a})`;
   }
 
+  getStrokeStyle(face) {
+    return `rgba(0, 0, 0, ${this.a})`;
+  }
+
   getR() {
     return this.r;
   }
@@ -109,6 +114,10 @@ class VesselEntity3D extends Entity3D {
 
   getFillStyle(face) {
     return `rgba(${this.r}, ${this.g}, ${this.b}, ${this.a})`;
+  }
+
+  getStrokeStyle(face) {
+    return `rgba(0, 0, 0, ${this.a})`;
   }
 
   getR() {
@@ -299,7 +308,7 @@ class GameMapEntityFactory {
         const dstAnimation = GameMapEntityFactory.createAnimation(
           dstObj,
           action.dst,
-          { mapObject: { type: null } },
+          action.src,
         );
         animations.push([srcAnimation, dstAnimation]);
       }
@@ -353,12 +362,12 @@ class GameMapEntityFactory {
         transitions.y = new TransitionQuadraticBezier(ay, az > bz ? by : ay, by);
         transitions.z = new TransitionQuadraticBezier(az, Math.max(az, bz), bz);
       }
-    } else if (etype === null) {
+    } else if (['bs', 'rs', 'ys'].includes(stype) && etype === 'w') {
       const az = (startJSON.h + 0.5) * TLEN;
       const bz = (startJSON.h + 1.5) * TLEN;
       transitions.z = new TransitionLinear(az, bz);
       transitions.a = new TransitionLinear(1, 0);
-    } else if (['w', 'b', 'r', 'y'].includes(stype)) {
+    } else if (['w', 'b', 'r', 'y'].includes(stype) && etype !== null) {
       const ar = ['w', 'r', 'y'].includes(stype) ? 255 : 0;
       const ag = ['w', 'y'].includes(stype) ? 255 : 0;
       const ab = ['w', 'b'].includes(stype) ? 255 : 0;
@@ -368,6 +377,8 @@ class GameMapEntityFactory {
       transitions.r = new TransitionLinear(ar, br);
       transitions.g = new TransitionLinear(ag, bg);
       transitions.b = new TransitionLinear(ab, bb);
+    } else if (etype === null) {
+      transitions.a = new TransitionLinear(1, 0);
     }
     return new Animation(entity, transitions, ANIMATION_LEN);
   }
