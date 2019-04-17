@@ -329,11 +329,15 @@ class GameMap {
       const dy = action.dst[i].y;
       const dstTile = this.tiles.filter(t => t.getX() === dx && t.getY() === dy)[0];
       const dstObj = dstTile.getMapObject();
-      const oldDstObj = MapObjectFactory.create(action.dst[i].mapObject);
-      this.mapObjects.splice(this.mapObjects.indexOf(dstObj), 1);
-      this.mapObjects.push(oldDstObj);
-      oldDstObj.setTile(dstTile);
-      dstTile.setMapObject(oldDstObj);
+      if (dstObj !== null) {
+        this.mapObjects.splice(this.mapObjects.indexOf(dstObj), 1);
+      }
+      if (action.dst[i].mapObject !== undefined) {
+        const oldDstObj = MapObjectFactory.create(action.dst[i].mapObject);
+        this.mapObjects.push(oldDstObj);
+        oldDstObj.setTile(dstTile);
+        dstTile.setMapObject(oldDstObj);
+      }
     }
     this.actionCounter.attack += 1;
   }
