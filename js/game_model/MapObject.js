@@ -70,6 +70,7 @@ class Vessel extends MapObject {
     this.movement = 4;
     this.jump = 1;
     this.range = 1;
+    this.shard = null;
   }
 
   toJSON() {
@@ -79,7 +80,7 @@ class Vessel extends MapObject {
   }
 
   getShard() {
-    return null;
+    return this.shard;
   }
 
   getMoveableTargets() {
@@ -114,7 +115,10 @@ class Vessel extends MapObject {
       return false;
     }
     const mO = nextTile.getMapObject();
-    if (mO === null || mO instanceof Shard || mO.getPlayer() === this.player) {
+    if (mO === null || mO.getPlayer() === this.player) {
+      return true;
+    }
+    if (mO instanceof Shard && this.getShard() === null) {
       return true;
     }
     return false;
@@ -132,7 +136,7 @@ class Vessel extends MapObject {
     if (this.getShard() === null) {
       return [];
     }
-    return mapObjects.filter(m => m !== this && m.getShard !== null);
+    return mapObjects.filter(m => m !== this && m.getShard() === null);
   }
 
   getAttackableTargets() {
@@ -196,24 +200,22 @@ class BlueVessel extends Vessel {
   constructor(props) {
     super(props);
     this.range = 2;
+    this.shard = 'bs';
   }
 
   typeString() {
     return 'b';
   }
-
-  getShard() {
-    return 'bs';
-  }
 }
 
 class RedVessel extends Vessel {
-  typeString() {
-    return 'r';
+  constructor(props) {
+    super(props);
+    this.shard = 'rs';
   }
 
-  getShard() {
-    return 'rs';
+  typeString() {
+    return 'r';
   }
 
   getAttackableTargets() {
@@ -241,15 +243,12 @@ class RedVessel extends Vessel {
 class YellowVessel extends Vessel {
   constructor(props) {
     super(props);
+    this.shard = 'ys';
     this.movement = 5;
   }
 
   typeString() {
     return 'y';
-  }
-
-  getShard() {
-    return 'ys';
   }
 }
 

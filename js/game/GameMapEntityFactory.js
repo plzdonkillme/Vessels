@@ -1,11 +1,19 @@
 /* eslint-disable class-methods-use-this, no-unused-vars */
 
 import { Point } from '../render/Vector';
-import { getCube, getIcosahedron, getTetrahedron } from '../render/FaceGroup';
+import {
+  getCube,
+  getIcosahedron,
+  getTetrahedron,
+  getDodecahedron,
+  getSmallStellatedDodecahedron,
+} from '../render/FaceGroup';
 import { Animation, TransitionLinear, TransitionQuadraticBezier } from './Animation';
 
 const TLEN = 100;
-const MLEN = 20;
+const VESSEL_LEN = 20;
+const SHARD_LEN = 15;
+const ATTACK_LEN = 5;
 const MENU_WIDTH = 200;
 const MENU_HEIGHT = 50;
 const MENU_TOP_MARGIN = 50;
@@ -240,12 +248,13 @@ class GameMapEntityFactory {
         (json.h + 0.5) * TLEN,
       );
       if (['w', 'b', 'r', 'y'].includes(json.mapObject.type)) {
-        faces = getIcosahedron(
+        faces = getDodecahedron(
           (json.x + 0.5) * TLEN,
           (json.y + 0.5) * TLEN,
           (json.h + 0.5) * TLEN,
-          MLEN,
+          VESSEL_LEN,
         );
+        faces.splice(8, 4);
         const r = ['w', 'r', 'y'].includes(json.mapObject.type) ? 255 : 0;
         const g = ['w', 'y'].includes(json.mapObject.type) ? 255 : 0;
         const b = ['w', 'b'].includes(json.mapObject.type) ? 255 : 0;
@@ -255,7 +264,7 @@ class GameMapEntityFactory {
           (json.x + 0.5) * TLEN,
           (json.y + 0.5) * TLEN,
           (json.h + 0.5) * TLEN,
-          MLEN,
+          SHARD_LEN,
         );
         const r = ['rs', 'ys'].includes(json.mapObject.type) ? 255 : 0;
         const g = ['ys'].includes(json.mapObject.type) ? 255 : 0;
@@ -368,39 +377,43 @@ class GameMapEntityFactory {
       );
       animations.push([srcAnimation, dstAnimation]);
     } else if (action.name === 'attack') {
-      const animation = [];
+      const deathAnimations = [];
+      const attackAnimations = [];
+      const sx = (action.src.x + 0.5) * TLEN;
+      const sy = (action.src.y + 0.5) * TLEN;
+      const sh = (action.src.h + 0.5) * TLEN;
       action.dst.forEach((dst) => {
         const dstKey = `${dst.x}_${dst.y}`;
         const obj = dstObj[dstKey];
         if (obj !== undefined) {
-          animation.push(GameMapEntityFactory.createAnimation(
+          attackAnimations.push(GameMapEntityFactory.createNoopAnimation(obj));
+          deathAnimations.push(GameMapEntityFactory.createAnimation(
             obj,
             dst,
             { mapObject: { type: null } },
           ));
         }
-        const faces = getTetrahedron(
-          (dst.x + 0.5) * TLEN,
-          (dst.y + 0.5) * TLEN,
-          (dst.h + 1.5) * TLEN,
-          MLEN,
-        );
-        const center = new Point(
-          (dst.x + 0.5) * TLEN,
-          (dst.y + 0.5) * TLEN,
-          (dst.h + 1.5) * TLEN,
-        );
+        const dx = (dst.x + 0.5) * TLEN;
+        const dy = (dst.y + 0.5) * TLEN;
+        const dh = (dst.h + 0.5) * TLEN;
+        const faces = getTetrahedron(sx, sy, sh, ATTACK_LEN);
+        const center = new Point(sx, sy, sh);
         const r = ['w', 'r', 'y'].includes(action.src.mapObject.type) ? 255 : 0;
         const g = ['w', 'y'].includes(action.src.mapObject.type) ? 255 : 0;
         const b = ['w', 'b'].includes(action.src.mapObject.type) ? 255 : 0;
         const attackObj = new AttackEffect3D(faces, center, r, g, b, 1);
-        animation.push(new Animation(
+        attackAnimations.push(new Animation(
           attackObj,
-          { z: new TransitionLinear((dst.h + 1.5) * TLEN, (dst.h + 0.5) * TLEN) },
+          {
+            x: new TransitionLinear(sx, dx),
+            y: new TransitionLinear(sy, dy),
+            z: new TransitionLinear(sh, dh),
+          },
           ANIMATION_LEN,
         ));
       });
-      animations.push(animation);
+      animations.push(attackAnimations);
+      animations.push(deathAnimations);
     }
     return animations;
   }

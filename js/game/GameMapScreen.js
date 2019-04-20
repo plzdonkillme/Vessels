@@ -5,14 +5,16 @@ import Viewport from '../render/Viewport';
 import GameMapEntityFactory from './GameMapEntityFactory';
 import GameMapRenderer from './GameMapRenderer';
 import GameModeTransitioner from './GameModeTransitioner';
+import { HumanAI, SimpleAI } from '../ai/AI';
 
 const R_RATE = 3;
 const T_RATE = 10;
 
 class GameMapScreen {
-  constructor(canvas, map) {
+  constructor(canvas, map, players) {
     this.map = map;
     this.map.addListener(this);
+    this.players = players;
 
     this.viewport = new Viewport(
       new Point(0, 0, 0),
@@ -58,12 +60,28 @@ class GameMapScreen {
       animationQueue: [],
     };
 
+    this.setViewMode();
+  }
+
+  setViewMode() {
+    const currentPlayer = this.map.getCurrentPlayer();
+    if (this.players[currentPlayer] instanceof HumanAI) {
+      this.viewState.mode = 'chooseAction';
+      this.viewState.actions = this.map.getActions();
+      this.viewState.prevActions = [];
+    } else {
+      this.viewState.mode = 'ai';
+    }
     GameModeTransitioner.enter(
       this.viewState,
       this.entities2D,
       this.staticEntities3D,
       this.dynamicEntities3D,
     );
+    if (!(this.players[currentPlayer] instanceof HumanAI)) {
+      const action = this.players[currentPlayer].getAction(this.map, currentPlayer);
+      this.map.doAction(action);
+    }
   }
 
   start() {
@@ -99,15 +117,7 @@ class GameMapScreen {
         this.viewState.animationQueue.shift();
       }
       if (this.viewState.animationQueue.length === 0) {
-        this.viewState.mode = 'chooseAction';
-        this.viewState.actions = this.map.getActions();
-        this.viewState.prevActions = [];
-        GameModeTransitioner.enter(
-          this.viewState,
-          this.entities2D,
-          this.staticEntities3D,
-          this.dynamicEntities3D,
-        );
+        this.setViewMode();
       }
     }
 

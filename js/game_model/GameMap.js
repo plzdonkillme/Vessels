@@ -354,6 +354,10 @@ class GameMap {
   addListener(listener) {
     this.listeners.push(listener);
   }
+
+  getCurrentPlayer() {
+    return this.turnOrder[0];
+  }
 }
 
 export default GameMap;

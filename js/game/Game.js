@@ -1,5 +1,6 @@
 import GameMapDefault from './GameMapDefault';
 import GameMapScreen from './GameMapScreen';
+import { HumanAI, SimpleAI } from '../ai/AI';
 
 export default class Game {
   constructor() {
@@ -10,7 +11,11 @@ export default class Game {
     this.canvas.style.border = '1px solid black';
     this.canvas.width = window.innerWidth - 20;
     this.canvas.height = window.innerHeight - 20;
-    this.screen = new GameMapScreen(this.canvas, GameMapDefault);
+    const players = {
+      0: new HumanAI(),
+      1: new SimpleAI(),
+    };
+    this.screen = new GameMapScreen(this.canvas, GameMapDefault, players);
 
     // TODO: Remove debug
     window.dscreen = this.screen;
