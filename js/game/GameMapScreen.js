@@ -65,7 +65,9 @@ class GameMapScreen {
 
   setViewMode() {
     const currentPlayer = this.map.getCurrentPlayer();
-    if (this.players[currentPlayer] instanceof HumanAI) {
+    if (this.map.getWinners() !== null) {
+      this.viewState.mode = `winner: ${this.map.getWinners()}`;
+    } else if (this.players[currentPlayer] instanceof HumanAI) {
       this.viewState.mode = 'chooseAction';
       this.viewState.actions = this.map.getActions();
       this.viewState.prevActions = [];
@@ -78,7 +80,7 @@ class GameMapScreen {
       this.staticEntities3D,
       this.dynamicEntities3D,
     );
-    if (!(this.players[currentPlayer] instanceof HumanAI)) {
+    if (this.viewState.mode === 'ai') {
       const action = this.players[currentPlayer].getAction(this.map, currentPlayer);
       this.map.doAction(action);
     }
@@ -250,8 +252,10 @@ class GameMapScreen {
           prevActions.push(actions);
         }
       } else if (hoveredEntity === this.entities2D.end) {
-        newMode = 'executingAction';
         newActions = actions.filter(action => action.name === 'end');
+        if (newActions.length > 0) {
+          newMode = 'executingAction';
+        }
       }
     } else if (mode === 'chooseSrc') {
       if (hoveredEntity === this.entities2D.back) {

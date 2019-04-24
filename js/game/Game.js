@@ -1,11 +1,11 @@
-import GameMapDefault from './GameMapDefault';
 import GameMapScreen from './GameMapScreen';
-import { HumanAI, SimpleAI } from '../ai/AI';
+import { defaultMap3 } from './GameMapDefault';
+import { SimpleAI, MinimaxAI, HumanAI } from '../ai/AI';
 
 export default class Game {
   constructor() {
     // TODO: Remove debug
-    window.dmap = GameMapDefault;
+    window.dmap = defaultMap3;
 
     this.canvas = document.createElement('canvas');
     this.canvas.style.border = '1px solid black';
@@ -13,9 +13,9 @@ export default class Game {
     this.canvas.height = window.innerHeight - 20;
     const players = {
       0: new HumanAI(),
-      1: new SimpleAI(),
+      1: new MinimaxAI(),
     };
-    this.screen = new GameMapScreen(this.canvas, GameMapDefault, players);
+    this.screen = new GameMapScreen(this.canvas, defaultMap3, players);
 
     // TODO: Remove debug
     window.dscreen = this.screen;

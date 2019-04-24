@@ -86,12 +86,7 @@ class GameMap {
       return this.cachedActions;
     }
 
-    let actions = [{
-      name: 'end',
-      move: this.actionCounter.move,
-      transfer: this.actionCounter.transfer,
-      attack: this.actionCounter.attack,
-    }];
+    let actions = [];
     if (this.actionCounter.move > 0) {
       actions = actions.concat(this.getMoveActions());
     }
@@ -100,6 +95,14 @@ class GameMap {
     }
     if (this.actionCounter.attack > 0) {
       actions = actions.concat(this.getAttackActions());
+    }
+    if (this.actionCounter.move === 0) {
+      actions.push({
+        name: 'end',
+        move: this.actionCounter.move,
+        transfer: this.actionCounter.transfer,
+        attack: this.actionCounter.attack,
+      });
     }
     this.cachedActions = actions;
     return actions;
@@ -151,11 +154,13 @@ class GameMap {
     return actions;
   }
 
-  doAction(action) {
-    const validActions = this.getActions();
-    if (validActions.indexOf(action) === -1) {
-      throw Error('Invalid Action');
-    }
+  doAction(action, silent = false) {
+    // Should there be validation?
+    //
+    // const validActions = this.getActions();
+    // if (validActions.indexOf(action) === -1) {
+    //   throw Error('Invalid Action');
+    // }
 
     if (action.name === 'move') {
       this.doMoveAction(action);
@@ -170,8 +175,9 @@ class GameMap {
     this.cachedActions = null;
     this.turnObjs = this.mapObjects.filter(m => m.getPlayer() === this.turnOrder[0]);
     this.actionHistory.push(action);
-
-    this.listeners.forEach(listener => listener.triggerDoAction(action));
+    if (!silent) {
+      this.listeners.forEach(listener => listener.triggerDoAction(action));
+    }
   }
 
   doMoveAction(action) {
@@ -252,11 +258,13 @@ class GameMap {
     this.turnOrder.push(this.turnOrder.shift());
   }
 
-  undoAction(action) {
-    const prevAction = this.actionHistory[this.actionHistory.length - 1];
-    if (action !== prevAction) {
-      throw Error('Invalid Action');
-    }
+  undoAction(action, silent = false) {
+    // Should there be validation?
+    //
+    // const prevAction = this.actionHistory[this.actionHistory.length - 1];
+    // if (action !== prevAction) {
+    //   throw Error('Invalid Action');
+    // }
 
     if (action.name === 'move') {
       this.undoMoveAction(action);
@@ -271,8 +279,9 @@ class GameMap {
     this.cachedActions = null;
     this.turnObjs = this.mapObjects.filter(m => m.getPlayer() === this.turnOrder[0]);
     this.actionHistory.pop();
-
-    this.listeners.forEach(listener => listener.triggerUndoAction(action));
+    if (!silent) {
+      this.listeners.forEach(listener => listener.triggerUndoAction(action));
+    }
   }
 
   undoMoveAction(action) {
@@ -357,6 +366,30 @@ class GameMap {
 
   getCurrentPlayer() {
     return this.turnOrder[0];
+  }
+
+  getWinners() {
+    if (this.objective === 'elimination') {
+      const counts = {};
+      for (let i = 0; i < this.turnOrder.length; i += 1) {
+        const player = this.turnOrder[i];
+        counts[player] = 0;
+      }
+      for (let i = 0; i < this.mapObjects.length; i += 1) {
+        const player = this.mapObjects[i].getPlayer();
+        if (player !== null) {
+          counts[player] += 1;
+        }
+      }
+      const totalCount = Object.values(counts).reduce((a, b) => a + b, 0);
+      for (let i = 0; i < this.turnOrder.length; i += 1) {
+        const player = this.turnOrder[i];
+        if (totalCount - counts[player] === 0) {
+          return player;
+        }
+      }
+    }
+    return null;
   }
 }
 

@@ -118,7 +118,7 @@ class Vessel extends MapObject {
     if (mO === null || mO.getPlayer() === this.player) {
       return true;
     }
-    if (mO instanceof Shard && this.getShard() === null) {
+    if (mO instanceof Shard && (this.getShard() === null || this.getShard() === mO.typeString())) {
       return true;
     }
     return false;

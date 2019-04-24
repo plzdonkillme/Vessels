@@ -7,6 +7,7 @@ class GameModeTransitioner {
       e2D.move.fillStyle = '#CCCCCC';
       e2D.transfer.fillStyle = '#CCCCCC';
       e2D.attack.fillStyle = '#CCCCCC';
+      e2D.end.fillStyle = '#CCCCCC';
       actions.forEach((action) => {
         if (action.name === 'move') {
           e2D.move.fillStyle = '#FFFFFF';
@@ -14,6 +15,8 @@ class GameModeTransitioner {
           e2D.transfer.fillStyle = '#FFFFFF';
         } else if (action.name === 'attack') {
           e2D.attack.fillStyle = '#FFFFFF';
+        } else if (action.name === 'end') {
+          e2D.end.fillStyle = '#FFFFFF';
         }
       });
     } else if (mode === 'chooseSrc') {
@@ -86,7 +89,11 @@ class GameModeTransitioner {
           }
         });
       } else if (hoveredEntity === e2D.end) {
-        e2D.end.fillStyle = '#E6E6E6';
+        actions.forEach((action) => {
+          if (action.name === 'end') {
+            e2D.end.fillStyle = '#E6E6E6';
+          }
+        });
       }
     } else if (mode === 'chooseSrc') {
       if (hoveredEntity === e2D.back) {
@@ -160,7 +167,11 @@ class GameModeTransitioner {
           }
         });
       } else if (hoveredEntity === e2D.end) {
-        e2D.end.fillStyle = '#FFFFFF';
+        actions.forEach((action) => {
+          if (action.name === 'end') {
+            e2D.end.fillStyle = '#FFFFFF';
+          }
+        });
       }
     } else if (mode === 'chooseSrc') {
       if (hoveredEntity === e2D.back) {
