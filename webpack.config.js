@@ -27,8 +27,8 @@ module.exports = {
       },
     ],
   },
-  mode: 'development',
-  devtool: 'inline-source-map',
+  mode: process.env.NODE_ENV === 'production' ? 'production' : 'development',
+  devtool: process.env.NODE_ENV === 'production' ? undefined : 'inline-source-map',
   devServer: {
     contentBase: './build',
   },

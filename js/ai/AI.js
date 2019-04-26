@@ -7,12 +7,14 @@ class SimpleAI {
   }
 }
 
-let statesSearched;
-
 class MinimaxAI {
+  constructor() {
+    this.statesSearched = 0;
+  }
+
   getAction(gamemap, player) {
+    this.statesSearched = 0;
     const startTime = Date.now();
-    statesSearched = 0;
     const { score, action } = this.minimax(
       gamemap,
       3,
@@ -22,7 +24,7 @@ class MinimaxAI {
     );
     const endTime = Date.now();
     console.log(`
-      statesSearched: ${statesSearched}
+      statesSearched: ${this.statesSearched}
       startTime: ${startTime}
       endTime: ${endTime}
     `);
@@ -42,7 +44,7 @@ class MinimaxAI {
     for (let i = 0; i < actions.length; i += 1) {
       const action = actions[i];
       gamemap.doAction(action, true);
-      statesSearched += 1;
+      this.statesSearched += 1;
       const { score } = this.minimax(
         gamemap,
         action.name === 'end' ? depth - 1 : depth,

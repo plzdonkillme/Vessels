@@ -14,12 +14,12 @@ export function getCube(x, y, z, w, l, h) {
   ];
 
   const faces = [
-    new Face([v[0].copy(), v[1].copy(), v[2].copy(), v[3].copy()], new Vector(0, 0, 1)),
     new Face([v[1].copy(), v[2].copy(), v[6].copy(), v[5].copy()], new Vector(1, 0, 0)),
-    new Face([v[4].copy(), v[5].copy(), v[6].copy(), v[7].copy()], new Vector(0, 0, -1)),
-    new Face([v[0].copy(), v[1].copy(), v[5].copy(), v[4].copy()], new Vector(0, -1, 0)),
     new Face([v[0].copy(), v[3].copy(), v[7].copy(), v[4].copy()], new Vector(-1, 0, 0)),
     new Face([v[2].copy(), v[3].copy(), v[7].copy(), v[6].copy()], new Vector(0, 1, 0)),
+    new Face([v[0].copy(), v[1].copy(), v[5].copy(), v[4].copy()], new Vector(0, -1, 0)),
+    new Face([v[0].copy(), v[1].copy(), v[2].copy(), v[3].copy()], new Vector(0, 0, 1)),
+    new Face([v[4].copy(), v[5].copy(), v[6].copy(), v[7].copy()], new Vector(0, 0, -1)),
   ];
 
   return faces;

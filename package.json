@@ -4,7 +4,7 @@
   "description": "tactics-style turn-based javascript game",
   "private": "true",
   "scripts": {
-    "build": "webpack",
+    "build": "NODE_ENV=production webpack",
     "start": "webpack-dev-server --open",
     "test": "karma start"
   },

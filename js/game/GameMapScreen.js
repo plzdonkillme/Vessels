@@ -61,6 +61,10 @@ class GameMapScreen {
     };
 
     this.setViewMode();
+
+    // FPS Debug
+    this.prevTimestamp = 0;
+    this.avgFrameTime = 0;
   }
 
   setViewMode() {
@@ -131,14 +135,18 @@ class GameMapScreen {
     // Debug purposes
     const dHover = this.viewState.hoveredEntity !== null ? this.viewState.hoveredEntity.constructor.name : 'null';
     const dMode = this.viewState.mode;
-    this.entities2D.debug.textInfos[0].text = `hover: ${dHover} | mode: ${dMode}`;
+    const dFPS = Math.round(1000 / this.avgFrameTime);
+    this.entities2D.debug.textInfos[0].text = `hover: ${dHover}   |   mode: ${dMode}   |   fps: ${dFPS}`;
 
     const entities2D = this.entities2DToRender();
 
     // render entities
     this.gameMapRenderer.render(this.viewport, Array.from(entities3D), entities2D);
 
-    window.requestAnimationFrame(() => {
+    window.requestAnimationFrame((timestamp) => {
+      const diff = timestamp - this.prevTimestamp;
+      this.prevTimestamp = timestamp;
+      this.avgFrameTime = 0.1 * diff + 0.9 * this.avgFrameTime;
       this.renderLoop();
     });
   }
