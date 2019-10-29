@@ -1,5 +1,6 @@
 import Face from './Face';
-import { Point, Vector } from './Vector';
+import Point from './Point';
+import Vector from './Vector';
 
 export function getCube(x, y, z, w, l, h) {
   const v = [

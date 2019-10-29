@@ -1,6 +1,7 @@
 /* eslint-disable class-methods-use-this, no-unused-vars */
 
-import { Point, Vector } from '../render/Vector';
+import Point from '../render/Point';
+import Vector from '../render/Vector';
 import Viewport from '../render/Viewport';
 import GameMapEntityFactory from './GameMapEntityFactory';
 import GameMapRenderer from './GameMapRenderer';

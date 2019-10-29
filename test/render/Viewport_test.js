@@ -1,5 +1,5 @@
 import Viewport from '../../js/render/Viewport';
-import { Point } from '../../js/render/Vector';
+import Point from '../../js/render/Point';
 import Face from '../../js/render/Face';
 
 describe('Viewport', () => {

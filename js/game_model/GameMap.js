@@ -1,6 +1,6 @@
 import { serialize } from './GameMapSerializer';
-import { TileFactory } from './Tile';
-import { MapObjectFactory } from './MapObject';
+import TileFactory from './tile/TileFactory';
+import MapObjectFactory from './mapobject/MapObjectFactory';
 
 class GameMap {
   constructor(json) {
@@ -59,7 +59,7 @@ class GameMap {
     this.actionHistory = [];
 
     // cache
-    this.turnObjs = this.mapObjects.filter(m => m.getPlayer() === this.turnOrder[0]);
+    this.turnObjs = this.mapObjects.filter((m) => m.getPlayer() === this.turnOrder[0]);
     this.cachedActions = null;
 
     // Listeners
@@ -68,7 +68,7 @@ class GameMap {
 
   toJSON() {
     const json = {};
-    json.tiles = this.tiles.map(tile => tile.toJSON());
+    json.tiles = this.tiles.map((tile) => tile.toJSON());
     json.state = {
       objective: this.objective,
       turnOrder: this.turnOrder,
@@ -117,7 +117,7 @@ class GameMap {
           name: 'move',
           src: this.turnObjs[i].getTile().toJSON(),
           dst: dstTile.toJSON(),
-          path: dstPath.map(tile => tile.toJSON()),
+          path: dstPath.map((tile) => tile.toJSON()),
         });
       });
     }
@@ -147,7 +147,7 @@ class GameMap {
         actions.push({
           name: 'attack',
           src: this.turnObjs[i].getTile().toJSON(),
-          dst: targets[j].map(tile => tile.toJSON()),
+          dst: targets[j].map((tile) => tile.toJSON()),
         });
       }
     }
@@ -173,10 +173,10 @@ class GameMap {
     }
 
     this.cachedActions = null;
-    this.turnObjs = this.mapObjects.filter(m => m.getPlayer() === this.turnOrder[0]);
+    this.turnObjs = this.mapObjects.filter((m) => m.getPlayer() === this.turnOrder[0]);
     this.actionHistory.push(action);
     if (!silent) {
-      this.listeners.forEach(listener => listener.triggerDoAction(action));
+      this.listeners.forEach((listener) => listener.triggerDoAction(action));
     }
   }
 
@@ -185,8 +185,8 @@ class GameMap {
     const sy = action.src.y;
     const dx = action.dst.x;
     const dy = action.dst.y;
-    const srcTile = this.tiles.filter(t => t.getX() === sx && t.getY() === sy)[0];
-    const dstTile = this.tiles.filter(t => t.getX() === dx && t.getY() === dy)[0];
+    const srcTile = this.tiles.filter((t) => t.getX() === sx && t.getY() === sy)[0];
+    const dstTile = this.tiles.filter((t) => t.getX() === dx && t.getY() === dy)[0];
     const srcObj = srcTile.getMapObject();
     const dstObj = dstTile.getMapObject();
     if (dstObj === null) {
@@ -194,7 +194,7 @@ class GameMap {
       dstTile.setMapObject(srcObj);
       srcTile.setMapObject(null);
     } else {
-      const newObj = srcObj.mergeWith(dstObj);
+      const newObj = MapObjectFactory.merge(srcObj, dstObj);
       this.mapObjects.splice(this.mapObjects.indexOf(srcObj), 1);
       this.mapObjects.splice(this.mapObjects.indexOf(dstObj), 1);
       this.mapObjects.push(newObj);
@@ -210,11 +210,11 @@ class GameMap {
     const sy = action.src.y;
     const dx = action.dst.x;
     const dy = action.dst.y;
-    const srcTile = this.tiles.filter(t => t.getX() === sx && t.getY() === sy)[0];
-    const dstTile = this.tiles.filter(t => t.getX() === dx && t.getY() === dy)[0];
+    const srcTile = this.tiles.filter((t) => t.getX() === sx && t.getY() === sy)[0];
+    const dstTile = this.tiles.filter((t) => t.getX() === dx && t.getY() === dy)[0];
     const srcObj = srcTile.getMapObject();
     const dstObj = dstTile.getMapObject();
-    const { newSrcObj, newDstObj } = srcObj.transferTo(dstObj);
+    const { newSrcObj, newDstObj } = MapObjectFactory.transfer(srcObj, dstObj);
     this.mapObjects.splice(this.mapObjects.indexOf(srcObj), 1);
     this.mapObjects.splice(this.mapObjects.indexOf(dstObj), 1);
     this.mapObjects.push(newSrcObj);
@@ -229,17 +229,17 @@ class GameMap {
   doAttackAction(action) {
     const sx = action.src.x;
     const sy = action.src.y;
-    const srcTile = this.tiles.filter(t => t.getX() === sx && t.getY() === sy)[0];
+    const srcTile = this.tiles.filter((t) => t.getX() === sx && t.getY() === sy)[0];
     const srcObj = srcTile.getMapObject();
     for (let i = 0; i < action.dst.length; i += 1) {
       const dx = action.dst[i].x;
       const dy = action.dst[i].y;
-      const dstTile = this.tiles.filter(t => t.getX() === dx && t.getY() === dy)[0];
+      const dstTile = this.tiles.filter((t) => t.getX() === dx && t.getY() === dy)[0];
       const dstObj = dstTile.getMapObject();
       if (dstObj !== null) {
         this.mapObjects.splice(this.mapObjects.indexOf(dstObj), 1);
       }
-      const newDstObj = srcObj.attack(dstObj);
+      const newDstObj = MapObjectFactory.attack(srcObj, dstObj);
       if (newDstObj !== null) {
         this.mapObjects.push(newDstObj);
         newDstObj.setTile(dstTile);
@@ -277,10 +277,10 @@ class GameMap {
     }
 
     this.cachedActions = null;
-    this.turnObjs = this.mapObjects.filter(m => m.getPlayer() === this.turnOrder[0]);
+    this.turnObjs = this.mapObjects.filter((m) => m.getPlayer() === this.turnOrder[0]);
     this.actionHistory.pop();
     if (!silent) {
-      this.listeners.forEach(listener => listener.triggerUndoAction(action));
+      this.listeners.forEach((listener) => listener.triggerUndoAction(action));
     }
   }
 
@@ -289,8 +289,8 @@ class GameMap {
     const sy = action.src.y;
     const dx = action.dst.x;
     const dy = action.dst.y;
-    const srcTile = this.tiles.filter(t => t.getX() === sx && t.getY() === sy)[0];
-    const dstTile = this.tiles.filter(t => t.getX() === dx && t.getY() === dy)[0];
+    const srcTile = this.tiles.filter((t) => t.getX() === sx && t.getY() === sy)[0];
+    const dstTile = this.tiles.filter((t) => t.getX() === dx && t.getY() === dy)[0];
     const dstObj = dstTile.getMapObject();
     if (action.dst.mapObject === undefined) {
       dstObj.setTile(srcTile);
@@ -315,8 +315,8 @@ class GameMap {
     const sy = action.src.y;
     const dx = action.dst.x;
     const dy = action.dst.y;
-    const srcTile = this.tiles.filter(t => t.getX() === sx && t.getY() === sy)[0];
-    const dstTile = this.tiles.filter(t => t.getX() === dx && t.getY() === dy)[0];
+    const srcTile = this.tiles.filter((t) => t.getX() === sx && t.getY() === sy)[0];
+    const dstTile = this.tiles.filter((t) => t.getX() === dx && t.getY() === dy)[0];
     const srcObj = srcTile.getMapObject();
     const dstObj = dstTile.getMapObject();
     const oldDstObj = MapObjectFactory.create(action.dst.mapObject);
@@ -336,7 +336,7 @@ class GameMap {
     for (let i = 0; i < action.dst.length; i += 1) {
       const dx = action.dst[i].x;
       const dy = action.dst[i].y;
-      const dstTile = this.tiles.filter(t => t.getX() === dx && t.getY() === dy)[0];
+      const dstTile = this.tiles.filter((t) => t.getX() === dx && t.getY() === dy)[0];
       const dstObj = dstTile.getMapObject();
       if (dstObj !== null) {
         this.mapObjects.splice(this.mapObjects.indexOf(dstObj), 1);

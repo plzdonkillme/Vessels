@@ -1,6 +1,6 @@
 /* eslint-disable class-methods-use-this, no-unused-vars */
 
-import { Point } from '../render/Vector';
+import Point from '../render/Point';
 import {
   getCube,
   getIcosahedron,

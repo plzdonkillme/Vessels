@@ -1,5 +1,5 @@
 import GameMapRenderer from '../../js/game/GameMapRenderer';
-import { Point } from '../../js/render/Vector';
+import Point from '../../js/render/Point';
 
 const mockCanvas = {};
 

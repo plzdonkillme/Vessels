@@ -1,4 +1,5 @@
-import { Point, Vector } from './Vector';
+import Point from './Point';
+import Vector from './Vector';
 import Face from './Face';
 
 class BSPTree {
@@ -138,7 +139,7 @@ class BSPTree {
         return bsp.getBack();
       }
       const facesToMove = [];
-      const traverseFn = face => facesToMove.push(face);
+      const traverseFn = (face) => facesToMove.push(face);
       bsp.getBack().traverse(traverseFn, new Vector(0, 0, 1));
       bsp.getFront().addFaces(facesToMove);
       return bsp.getFront();
@@ -227,7 +228,7 @@ class BSPTree {
       }
     });
     const facesToIterate = [].concat(
-      ...faces.map(face => (childMap.has(face) ? childMap.get(face) : [face])),
+      ...faces.map((face) => (childMap.has(face) ? childMap.get(face) : [face])),
     );
 
     for (let i = 0; i < facesToIterate.length; i += 1) {

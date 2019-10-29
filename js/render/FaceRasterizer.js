@@ -1,24 +1,5 @@
 import BSPTree from './BSPTree';
-
-class RasterFace {
-  constructor(points, edges, face) {
-    this.points = points;
-    this.edges = edges;
-    this.face = face;
-  }
-
-  getPoints() {
-    return this.points;
-  }
-
-  getEdges() {
-    return this.edges;
-  }
-
-  getFace() {
-    return this.face;
-  }
-}
+import RasterizedFace from './RasterizedFace';
 
 class FaceRasterizer {
   constructor(staticFaces = []) {
@@ -41,7 +22,7 @@ class FaceRasterizer {
       const { visiblePoints, mapping } = viewport.projectFace(face);
       if (visiblePoints.length > 0) {
         const mappedParentEdges = FaceRasterizer.getMappedParentEdges(mapping, parentEdges);
-        const rasterFace = new RasterFace(visiblePoints, mappedParentEdges, parentFace);
+        const rasterFace = new RasterizedFace(visiblePoints, mappedParentEdges, parentFace);
         rasterFaces.push(rasterFace);
       }
     }, viewport.getPoint());

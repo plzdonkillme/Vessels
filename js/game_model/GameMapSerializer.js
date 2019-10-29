@@ -1,5 +1,5 @@
-import { TileFactory } from './Tile';
-import { MapObjectFactory } from './MapObject';
+import TileFactory from './tile/TileFactory';
+import MapObjectFactory from './mapobject/MapObjectFactory';
 
 export function serialize(json) {
   const tilePropWidth = TileFactory.getPropStringWidth();
@@ -32,7 +32,7 @@ export function serialize(json) {
     }
   }
 
-  const tileString = tiles2D.map(row => row.join('')).join('\n');
+  const tileString = tiles2D.map((row) => row.join('')).join('\n');
   const stateString = JSON.stringify(state, null, 2);
   return `\n${tileString}\n===\n${stateString}\n`;
 }
@@ -49,7 +49,7 @@ export function deserialize(mapString) {
   // Deserialize tiles
   const tileStrings = splitString[0]
     .split('\n')
-    .map(rowString => rowString.match(regex));
+    .map((rowString) => rowString.match(regex));
   const tiles = [];
   for (let y = 0; y < tileStrings.length; y += 1) {
     for (let x = 0; x < tileStrings[y].length; x += 1) {

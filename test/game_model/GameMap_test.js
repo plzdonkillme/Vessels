@@ -376,7 +376,7 @@ p_1{   } p_1{   } p_1{   }
 }
 `;
       const m = new GameMap(deserialize(state));
-      const transferAction = m.getActions().filter(action => action.name === 'transfer')[0];
+      const transferAction = m.getActions().filter((action) => action.name === 'transfer')[0];
       m.doAction(transferAction);
       expect(m.serialize()).to.equal(`
 p_1{w_0} p_2{b_0} p_3{w_1} 

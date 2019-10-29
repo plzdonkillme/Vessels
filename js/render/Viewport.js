@@ -1,4 +1,5 @@
-import { Point, Vector } from './Vector';
+import Point from './Point';
+import Vector from './Vector';
 
 class Viewport {
   /*
@@ -136,9 +137,9 @@ class Viewport {
     const xDist = this.midpoint.getX();
     const yDist = this.midpoint.getY();
     const zDist = this.midpoint.getZ();
-    const rad1 = theta1 / 360 * Math.PI;
-    const rad2 = theta2 / 360 * Math.PI;
-    const rad3 = theta3 / 360 * Math.PI;
+    const rad1 = (theta1 * Math.PI) / 360;
+    const rad2 = (theta2 * Math.PI) / 360;
+    const rad3 = (theta3 * Math.PI) / 360;
 
     this.translate(-xDist, -yDist, -zDist, false);
     this.p1.rotate(this.basis1, rad1);

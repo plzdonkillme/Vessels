@@ -1,4 +1,5 @@
-import { Point, Vector } from './Vector';
+import Point from './Point';
+import Vector from './Vector';
 
 class Face {
   constructor(points, unitNormal) {
@@ -44,11 +45,11 @@ class Face {
   }
 
   translate(x, y, z) {
-    this.points.forEach(point => point.translate(x, y, z));
+    this.points.forEach((point) => point.translate(x, y, z));
   }
 
   rotate(v, rad) {
-    this.points.forEach(point => point.rotate(v, rad));
+    this.points.forEach((point) => point.rotate(v, rad));
     this.normal.rotate(v, rad);
   }
 
