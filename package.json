@@ -1,5 +1,5 @@
 {
-  "name": "knights",
+  "name": "Vessels",
   "version": "1.0.0",
   "description": "tactics-style turn-based javascript game",
   "private": "true",
@@ -11,14 +11,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/plzdonkillme/Knights.git"
+    "url": "git+https://github.com/plzdonkillme/Vessels.git"
   },
   "author": "Robin Hu",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/plzdonkillme/Knights/issues"
+    "url": "https://github.com/plzdonkillme/Vessels/issues"
   },
-  "homepage": "https://github.com/plzdonkillme/Knights#readme",
+  "homepage": "https://github.com/plzdonkillme/Vessels#readme",
   "dependencies": {
     "core-js": "^3",
     "regenerator-runtime": "^0.13.0"

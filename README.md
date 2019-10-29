@@ -1,2 +1,2 @@
-# Knights
+# Vessels
 A javascript turn based game
