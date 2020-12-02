@@ -23,9 +23,9 @@ class Vector {
 
   normalize() {
     const mag = Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z);
-    this.x = this.x / mag;
-    this.y = this.y / mag;
-    this.z = this.z / mag;
+    this.x /= mag;
+    this.y /= mag;
+    this.z /= mag;
   }
 
   cross(v) {

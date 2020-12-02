@@ -1,4 +1,5 @@
 import BSPTree from '../../js/render/BSPTree';
+import BSPNode from '../../js/render/BSPNode';
 import Point from '../../js/render/Point';
 import Vector from '../../js/render/Vector';
 import Face from '../../js/render/Face';
@@ -92,76 +93,89 @@ describe('BSPTree', () => {
     });
   });
 
-  describe('sortFaces', () => {
+  describe('sortNodes', () => {
     const p0 = new Point(0, 0, 0);
     const n = new Vector(0, 0, 1);
 
-    it('should properly sort faces on same plane', () => {
+    it('should properly sort nodes on same plane', () => {
       const face = Face.createFromBuffer([
         1, 1, 0,
         1, 0, 0,
         0, 0, 0,
       ]);
-      const { frontFaces, backFaces, nodeFaces } = BSPTree.sortFaces([face], p0, n);
-      expect(frontFaces).to.deep.equal([]);
-      expect(backFaces).to.deep.equal([]);
-      expect(nodeFaces).to.deep.equal([face]);
+      const node = new BSPNode(face.getPoints(), face.getNormal(), face);
+      const { frontNodes, backNodes, currNodes } = BSPTree.sortNodes([node], p0, n);
+      expect(frontNodes).to.deep.equal([]);
+      expect(backNodes).to.deep.equal([]);
+      expect(currNodes).to.deep.equal([node]);
     });
 
-    it('should properly sort faces in front', () => {
+    it('should properly sort nodes in front', () => {
       const face = Face.createFromBuffer([
         1, 1, 1,
         1, 0, 1,
         0, 0, 1,
       ]);
-      const { frontFaces, backFaces, nodeFaces } = BSPTree.sortFaces([face], p0, n);
-      expect(frontFaces).to.deep.equal([face]);
-      expect(backFaces).to.deep.equal([]);
-      expect(nodeFaces).to.deep.equal([]);
+      const node = new BSPNode(face.getPoints(), face.getNormal(), face);
+      const { frontNodes, backNodes, currNodes } = BSPTree.sortNodes([node], p0, n);
+      expect(frontNodes).to.deep.equal([node]);
+      expect(backNodes).to.deep.equal([]);
+      expect(currNodes).to.deep.equal([]);
     });
 
-    it('should properly sort faces in back', () => {
+    it('should properly sort nodes in back', () => {
       const face = Face.createFromBuffer([
         1, 1, -1,
         1, 0, -1,
         0, 0, -1,
       ]);
-      const { frontFaces, backFaces, nodeFaces } = BSPTree.sortFaces([face], p0, n);
-      expect(frontFaces).to.deep.equal([]);
-      expect(backFaces).to.deep.equal([face]);
-      expect(nodeFaces).to.deep.equal([]);
+      const node = new BSPNode(face.getPoints(), face.getNormal(), face);
+      const { frontNodes, backNodes, currNodes } = BSPTree.sortNodes([node], p0, n);
+      expect(frontNodes).to.deep.equal([]);
+      expect(backNodes).to.deep.equal([node]);
+      expect(currNodes).to.deep.equal([]);
     });
 
-    it('should properly split faces', () => {
+    it('should properly split nodes', () => {
       const face = Face.createFromBuffer([
         1, 1, -1,
         1, 0, 0,
         1, 1, 1,
       ]);
-      const expFrontFace = Face.createFromBuffer([
+      const expectedFrontFace = Face.createFromBuffer([
         1, 1, 0,
         1, 0, 0,
         1, 1, 1,
       ]);
-      const expBackFace = Face.createFromBuffer([
+      const expectedBackFace = Face.createFromBuffer([
         1, 1, 0,
         1, 1, -1,
         1, 0, 0,
       ]);
-      const { frontFaces, backFaces, nodeFaces } = BSPTree.sortFaces([face], p0, n);
-      expect(Face.arrayEquals(frontFaces, [expFrontFace])).to.be.true;
-      expect(Face.arrayEquals(backFaces, [expBackFace])).to.be.true;
-      expect(nodeFaces).to.deep.equal([]);
+      const node = new BSPNode(face.getPoints(), face.getNormal(), face);
+      const { frontNodes, backNodes, currNodes } = BSPTree.sortNodes([node], p0, n);
+
+      expect(frontNodes).to.have.lengthOf(1);
+      const frontFace = new Face(frontNodes[0].getPoints(), frontNodes[0].getNormal());
+      expect(expectedFrontFace.equals(frontFace)).to.be.true;
+      expect(frontNodes[0].getFace()).to.equal(face);
+
+      expect(backNodes).to.have.lengthOf(1);
+      const backFace = new Face(backNodes[0].getPoints(), backNodes[0].getNormal());
+      expect(expectedBackFace.equals(backFace)).to.be.true;
+      expect(backNodes[0].getFace()).to.equal(face);
+
+      expect(currNodes).to.deep.equal([]);
     });
   });
 
   describe('addFaces', () => {
     const p = new Point(1, 0, -2);
     function traverse(bsp) {
-      const sortedFaces = [];
-      const fn = (face) => sortedFaces.push(face);
+      const sortedNodes = [];
+      const fn = (node) => sortedNodes.push(node);
       bsp.traverse(fn, p);
-      return sortedFaces;
+      return sortedNodes;
     }
 
     it('should properly add faces without splitting', () => {
@@ -170,8 +184,12 @@ describe('BSPTree', () => {
         [0, 0, 1, 1, 0, 1, 0, 1, 1],
         [0, 0, -1, 1, 0, -1, 0, 1, -1],
       ].map((buff) => Face.createFromBuffer(buff));
-      const bsp = new BSPTree(faces);
-      const sortedFaces = traverse(bsp);
+      const bsp = new BSPTree();
+      bsp.addFaces(faces);
+      const sortedNodes = traverse(bsp);
+      expect(sortedNodes).to.have.lengthOf(3);
+
+      const sortedFaces = sortedNodes.map((node) => new Face(node.getPoints(), node.getNormal()));
       const expSortedFaces = [
         [0, 0, 1, 1, 0, 1, 0, 1, 1],
         [0, 0, 0, 1, 0, 0, 0, 1, 0],
@@ -186,8 +204,12 @@ describe('BSPTree', () => {
         [0, 1, -1, 0, 1, 1, 0, -1, 1, 0, -1, -1],
         [0, 0, -1, 1, 0, -1, 0, 1, -1],
       ].map((buff) => Face.createFromBuffer(buff));
-      const bsp = new BSPTree(faces);
-      const sortedFaces = traverse(bsp);
+      const bsp = new BSPTree();
+      bsp.addFaces(faces);
+      const sortedNodes = traverse(bsp);
+      expect(sortedNodes).to.have.lengthOf(4);
+
+      const sortedFaces = sortedNodes.map((node) => new Face(node.getPoints(), node.getNormal()));
       const expSortedFaces = [
         [0, 1, 0, 0, 1, 1, 0, -1, 1, 0, -1, 0],
         [0, 0, 0, 1, 0, 0, 0, 1, 0],
@@ -195,18 +217,16 @@ describe('BSPTree', () => {
         [0, 0, -1, 1, 0, -1, 0, 1, -1],
       ].map((buff) => Face.createFromBuffer(buff));
       expect(Face.arrayEquals(sortedFaces, expSortedFaces)).to.be.true;
-      const splitFaces = bsp.getSplitFacesMap();
-      expect(Array.from(splitFaces.entries())).to.have.lengthOf(2);
     });
   });
 
   describe('removeFaces', () => {
     const p = new Point(1, 0, -2);
     function traverse(bsp) {
-      const sortedFaces = [];
-      const fn = (face) => sortedFaces.push(face);
+      const sortedNodes = [];
+      const fn = (node) => sortedNodes.push(node);
       bsp.traverse(fn, p);
-      return sortedFaces;
+      return sortedNodes;
     }
 
     it('should properly remove leaf', () => {
@@ -215,9 +235,13 @@ describe('BSPTree', () => {
         [0, 0, 1, 1, 0, 1, 0, 1, 1],
         [0, 0, -1, 1, 0, -1, 0, 1, -1],
       ].map((buff) => Face.createFromBuffer(buff));
-      let bsp = new BSPTree(faces);
+      let bsp = new BSPTree();
+      bsp.addFaces(faces);
       bsp = BSPTree.removeFaces(bsp, [faces[1]]);
-      const sortedFaces = traverse(bsp);
+      const sortedNodes = traverse(bsp);
+      expect(sortedNodes).to.have.lengthOf(2);
+
+      const sortedFaces = sortedNodes.map((node) => new Face(node.getPoints(), node.getNormal()));
       const expSortedFaces = [
         [0, 0, 0, 1, 0, 0, 0, 1, 0],
         [0, 0, -1, 1, 0, -1, 0, 1, -1],
@@ -231,9 +255,13 @@ describe('BSPTree', () => {
         [0, 0, 0, 1, 0, 0, 0, 1, 0],
         [0, 0, -1, 1, 0, -1, 0, 1, -1],
       ].map((buff) => Face.createFromBuffer(buff));
-      let bsp = new BSPTree(faces);
+      let bsp = new BSPTree();
+      bsp.addFaces(faces);
       bsp = BSPTree.removeFaces(bsp, [faces[1]]);
-      const sortedFaces = traverse(bsp);
+      const sortedNodes = traverse(bsp);
+      expect(sortedNodes).to.have.lengthOf(2);
+
+      const sortedFaces = sortedNodes.map((node) => new Face(node.getPoints(), node.getNormal()));
       const expSortedFaces = [
         [0, 0, 1, 1, 0, 1, 0, 1, 1],
         [0, 0, -1, 1, 0, -1, 0, 1, -1],
@@ -247,9 +275,13 @@ describe('BSPTree', () => {
         [0, 0, 1, 1, 0, 1, 0, 1, 1],
         [0, 0, -1, 1, 0, -1, 0, 1, -1],
       ].map((buff) => Face.createFromBuffer(buff));
-      let bsp = new BSPTree(faces);
+      let bsp = new BSPTree();
+      bsp.addFaces(faces);
       bsp = BSPTree.removeFaces(bsp, [faces[0]]);
-      const sortedFaces = traverse(bsp);
+      const sortedNodes = traverse(bsp);
+      expect(sortedNodes).to.have.lengthOf(2);
+
+      const sortedFaces = sortedNodes.map((node) => new Face(node.getPoints(), node.getNormal()));
       const expSortedFaces = [
         [0, 0, 1, 1, 0, 1, 0, 1, 1],
         [0, 0, -1, 1, 0, -1, 0, 1, -1],
@@ -263,16 +295,18 @@ describe('BSPTree', () => {
         [0, 1, -1, 0, 1, 1, 0, -1, 1, 0, -1, -1],
         [0, 0, -1, 1, 0, -1, 0, 1, -1],
       ].map((buff) => Face.createFromBuffer(buff));
-      let bsp = new BSPTree(faces);
+      let bsp = new BSPTree();
+      bsp.addFaces(faces);
       bsp = BSPTree.removeFaces(bsp, [faces[1]]);
-      const sortedFaces = traverse(bsp);
+      const sortedNodes = traverse(bsp);
+      expect(sortedNodes).to.have.lengthOf(2);
+
+      const sortedFaces = sortedNodes.map((node) => new Face(node.getPoints(), node.getNormal()));
       const expSortedFaces = [
         [0, 0, 0, 1, 0, 0, 0, 1, 0],
         [0, 0, -1, 1, 0, -1, 0, 1, -1],
       ].map((buff) => Face.createFromBuffer(buff));
       expect(Face.arrayEquals(sortedFaces, expSortedFaces)).to.be.true;
-      const splitFaces = bsp.getSplitFacesMap();
-      expect(Array.from(splitFaces.entries())).to.have.lengthOf(0);
     });
 
     it('should properly redistribute with splitting 2', () => {
@@ -281,17 +315,19 @@ describe('BSPTree', () => {
         [0, 1, -1, 0, 1, 1, 0, -1, 1, 0, -1, -1],
         [0, 0, -1, 1, 0, -1, 0, 1, -1],
       ].map((buff) => Face.createFromBuffer(buff));
-      let bsp = new BSPTree(faces);
+      let bsp = new BSPTree();
+      bsp.addFaces(faces);
       bsp = BSPTree.removeFaces(bsp, [faces[0]]);
-      const sortedFaces = traverse(bsp);
+      const sortedNodes = traverse(bsp);
+      expect(sortedNodes).to.have.lengthOf(3);
+
+      const sortedFaces = sortedNodes.map((node) => new Face(node.getPoints(), node.getNormal()));
       const expSortedFaces = [
         [0, 1, 0, 0, 1, 1, 0, -1, 1, 0, -1, 0],
         [0, 1, -1, 0, 1, 0, 0, -1, 0, 0, -1, -1],
         [0, 0, -1, 1, 0, -1, 0, 1, -1],
       ].map((buff) => Face.createFromBuffer(buff));
       expect(Face.arrayEquals(sortedFaces, expSortedFaces)).to.be.true;
-      const splitFaces = bsp.getSplitFacesMap();
-      expect(Array.from(splitFaces.entries())).to.have.lengthOf(2);
     });
   });
 });
