@@ -103,12 +103,21 @@ class GameMapRenderer {
       ctx.beginPath();
       for (let k = 0; k < points.length; k += 1) {
         if (k === 0) {
-          ctx.moveTo(points[k].getX(), points[k].getY());
+          ctx.moveTo(
+            Math.round(points[k].getX()),
+            Math.round(points[k].getY()),
+          );
         }
         if (k === points.length - 1) {
-          ctx.lineTo(points[0].getX(), points[0].getY());
+          ctx.lineTo(
+            Math.round(points[0].getX()),
+            Math.round(points[0].getY()),
+          );
         } else {
-          ctx.lineTo(points[k + 1].getX(), points[k + 1].getY());
+          ctx.lineTo(
+            Math.round(points[k + 1].getX()),
+            Math.round(points[k + 1].getY()),
+          );
         }
       }
       ctx.fill();
@@ -116,8 +125,15 @@ class GameMapRenderer {
       const edges = rasterFace.getEdges();
       ctx.beginPath();
       for (let k = 0; k < edges.length; k += 1) {
-        ctx.moveTo(points[edges[k][0]].getX(), points[edges[k][0]].getY());
-        ctx.lineTo(points[edges[k][1]].getX(), points[edges[k][1]].getY());
+        const edge = edges[k];
+        ctx.moveTo(
+          Math.round(edge.getP1().getX()),
+          Math.round(edge.getP1().getY()),
+        );
+        ctx.lineTo(
+          Math.round(edge.getP2().getX()),
+          Math.round(edge.getP2().getY()),
+        );
       }
       ctx.stroke();
     }
@@ -139,24 +155,42 @@ class GameMapRenderer {
       ctx.beginPath();
       for (let k = 0; k < points.length; k += 1) {
         if (k === 0) {
-          ctx.moveTo(points[k].getX(), points[k].getY());
+          ctx.moveTo(
+            Math.round(points[k].getX()),
+            Math.round(points[k].getY()),
+          );
         }
         if (k === points.length - 1) {
-          ctx.lineTo(points[0].getX(), points[0].getY());
+          ctx.lineTo(
+            Math.round(points[0].getX()),
+            Math.round(points[0].getY()),
+          );
         } else {
-          ctx.lineTo(points[k + 1].getX(), points[k + 1].getY());
+          ctx.lineTo(
+            Math.round(points[k + 1].getX()),
+            Math.round(points[k + 1].getY()),
+          );
         }
       }
       ctx.fill();
       ctx.beginPath();
       for (let k = 0; k < points.length; k += 1) {
         if (k === 0) {
-          ctx.moveTo(points[k].getX(), points[k].getY());
+          ctx.moveTo(
+            Math.round(points[k].getX()),
+            Math.round(points[k].getY()),
+          );
         }
         if (k === points.length - 1) {
-          ctx.lineTo(points[0].getX(), points[0].getY());
+          ctx.lineTo(
+            Math.round(points[0].getX()),
+            Math.round(points[0].getY()),
+          );
         } else {
-          ctx.lineTo(points[k + 1].getX(), points[k + 1].getY());
+          ctx.lineTo(
+            Math.round(points[k + 1].getX()),
+            Math.round(points[k + 1].getY()),
+          );
         }
       }
       ctx.stroke();

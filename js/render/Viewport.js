@@ -1,4 +1,4 @@
-import Point from './Point';
+import ProjectedPoint from './ProjectedPoint';
 import Vector from './Vector';
 
 class Viewport {
@@ -47,10 +47,8 @@ class Viewport {
     return this.p5;
   }
 
-  projectFace(face) {
-    const points = face.getPoints();
-    const visiblePoints = [];
-    const mapping = [];
+  projectPoints(points) {
+    const projectedPoints = [];
     const threshold = this.d === -1 ? 0 : this.d;
     let viewVector;
     let pointVector;
@@ -76,9 +74,12 @@ class Viewport {
           midpoint = this.p5.midpoint(points[i], this.d / pz);
           pointVector = Vector.createFromPoints(this.p1, midpoint);
         }
-        projected = new Point(pointVector.dot(this.basis1), pointVector.dot(this.basis2), 0);
-        visiblePoints.push(projected);
-        mapping.push(i);
+        projected = new ProjectedPoint(
+          pointVector.dot(this.basis1),
+          pointVector.dot(this.basis2),
+          points[i],
+        );
+        projectedPoints.push(projected);
       } else {
         li = i === 0 ? points.length - 1 : i - 1;
         if (this.d !== -1) {
@@ -90,9 +91,12 @@ class Viewport {
         if (lz >= threshold) {
           midpoint = points[i].midpoint(points[li], (threshold - pz) / (lz - pz));
           pointVector = Vector.createFromPoints(this.p1, midpoint);
-          projected = new Point(pointVector.dot(this.basis1), pointVector.dot(this.basis2), 0);
-          visiblePoints.push(projected);
-          mapping.push([li, i]);
+          projected = new ProjectedPoint(
+            pointVector.dot(this.basis1),
+            pointVector.dot(this.basis2),
+            null,
+          );
+          projectedPoints.push(projected);
         }
         ri = i === points.length - 1 ? 0 : i + 1;
         if (this.d !== -1) {
@@ -104,16 +108,16 @@ class Viewport {
         if (rz >= threshold) {
           midpoint = points[i].midpoint(points[ri], (threshold - pz) / (rz - pz));
           pointVector = Vector.createFromPoints(this.p1, midpoint);
-          projected = new Point(pointVector.dot(this.basis1), pointVector.dot(this.basis2), 0);
-          visiblePoints.push(projected);
-          mapping.push([i, ri]);
+          projected = new ProjectedPoint(
+            pointVector.dot(this.basis1),
+            pointVector.dot(this.basis2),
+            null,
+          );
+          projectedPoints.push(projected);
         }
       }
     }
-    return {
-      visiblePoints,
-      mapping,
-    };
+    return projectedPoints;
   }
 
   translateAlongBasis(s1, s2, s3) {

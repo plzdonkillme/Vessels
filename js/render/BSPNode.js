@@ -16,6 +16,10 @@ class BSPNode {
   getFace() {
     return this.face;
   }
+
+  isParentEdge(edge) {
+    return true;
+  }
 }
 
 export default BSPNode;

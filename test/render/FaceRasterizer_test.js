@@ -2,6 +2,8 @@ import FaceRasterizer from '../../js/render/FaceRasterizer';
 import Viewport from '../../js/render/Viewport';
 import Face from '../../js/render/Face';
 import Point from '../../js/render/Point';
+import ProjectedPoint from '../../js/render/ProjectedPoint';
+import Edge from '../../js/render/Edge';
 
 describe('FaceRasterizer', () => {
   describe('rasterize', () => {
@@ -25,15 +27,22 @@ describe('FaceRasterizer', () => {
       expect(rasterFaces).to.have.lengthOf(1);
       const [rasterFace] = rasterFaces;
       expect(rasterFace.getFace()).to.equal(face);
-      const visiblePoints = rasterFace.getPoints();
-      const expPoints = Point.createFromBuffer([
-        25, 25, 0,
-        75, 25, 0,
-        75, 75, 0,
-        25, 75, 0,
+      const projectedPoints = rasterFace.getPoints();
+      const expPoints = ProjectedPoint.createFromBuffer([
+        25, 25, face.getPoints()[0],
+        75, 25, face.getPoints()[1],
+        75, 75, face.getPoints()[2],
+        25, 75, face.getPoints()[3],
       ]);
-      expect(Point.arrayEquals(visiblePoints, expPoints)).to.be.true;
-      expect(rasterFace.getEdges()).to.deep.equal([[0, 1], [1, 2], [2, 3], [3, 0]]);
+      expect(ProjectedPoint.arrayEquals(projectedPoints, expPoints)).to.be.true;
+      const projectedEdges = rasterFace.getEdges();
+      const expEdges = Edge.createFromBuffer([
+        expPoints[0], expPoints[1],
+        expPoints[1], expPoints[2],
+        expPoints[2], expPoints[3],
+        expPoints[3], expPoints[0],
+      ]);
+      expect(Edge.arrayEquals(projectedEdges, expEdges)).to.be.true;
     });
 
     it('should correctly rasterize dynamic faces', () => {
@@ -55,52 +64,37 @@ describe('FaceRasterizer', () => {
       const [rasterFace1, rasterFace2, rasterFace3] = rasterFaces;
 
       expect(rasterFace1.getFace()).to.equal(face2);
-      const visiblePoints1 = rasterFace1.getPoints();
-      const expPoints1 = Point.createFromBuffer([
-        25, 37.5, 0,
-        30, 40, 0,
-        70, 40, 0,
-        75, 37.5, 0,
+      const projectedPoints1 = rasterFace1.getPoints();
+      const expPoints1 = ProjectedPoint.createFromBuffer([
+        25, 37.5, new Point(25, 0, 100),
+        30, 40, new Point(25, 0, 150),
+        70, 40, new Point(25, 100, 150),
+        75, 37.5, new Point(25, 100, 100),
       ]);
-      expect(Point.arrayEquals(visiblePoints1, expPoints1)).to.be.true;
-      expect(rasterFace1.getEdges()).to.deep.equal([[0, 1], [1, 2], [2, 3]]);
+      expect(ProjectedPoint.arrayEquals(projectedPoints1, expPoints1)).to.be.true;
+      // expect(rasterFace1.getEdges()).to.deep.equal([[0, 1], [1, 2], [2, 3]]);
 
       expect(rasterFace2.getFace()).to.equal(face1);
-      const visiblePoints2 = rasterFace2.getPoints();
-      const expPoints2 = Point.createFromBuffer([
-        25, 25, 0,
-        75, 25, 0,
-        75, 75, 0,
-        25, 75, 0,
+      const projectedPoints2 = rasterFace2.getPoints();
+      const expPoints2 = ProjectedPoint.createFromBuffer([
+        25, 25, new Point(0, 0, 100),
+        75, 25, new Point(0, 100, 100),
+        75, 75, new Point(100, 100, 100),
+        25, 75, new Point(100, 0, 100),
       ]);
-      expect(Point.arrayEquals(visiblePoints2, expPoints2)).to.be.true;
-      expect(rasterFace2.getEdges()).to.deep.equal([[0, 1], [1, 2], [2, 3], [3, 0]]);
+      expect(ProjectedPoint.arrayEquals(projectedPoints2, expPoints2)).to.be.true;
+      // expect(rasterFace2.getEdges()).to.deep.equal([[0, 1], [1, 2], [2, 3], [3, 0]]);
 
       expect(rasterFace3.getFace()).to.equal(face2);
-      const visiblePoints3 = rasterFace3.getPoints();
-      const expPoints3 = Point.createFromBuffer([
-        25, 37.5, 0,
-        75, 37.5, 0,
-        83.333, 33.333, 0,
-        16.666, 33.333, 0,
+      const projectedPoints3 = rasterFace3.getPoints();
+      const expPoints3 = ProjectedPoint.createFromBuffer([
+        25, 37.5, new Point(25, 0, 100),
+        75, 37.5, new Point(25, 100, 100),
+        83.333, 33.333, new Point(25, 100, 50),
+        16.666, 33.333, new Point(25, 0, 50),
       ]);
-      expect(Point.arrayEquals(visiblePoints3, expPoints3, false)).to.be.true;
-      expect(rasterFace3.getEdges()).to.deep.equal([[1, 2], [2, 3], [3, 0]]);
-    });
-  });
-  describe('getMappedParentEdges', () => {
-    it('should correctly get mapped parent edges 1', () => {
-      expect(FaceRasterizer.getMappedParentEdges(
-        [0, 1, 2, 3],
-        [[0, 1], [1, 2], [2, 3], [0, 3]],
-      )).to.deep.equal([[0, 1], [1, 2], [2, 3], [3, 0]]);
-    });
-
-    it('should correctly get mapped parent edges 2', () => {
-      expect(FaceRasterizer.getMappedParentEdges(
-        [0, [0, 1], [1, 2], 2, 3],
-        [[0, 1], [1, 2], [2, 3]],
-      )).to.deep.equal([[0, 1], [2, 3], [3, 4]]);
+      expect(ProjectedPoint.arrayEquals(projectedPoints3, expPoints3, false)).to.be.true;
+      // expect(rasterFace3.getEdges()).to.deep.equal([[1, 2], [2, 3], [3, 0]]);
     });
   });
 });

@@ -1,6 +1,6 @@
 import Viewport from '../../js/render/Viewport';
 import Point from '../../js/render/Point';
-import Face from '../../js/render/Face';
+import ProjectedPoint from '../../js/render/ProjectedPoint';
 
 describe('Viewport', () => {
   describe('projectFace', () => {
@@ -13,51 +13,48 @@ describe('Viewport', () => {
     );
 
     it('should correctly project face with no cuts', () => {
-      const face = Face.createFromBuffer([
+      const points = Point.createFromBuffer([
         0, 0, 100,
         0, 100, 100,
         100, 100, 100,
         100, 0, 100,
       ]);
-      const { visiblePoints, mapping } = viewport.projectFace(face);
-      const expPoints = Point.createFromBuffer([
-        25, 25, 0,
-        75, 25, 0,
-        75, 75, 0,
-        25, 75, 0,
+      const projectedPoints = viewport.projectPoints(points);
+      const expPoints = ProjectedPoint.createFromBuffer([
+        25, 25, points[0],
+        75, 25, points[1],
+        75, 75, points[2],
+        25, 75, points[3],
       ]);
-      expect(Point.arrayEquals(visiblePoints, expPoints)).to.be.true;
-      expect(mapping).to.deep.equal([0, 1, 2, 3]);
+      expect(ProjectedPoint.arrayEquals(projectedPoints, expPoints)).to.be.true;
     });
 
     it('should correctly project face with cuts', () => {
-      const face = Face.createFromBuffer([
+      const points = Point.createFromBuffer([
         10, 10, 100,
         10, 90, 100,
         10, 90, -100,
         10, 10, -100,
       ]);
-      const { visiblePoints, mapping } = viewport.projectFace(face);
-      const expPoints = Point.createFromBuffer([
-        30, 30, 0,
-        70, 30, 0,
-        90, 10, 0,
-        10, 10, 0,
+      const projectedPoints = viewport.projectPoints(points);
+      const expPoints = ProjectedPoint.createFromBuffer([
+        30, 30, points[0],
+        70, 30, points[1],
+        90, 10, null,
+        10, 10, null,
       ]);
-      expect(Point.arrayEquals(visiblePoints, expPoints)).to.be.true;
-      expect(mapping).to.deep.equal([0, 1, [1, 2], [3, 0]]);
+      expect(ProjectedPoint.arrayEquals(projectedPoints, expPoints)).to.be.true;
     });
 
     it('should return no visiblePoints if face not visible', () => {
-      const face = Face.createFromBuffer([
+      const points = Point.createFromBuffer([
         0, 0, -100,
         0, 100, -100,
         100, 100, -100,
         100, 0, -100,
       ]);
-      const { visiblePoints, mapping } = viewport.projectFace(face);
-      expect(visiblePoints).to.deep.equal([]);
-      expect(mapping).to.deep.equal([]);
+      const projectedPoints = viewport.projectPoints(points);
+      expect(projectedPoints).to.deep.equal([]);
     });
   });
 });

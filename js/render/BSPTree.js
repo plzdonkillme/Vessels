@@ -201,17 +201,17 @@ class BSPTree {
           frontPoints.push(mid);
           backPoints.push(mid);
         }
-        frontPoints.push(p.copy());
+        frontPoints.push(p);
       } else if (pos === 'back') {
         if (prevPos === 'front') {
           const mid = p.midpoint(prevP, d / (d - prevD));
           frontPoints.push(mid);
           backPoints.push(mid);
         }
-        backPoints.push(p.copy());
+        backPoints.push(p);
       } else {
-        frontPoints.push(p.copy());
-        backPoints.push(p.copy());
+        frontPoints.push(p);
+        backPoints.push(p);
       }
 
       prevP = p;
