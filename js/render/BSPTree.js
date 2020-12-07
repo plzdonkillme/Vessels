@@ -1,5 +1,6 @@
 import Point from './Point';
 import Vector from './Vector';
+import Edge from './Edge';
 import BSPNode from './BSPNode';
 
 class BSPTree {
@@ -82,7 +83,16 @@ class BSPTree {
   }
 
   addFaces(faces) {
-    const nodes = faces.map((face) => new BSPNode(face.getPoints(), face.getNormal(), face));
+    const nodes = faces.map((face) => {
+      const edges = [];
+      const points = face.getPoints();
+      for (let i = 0; i < points.length; i += 1) {
+        const j = i === points.length - 1 ? 0 : i + 1;
+        const edge = new Edge(points[i], points[j]);
+        edges.push(edge);
+      }
+      return new BSPNode(points, edges, face.getNormal(), face);
+    });
     this.addNodes(nodes);
   }
 
@@ -148,8 +158,24 @@ class BSPTree {
       } else if (Point.arrayEquals(backPoints, points)) {
         backNodes.push(node);
       } else {
-        const frontNode = new BSPNode(frontPoints, node.getNormal(), node.getFace());
-        const backNode = new BSPNode(backPoints, node.getNormal(), node.getFace());
+        const frontEdges = [];
+        for (let j = 0; j < frontPoints.length; j += 1) {
+          const k = j === frontPoints.length - 1 ? 0 : j + 1;
+          const edge = new Edge(frontPoints[j], frontPoints[k]);
+          if (node.isParentEdge(edge)) {
+            frontEdges.push(edge);
+          }
+        }
+        const frontNode = new BSPNode(frontPoints, frontEdges, node.getNormal(), node.getFace());
+        const backEdges = [];
+        for (let j = 0; j < backPoints.length; j += 1) {
+          const k = j === backPoints.length - 1 ? 0 : j + 1;
+          const edge = new Edge(backPoints[j], backPoints[k]);
+          if (node.isParentEdge(edge)) {
+            backEdges.push(edge);
+          }
+        }
+        const backNode = new BSPNode(backPoints, backEdges, node.getNormal(), node.getFace());
         frontNodes.push(frontNode);
         backNodes.push(backNode);
       }

@@ -72,7 +72,13 @@ describe('FaceRasterizer', () => {
         75, 37.5, new Point(25, 100, 100),
       ]);
       expect(ProjectedPoint.arrayEquals(projectedPoints1, expPoints1)).to.be.true;
-      // expect(rasterFace1.getEdges()).to.deep.equal([[0, 1], [1, 2], [2, 3]]);
+      const projectedEdges1 = rasterFace1.getEdges();
+      const expEdges1 = Edge.createFromBuffer([
+        expPoints1[0], expPoints1[1],
+        expPoints1[1], expPoints1[2],
+        expPoints1[2], expPoints1[3],
+      ]);
+      expect(Edge.arrayEquals(projectedEdges1, expEdges1)).to.be.true;
 
       expect(rasterFace2.getFace()).to.equal(face1);
       const projectedPoints2 = rasterFace2.getPoints();
@@ -83,7 +89,14 @@ describe('FaceRasterizer', () => {
         25, 75, new Point(100, 0, 100),
       ]);
       expect(ProjectedPoint.arrayEquals(projectedPoints2, expPoints2)).to.be.true;
-      // expect(rasterFace2.getEdges()).to.deep.equal([[0, 1], [1, 2], [2, 3], [3, 0]]);
+      const projectedEdges2 = rasterFace2.getEdges();
+      const expEdges2 = Edge.createFromBuffer([
+        expPoints2[0], expPoints2[1],
+        expPoints2[1], expPoints2[2],
+        expPoints2[2], expPoints2[3],
+        expPoints2[3], expPoints2[0],
+      ]);
+      expect(Edge.arrayEquals(projectedEdges2, expEdges2)).to.be.true;
 
       expect(rasterFace3.getFace()).to.equal(face2);
       const projectedPoints3 = rasterFace3.getPoints();
@@ -95,6 +108,13 @@ describe('FaceRasterizer', () => {
       ]);
       expect(ProjectedPoint.arrayEquals(projectedPoints3, expPoints3, false)).to.be.true;
       // expect(rasterFace3.getEdges()).to.deep.equal([[1, 2], [2, 3], [3, 0]]);
+      const projectedEdges3 = rasterFace3.getEdges();
+      const expEdges3 = Edge.createFromBuffer([
+        expPoints3[1], expPoints3[2],
+        expPoints3[2], expPoints3[3],
+        expPoints3[3], expPoints3[0],
+      ]);
+      expect(Edge.arrayEquals(projectedEdges3, expEdges3, false)).to.be.true;
     });
   });
 });

@@ -65,16 +65,6 @@ class Vector {
   copy() {
     return new Vector(this.x, this.y, this.z);
   }
-
-  static isColinear(p1, p2, p3) {
-    const v1 = Vector.createFromPoints(p1, p2);
-    const v2 = Vector.createFromPoints(p1, p3);
-    const cross = v1.cross(v2);
-    const cx = cross.getX();
-    const cy = cross.getY();
-    const cz = cross.getZ();
-    return Math.abs(cx) < 0.001 && Math.abs(cy) < 0.001 && Math.abs(cz) < 0.001;
-  }
 }
 
 export default Vector;

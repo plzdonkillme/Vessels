@@ -12,17 +12,17 @@ class Edge {
     return this.p2;
   }
 
-  equals(e) {
+  equals(e, strict = true) {
     if (this.p1 == null && this.p2 == null) {
       return e.getP1() == null && e.getP2() == null;
     }
     if (this.p1 == null) {
-      return e.getP1() == null && this.p2.equals(e.getP2());
+      return e.getP1() == null && this.p2.equals(e.getP2(), strict);
     }
     if (this.p2 == null) {
-      return this.p1.equals(e.getP1()) && e.getP2() == null;
+      return this.p1.equals(e.getP1(), strict) && e.getP2() == null;
     }
-    return this.p1.equals(e.getP1()) && this.p2.equals(e.getP2());
+    return this.p1.equals(e.getP1(), strict) && this.p2.equals(e.getP2(), strict);
   }
 
   static createFromBuffer(buffer) {
@@ -36,12 +36,12 @@ class Edge {
     return edges;
   }
 
-  static arrayEquals(edges1, edges2) {
+  static arrayEquals(edges1, edges2, strict = true) {
     if (edges1.length !== edges2.length) {
       return false;
     }
     for (let i = 0; i < edges1.length; i += 1) {
-      if (!edges1[i].equals(edges2[i])) {
+      if (!edges1[i].equals(edges2[i], strict)) {
         return false;
       }
     }

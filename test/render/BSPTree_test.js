@@ -3,6 +3,7 @@ import BSPNode from '../../js/render/BSPNode';
 import Point from '../../js/render/Point';
 import Vector from '../../js/render/Vector';
 import Face from '../../js/render/Face';
+import Edge from '../../js/render/Edge';
 
 describe('BSPTree', () => {
   describe('sortPoints', () => {
@@ -103,7 +104,12 @@ describe('BSPTree', () => {
         1, 0, 0,
         0, 0, 0,
       ]);
-      const node = new BSPNode(face.getPoints(), face.getNormal(), face);
+      const edges = Edge.createFromBuffer([
+        face.getPoints()[0], face.getPoints()[1],
+        face.getPoints()[1], face.getPoints()[2],
+        face.getPoints()[2], face.getPoints()[0],
+      ]);
+      const node = new BSPNode(face.getPoints(), edges, face.getNormal(), face);
       const { frontNodes, backNodes, currNodes } = BSPTree.sortNodes([node], p0, n);
       expect(frontNodes).to.deep.equal([]);
       expect(backNodes).to.deep.equal([]);
@@ -116,7 +122,12 @@ describe('BSPTree', () => {
         1, 0, 1,
         0, 0, 1,
       ]);
-      const node = new BSPNode(face.getPoints(), face.getNormal(), face);
+      const edges = Edge.createFromBuffer([
+        face.getPoints()[0], face.getPoints()[1],
+        face.getPoints()[1], face.getPoints()[2],
+        face.getPoints()[2], face.getPoints()[0],
+      ]);
+      const node = new BSPNode(face.getPoints(), edges, face.getNormal(), face);
       const { frontNodes, backNodes, currNodes } = BSPTree.sortNodes([node], p0, n);
       expect(frontNodes).to.deep.equal([node]);
       expect(backNodes).to.deep.equal([]);
@@ -129,7 +140,12 @@ describe('BSPTree', () => {
         1, 0, -1,
         0, 0, -1,
       ]);
-      const node = new BSPNode(face.getPoints(), face.getNormal(), face);
+      const edges = Edge.createFromBuffer([
+        face.getPoints()[0], face.getPoints()[1],
+        face.getPoints()[1], face.getPoints()[2],
+        face.getPoints()[2], face.getPoints()[0],
+      ]);
+      const node = new BSPNode(face.getPoints(), edges, face.getNormal(), face);
       const { frontNodes, backNodes, currNodes } = BSPTree.sortNodes([node], p0, n);
       expect(frontNodes).to.deep.equal([]);
       expect(backNodes).to.deep.equal([node]);
@@ -142,6 +158,11 @@ describe('BSPTree', () => {
         1, 0, 0,
         1, 1, 1,
       ]);
+      const edges = Edge.createFromBuffer([
+        face.getPoints()[0], face.getPoints()[1],
+        face.getPoints()[1], face.getPoints()[2],
+        face.getPoints()[2], face.getPoints()[0],
+      ]);
       const expectedFrontFace = Face.createFromBuffer([
         1, 1, 0,
         1, 0, 0,
@@ -152,7 +173,7 @@ describe('BSPTree', () => {
         1, 1, -1,
         1, 0, 0,
       ]);
-      const node = new BSPNode(face.getPoints(), face.getNormal(), face);
+      const node = new BSPNode(face.getPoints(), edges, face.getNormal(), face);
       const { frontNodes, backNodes, currNodes } = BSPTree.sortNodes([node], p0, n);
 
       expect(frontNodes).to.have.lengthOf(1);

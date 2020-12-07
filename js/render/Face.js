@@ -23,27 +23,6 @@ class Face {
     return Point.arrayEquals(points1, points2) && n1.equals(n2);
   }
 
-  findParentEdges(parentFace) {
-    const parentPoints = parentFace.getPoints();
-    const facePoints = this.getPoints();
-    const edges = [];
-    for (let i = 0; i < parentPoints.length; i += 1) {
-      const p = parentPoints[i];
-      const np = i === parentPoints.length - 1 ? parentPoints[0] : parentPoints[i + 1];
-      const edge = [];
-      for (let j = 0; j < facePoints.length; j += 1) {
-        const fp = facePoints[j];
-        if (Vector.isColinear(p, np, fp)) {
-          edge.push(j);
-        }
-      }
-      if (edge.length > 0) {
-        edges.push(edge);
-      }
-    }
-    return edges;
-  }
-
   translate(x, y, z) {
     this.points.forEach((point) => point.translate(x, y, z));
   }
