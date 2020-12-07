@@ -94,7 +94,7 @@ class Viewport {
           projected = new ProjectedPoint(
             pointVector.dot(this.basis1),
             pointVector.dot(this.basis2),
-            null,
+            midpoint,
           );
           projectedPoints.push(projected);
         }
@@ -111,7 +111,7 @@ class Viewport {
           projected = new ProjectedPoint(
             pointVector.dot(this.basis1),
             pointVector.dot(this.basis2),
-            null,
+            midpoint,
           );
           projectedPoints.push(projected);
         }

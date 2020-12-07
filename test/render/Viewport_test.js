@@ -40,8 +40,8 @@ describe('Viewport', () => {
       const expPoints = ProjectedPoint.createFromBuffer([
         30, 30, points[0],
         70, 30, points[1],
-        90, 10, null,
-        10, 10, null,
+        90, 10, new Point(10, 90, 0),
+        10, 10, new Point(10, 10, 0),
       ]);
       expect(ProjectedPoint.arrayEquals(projectedPoints, expPoints)).to.be.true;
     });

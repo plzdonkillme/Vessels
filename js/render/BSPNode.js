@@ -19,9 +19,6 @@ class BSPNode {
   }
 
   isParentEdge(edge) {
-    if (edge.getP1() === null && edge.getP2() === null) {
-      return false;
-    }
     let match = 0;
     for (let i = 0; i < this.edges.length; i += 1) {
       if (edge.getP1() === this.edges[i].getP1() || edge.getP2() === this.edges[i].getP2()) {
