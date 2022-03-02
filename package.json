@@ -34,7 +34,7 @@
     "eslint-config-airbnb-base": "^14.2.1",
     "eslint-plugin-import": "^2.22.1",
     "html-webpack-plugin": "^4",
-    "karma": "^5",
+    "karma": "^6",
     "karma-chai": "^0.1.0",
     "karma-chrome-launcher": "^3",
     "karma-mocha": "^2",
